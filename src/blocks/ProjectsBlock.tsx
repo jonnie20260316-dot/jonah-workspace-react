@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import type { Block } from "../types";
 import { useModalStore } from "../stores/useModalStore";
 import { useProjectStore, type ProjectCard, type ProjectBoard } from "../stores/useProjectStore";
+import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
 
 interface ProjectsBlockProps {
@@ -13,6 +14,7 @@ interface ProjectsBlockProps {
  * Reads from global projectBoard store. Supports native HTML5 drag-drop.
  */
 export function ProjectsBlock({ block }: ProjectsBlockProps) {
+  useLang();
   const { openCardModal } = useModalStore();
   const { projectBoard, addCard, moveCard } = useProjectStore();
   const dragCardRef = useRef<{ cardId: string; fromCol: keyof ProjectBoard } | null>(null);

@@ -1,4 +1,5 @@
 import { useBlockField } from "../hooks/useBlockField";
+import { useLang } from "../hooks/useLang";
 import type { Block } from "../types";
 import { pick } from "../utils/i18n";
 
@@ -12,6 +13,7 @@ interface ContentBlockProps {
  * Extra storage: content-draft-history:{blockId}
  */
 export function ContentBlock({ block }: ContentBlockProps) {
+  useLang();
   const [title, setTitle] = useBlockField(block.id, "title", "");
   const [body, setBody] = useBlockField(block.id, "body", "");
 

@@ -1,4 +1,5 @@
 import { useBlockField } from "../hooks/useBlockField";
+import { useLang } from "../hooks/useLang";
 import type { Block } from "../types";
 import { pick } from "../utils/i18n";
 
@@ -11,6 +12,7 @@ interface IntentionBlockProps {
  * Fields: goal, next, theme
  */
 export function IntentionBlock({ block }: IntentionBlockProps) {
+  useLang();
   const [goal, setGoal] = useBlockField(block.id, "goal", "");
   const [next, setNext] = useBlockField(block.id, "next", "");
   const [theme, setTheme] = useBlockField(block.id, "theme", "");

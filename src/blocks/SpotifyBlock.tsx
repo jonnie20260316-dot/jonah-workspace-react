@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { Block } from "../types";
 import { useModalStore } from "../stores/useModalStore";
 import { loadJSON, saveJSON } from "../utils/storage";
+import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
 
 interface SpotifyPreset {
@@ -47,6 +48,7 @@ function toSpotifyEmbedUrl(raw: string): string {
  * Fields: spotify-presets:{blockId}, spotify-ui:{blockId}
  */
 export function SpotifyBlock({ block }: SpotifyBlockProps) {
+  useLang();
   const { openSpotifyModal, spotifyModal } = useModalStore();
   const [presets, setPresets] = useState<SpotifyPreset[]>(() =>
     loadJSON(`spotify-presets:${block.id}`, [])

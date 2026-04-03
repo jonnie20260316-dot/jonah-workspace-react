@@ -4,9 +4,11 @@ import { useBlockStore } from "../stores/useBlockStore";
 import { ZOOM_SENSITIVITY } from "../constants";
 import { BlockShell } from "../blocks/BlockShell";
 import { BLOCK_REGISTRY } from "../blocks/BlockRegistry";
+import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
 
 export function Canvas() {
+  useLang();
   const viewportRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const { viewport, zoomTo } = useViewportStore();

@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useBlockField } from "../hooks/useBlockField";
 import { loadJSON, saveJSON } from "../utils/storage";
+import { useLang } from "../hooks/useLang";
+import { pick } from "../utils/i18n";
 import type { Block } from "../types";
 
 interface SavedVideo {
@@ -10,6 +12,7 @@ interface SavedVideo {
   format: string;
   date: string;
   blobUrl?: string;
+  source?: "camera" | "screen";
 }
 
 interface VideoCaptureBlockProps {
@@ -22,6 +25,10 @@ interface VideoCaptureBlockProps {
  * Extra storage: vc-saved-videos:{blockId}
  */
 export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
+  const lang = useLang();
+  const [captureMode, setCaptureMode] = useBlockField<"camera" | "screen">(block.id, "capture-mode", "camera");
+  const [screenSysAudio, setScreenSysAudio] = useBlockField(block.id, "screen-sys-audio", true);
+  const [screenMicOn, setScreenMicOn] = useBlockField(block.id, "screen-mic", false);
   const [camSource, setCamSource] = useBlockField(block.id, "camera-source", "builtin");
   const [micSource, setMicSource] = useBlockField(block.id, "mic-source", "default");
 
@@ -43,12 +50,24 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   const chunksRef = useRef<Blob[]>([]);
   const recTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recStartRef = useRef<number>(0);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const captureModeRef = useRef(captureMode);
 
-  // Cleanup on unmount
+  // Keep captureModeRef in sync for use inside recorder.onstop closure
+  useEffect(() => { captureModeRef.current = captureMode; }, [captureMode]);
+
+  // Cleanup on unmount (JW-28)
   useEffect(() => {
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
+      }
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close();
       }
       if (recTimerRef.current) clearInterval(recTimerRef.current);
     };
@@ -129,10 +148,97 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
+    // Screen mode cleanup (JW-28)
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach((t) => t.stop());
+      micStreamRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close();
+      audioCtxRef.current = null;
+    }
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsStreaming(false);
     setStreamStats({ fps: "—", res: "—" });
   }, []);
+
+  const startScreenStream = useCallback(async () => {
+    // Guard: stop existing streams
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach((t) => t.stop());
+      micStreamRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close();
+      audioCtxRef.current = null;
+    }
+
+    try {
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: screenSysAudio,
+      });
+
+      let finalStream: MediaStream;
+
+      if (screenMicOn) {
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micStreamRef.current = micStream;
+
+        // Mix system audio + mic via Web Audio API
+        const audioCtx = new AudioContext();
+        audioCtxRef.current = audioCtx;
+        const dest = audioCtx.createMediaStreamDestination();
+
+        const sysAudioTracks = displayStream.getAudioTracks();
+        if (sysAudioTracks.length > 0) {
+          const sysSource = audioCtx.createMediaStreamSource(
+            new MediaStream(sysAudioTracks)
+          );
+          sysSource.connect(dest);
+        }
+
+        const micSource = audioCtx.createMediaStreamSource(micStream);
+        micSource.connect(dest);
+
+        finalStream = new MediaStream([
+          ...displayStream.getVideoTracks(),
+          ...dest.stream.getAudioTracks(),
+        ]);
+      } else {
+        finalStream = displayStream;
+      }
+
+      // Auto-stop when user clicks browser's "Stop sharing" button
+      displayStream.getVideoTracks()[0]?.addEventListener("ended", () => {
+        stopStream();
+      });
+
+      streamRef.current = finalStream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = finalStream;
+        videoRef.current.play();
+      }
+      setIsStreaming(true);
+
+      const vTrack = displayStream.getVideoTracks()[0];
+      if (vTrack) {
+        const settings = vTrack.getSettings();
+        setStreamStats({
+          fps: String(settings.frameRate || "—"),
+          res: settings.width && settings.height
+            ? `${settings.width}×${settings.height}`
+            : "—",
+        });
+      }
+    } catch (err) {
+      console.error("Screen capture failed:", err);
+    }
+  }, [screenSysAudio, screenMicOn, stopStream]);
 
   const startRecording = useCallback(() => {
     if (!streamRef.current) return;
@@ -174,6 +280,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
         format: ext.toUpperCase(),
         date: now.toISOString(),
         blobUrl,
+        source: captureModeRef.current,
       };
       // Use functional update to avoid stale savedVideos closure
       setSavedVideos((prev) => {
@@ -208,67 +315,127 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     saveJSON(`vc-saved-videos:${block.id}`, updated.map(({ blobUrl: _, ...rest }) => rest));
   };
 
+  const modeToggleBtn = (mode: "camera" | "screen", label: string) => (
+    <button
+      onClick={() => { if (!isRecording) { stopStream(); setCaptureMode(mode); } }}
+      disabled={isRecording}
+      style={{
+        padding: "6px 12px",
+        fontSize: "calc(12px * var(--text-scale))",
+        backgroundColor: captureMode === mode ? "#333" : "#ddd",
+        color: captureMode === mode ? "#fff" : "#000",
+        border: "none",
+        borderRadius: "2px",
+        cursor: isRecording ? "not-allowed" : "pointer",
+        opacity: isRecording ? 0.5 : 1,
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  const audioToggleBtn = (active: boolean, toggle: () => void, label: string) => (
+    <button
+      onClick={toggle}
+      disabled={isStreaming}
+      style={{
+        padding: "6px 12px",
+        fontSize: "calc(12px * var(--text-scale))",
+        backgroundColor: active ? "#333" : "#ddd",
+        color: active ? "#fff" : "#000",
+        border: "none",
+        borderRadius: "2px",
+        cursor: isStreaming ? "not-allowed" : "pointer",
+        opacity: isStreaming ? 0.6 : 1,
+      }}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-      {/* Toolbar: Camera tabs + Mic select */}
+      {/* Toolbar */}
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          flexDirection: "column",
+          gap: "8px",
           padding: "8px",
           backgroundColor: "#f5f5f5",
           borderRadius: "4px",
         }}
       >
-        <div style={{ display: "flex", gap: "8px" }}>
-          <button
-            onClick={() => setCamSource("builtin")}
-            style={{
-              padding: "6px 12px",
-              fontSize: "calc(12px * var(--text-scale))",
-              backgroundColor: camSource === "builtin" ? "#333" : "#ddd",
-              color: camSource === "builtin" ? "#fff" : "#000",
-              border: "none",
-              borderRadius: "2px",
-              cursor: "pointer",
-            }}
-          >
-            Built-in
-          </button>
-          <button
-            onClick={() => setCamSource("iriun")}
-            style={{
-              padding: "6px 12px",
-              fontSize: "calc(12px * var(--text-scale))",
-              backgroundColor: camSource === "iriun" ? "#333" : "#ddd",
-              color: camSource === "iriun" ? "#fff" : "#000",
-              border: "none",
-              borderRadius: "2px",
-              cursor: "pointer",
-            }}
-          >
-            Iriun
-          </button>
+        {/* Row 1: Mode toggle */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "4px" }}>
+            {modeToggleBtn("camera", pick("攝影機", "Camera"))}
+            {modeToggleBtn("screen", pick("螢幕", "Screen"))}
+          </div>
         </div>
 
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <span style={{ fontSize: "calc(12px * var(--text-scale))" }}>Mic</span>
-          <select
-            value={micSource}
-            onChange={(e) => setMicSource(e.target.value)}
-            style={{
-              padding: "4px 8px",
-              fontSize: "calc(12px * var(--text-scale))",
-              border: "1px solid #ddd",
-              borderRadius: "2px",
-            }}
-          >
-            <option value="default">Default</option>
-            <option value="dji">DJI</option>
-            <option value="ssl2">SSL 2</option>
-          </select>
-        </div>
+        {/* Row 2: Mode-specific controls */}
+        {captureMode === "camera" ? (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                onClick={() => setCamSource("builtin")}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: "calc(12px * var(--text-scale))",
+                  backgroundColor: camSource === "builtin" ? "#333" : "#ddd",
+                  color: camSource === "builtin" ? "#fff" : "#000",
+                  border: "none",
+                  borderRadius: "2px",
+                  cursor: "pointer",
+                }}
+              >
+                Built-in
+              </button>
+              <button
+                onClick={() => setCamSource("iriun")}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: "calc(12px * var(--text-scale))",
+                  backgroundColor: camSource === "iriun" ? "#333" : "#ddd",
+                  color: camSource === "iriun" ? "#fff" : "#000",
+                  border: "none",
+                  borderRadius: "2px",
+                  cursor: "pointer",
+                }}
+              >
+                Iriun
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <span style={{ fontSize: "calc(12px * var(--text-scale))" }}>{pick("麥克風", "Mic")}</span>
+              <select
+                value={micSource}
+                onChange={(e) => setMicSource(e.target.value)}
+                style={{
+                  padding: "4px 8px",
+                  fontSize: "calc(12px * var(--text-scale))",
+                  border: "1px solid #ddd",
+                  borderRadius: "2px",
+                }}
+              >
+                <option value="default">{pick("預設", "Default")}</option>
+                <option value="dji">DJI</option>
+                <option value="ssl2">SSL 2</option>
+              </select>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            {audioToggleBtn(screenSysAudio, () => setScreenSysAudio(!screenSysAudio), pick("系統音訊", "System Audio"))}
+            {audioToggleBtn(screenMicOn, () => setScreenMicOn(!screenMicOn), pick("麥克風", "Microphone"))}
+            {isStreaming && (
+              <span style={{ fontSize: "calc(10px * var(--text-scale))", color: "#999", marginLeft: "4px" }}>
+                {pick("停止串流以更改音訊", "Stop stream to change audio")}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Video stage */}
@@ -291,7 +458,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
           style={{
             width: "100%",
             height: "100%",
-            objectFit: "cover",
+            objectFit: captureMode === "screen" ? "contain" : "cover",
             display: isStreaming ? "block" : "none",
           }}
         />
@@ -304,8 +471,14 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
               fontSize: "calc(12px * var(--text-scale))",
             }}
           >
-            <div style={{ fontSize: "calc(24px * var(--text-scale))", marginBottom: "8px" }}>📷</div>
-            <div>Click Stream to start camera</div>
+            <div style={{ fontSize: "calc(24px * var(--text-scale))", marginBottom: "8px" }}>
+              {captureMode === "screen" ? "🖥" : "📷"}
+            </div>
+            <div>
+              {captureMode === "screen"
+                ? pick("點擊串流開始螢幕錄製", "Click Stream to start screen capture")
+                : pick("點擊串流開始攝影機", "Click Stream to start camera")}
+            </div>
           </div>
         )}
 
@@ -322,7 +495,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
               textShadow: "0 1px 2px rgba(0,0,0,0.8)",
             }}
           >
-            ● REC {formatRecTime(recSeconds)}
+            ● {captureMode === "screen" ? "SCR" : "REC"} {formatRecTime(recSeconds)}
           </div>
         )}
 
@@ -341,7 +514,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
           }}
         >
           <button
-            onClick={isStreaming ? stopStream : startStream}
+            onClick={isStreaming ? stopStream : (captureMode === "screen" ? startScreenStream : startStream)}
             style={{
               padding: "6px 12px",
               fontSize: "calc(12px * var(--text-scale))",
@@ -352,7 +525,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
               cursor: "pointer",
             }}
           >
-            {isStreaming ? "■ Stop" : "▶ Stream"}
+            {isStreaming ? pick("■ 停止", "■ Stop") : pick("▶ 串流", "▶ Stream")}
           </button>
           <button
             onClick={isRecording ? stopRecording : startRecording}
@@ -368,7 +541,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
               opacity: isStreaming ? 1 : 0.5,
             }}
           >
-            {isRecording ? "■ Stop" : "⏺ Rec"}
+            {isRecording ? pick("■ 停止", "■ Stop") : pick("⏺ 錄製", "⏺ Rec")}
           </button>
           <div style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
             <button
@@ -382,7 +555,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
                 borderRadius: "2px",
                 cursor: "pointer",
               }}
-              title="Edit"
+              title={pick("編輯", "Edit")}
             >
               ⚙
             </button>
@@ -397,7 +570,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
                 borderRadius: "2px",
                 cursor: "pointer",
               }}
-              title="Stats"
+              title={pick("統計", "Stats")}
             >
               📊
             </button>
@@ -500,7 +673,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
               marginBottom: "8px",
             }}
           >
-            Saved videos ({savedVideos.length})
+            {pick("已儲存影片", "Saved videos")} ({savedVideos.length})
           </div>
           <div
             style={{
@@ -539,6 +712,19 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
                   >
                     {video.format}
                   </span>
+                  {video.source && (
+                    <span
+                      style={{
+                        padding: "2px 4px",
+                        backgroundColor: video.source === "screen" ? "#e3f2fd" : "#f3e5f5",
+                        borderRadius: "2px",
+                        fontSize: "calc(10px * var(--text-scale))",
+                        color: video.source === "screen" ? "#1565c0" : "#7b1fa2",
+                      }}
+                    >
+                      {video.source === "screen" ? pick("螢幕", "SCR") : pick("攝影機", "CAM")}
+                    </span>
+                  )}
                   <button
                     onClick={() => deleteVideo(video.id)}
                     style={{
@@ -549,7 +735,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
                       border: "none",
                       cursor: "pointer",
                     }}
-                    title="Delete"
+                    title={pick("刪除", "Delete")}
                   >
                     ×
                   </button>

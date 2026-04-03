@@ -5,6 +5,8 @@ Newest sessions at the top.
 
 ---
 
+## 2026-04-03 | Screen Recording — Added Camera/Screen mode toggle to VideoCaptureBlock; getDisplayMedia + Web Audio API mixer (system audio + mic); per-session audio toggles; mode-aware UI (objectFit, placeholder, SCR/REC indicator, source badge); bilingualized all strings; build ✓ 1790 modules
+
 ## 2026-04-03 | Language Switch Bug Fix — 11 components missing useLang() subscription; added hook to ContentBlock, IntelBlock, IntentionBlock, KitBlock, MetricsBlock, ProjectsBlock, PromptedNotesBlock, SpotifyBlock, ThreadsBlock, Canvas, SyncStatusIndicator; all pick() calls now re-render on lang change; build ✓
 
 ## 2026-04-03 | Context migration — CLAUDE.md + full history (recaps/lessons) copied from main workspace; React repo now self-contained with all 34 prevention rules and complete session history

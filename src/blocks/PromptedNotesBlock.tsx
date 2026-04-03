@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { Block } from "../types";
 import { useModalStore } from "../stores/useModalStore";
 import { loadJSON } from "../utils/storage";
+import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
 
 interface PromptField {
@@ -33,6 +34,7 @@ function todayString() {
  * Fields: prompted-notes-config:{blockId}, prompted-notes-entries:{blockId}
  */
 export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
+  useLang();
   const { openPnModal, pnModal } = useModalStore();
   const [config, setConfig] = useState<PromptField[]>(() =>
     loadJSON(`prompted-notes-config:${block.id}`, [])

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, Check, AlertCircle, WifiOff } from "lucide-react";
 import { useSyncStore } from "../stores/useSyncStore";
+import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function SyncStatusIndicator({ onConflictClick }: Props) {
+  useLang();
   const { syncStatus } = useSyncStore();
   const [visible, setVisible] = useState(false);
 

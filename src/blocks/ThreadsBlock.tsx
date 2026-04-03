@@ -1,4 +1,5 @@
 import { useBlockField } from "../hooks/useBlockField";
+import { useLang } from "../hooks/useLang";
 import type { Block } from "../types";
 import { pick } from "../utils/i18n";
 
@@ -11,6 +12,7 @@ interface ThreadsBlockProps {
  * Fields: body (main threads textarea), note (send-note input)
  */
 export function ThreadsBlock({ block }: ThreadsBlockProps) {
+  useLang();
   const [body, setBody] = useBlockField(block.id, "body", "");
   const [note, setNote] = useBlockField(block.id, "note", "");
 

@@ -1,4 +1,5 @@
 import { useBlockField } from "../hooks/useBlockField";
+import { useLang } from "../hooks/useLang";
 import type { Block } from "../types";
 import { pick } from "../utils/i18n";
 
@@ -11,6 +12,7 @@ interface KitBlockProps {
  * Fields: keep, improve, try, growth
  */
 export function KitBlock({ block }: KitBlockProps) {
+  useLang();
   const [keep, setKeep] = useBlockField(block.id, "keep", "");
   const [improve, setImprove] = useBlockField(block.id, "improve", "");
   const [tryField, setTryField] = useBlockField(block.id, "try", "");

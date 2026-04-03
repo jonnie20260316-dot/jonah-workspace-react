@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { useBlockField } from "../hooks/useBlockField";
+import { useLang } from "../hooks/useLang";
 import type { Block } from "../types";
 import { pick } from "../utils/i18n";
 
@@ -12,6 +13,7 @@ interface IntelBlockProps {
  * Fields: intel, trend, hook, source
  */
 export function IntelBlock({ block }: IntelBlockProps) {
+  useLang();
   const [intel, setIntel] = useBlockField(block.id, "intel", "");
   const [trend, setTrend] = useBlockField(block.id, "trend", "");
   const [hook, setHook] = useBlockField(block.id, "hook", "");

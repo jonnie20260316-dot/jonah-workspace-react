@@ -1,4 +1,5 @@
 import { useBlockField } from "../hooks/useBlockField";
+import { useLang } from "../hooks/useLang";
 import type { Block } from "../types";
 import { pick } from "../utils/i18n";
 
@@ -7,6 +8,7 @@ interface MetricsBlockProps {
 }
 
 export function MetricsBlock({ block }: MetricsBlockProps) {
+  useLang();
   const [notes, setNotes] = useBlockField(block.id, "notes", "");
 
   const metrics = [
