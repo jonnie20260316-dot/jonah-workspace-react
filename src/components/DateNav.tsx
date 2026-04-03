@@ -9,6 +9,29 @@ function todayString() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function offsetString(offset: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+const ZH_DAYS = ["日", "一", "二", "三", "四", "五", "六"];
+const EN_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function smartDateLabel(dateStr: string): string {
+  const today = todayString();
+  const yesterday = offsetString(-1);
+  const tomorrow = offsetString(1);
+  if (dateStr === today) return pick("今天", "Today");
+  if (dateStr === yesterday) return pick("昨天", "Yesterday");
+  if (dateStr === tomorrow) return pick("明天", "Tomorrow");
+  const d = new Date(dateStr + "T00:00:00");
+  const dow = pick(ZH_DAYS[d.getDay()], EN_DAYS[d.getDay()]);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return pick(`${dow} ${mm}.${dd}`, `${dow}. ${mm}.${dd}`);
+}
+
 export function DateNav() {
   useLang();
   const { activeDate, navigateDate, setActiveDate } = useSessionStore();
@@ -44,7 +67,7 @@ export function DateNav() {
         }}
         title={pick("選擇日期", "Pick a date")}
       >
-        {activeDate}
+        {smartDateLabel(activeDate)}
       </button>
 
       <button

@@ -1,5 +1,6 @@
 import { useBlockField } from "../hooks/useBlockField";
 import type { Block } from "../types";
+import { pick } from "../utils/i18n";
 
 interface ThreadsBlockProps {
   block: Block;
@@ -19,7 +20,7 @@ export function ThreadsBlock({ block }: ThreadsBlockProps) {
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="Thread content..."
+        placeholder={pick("內容…", "Thread content...")}
         style={{
           width: "100%",
           minHeight: "120px",
@@ -37,7 +38,7 @@ export function ThreadsBlock({ block }: ThreadsBlockProps) {
         type="text"
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        placeholder="Send note..."
+        placeholder={pick("傳送備注…", "Send note...")}
         style={{
           padding: "8px",
           border: "1px solid #e0e0e0",

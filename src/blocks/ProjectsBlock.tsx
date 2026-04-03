@@ -2,16 +2,11 @@ import { useState, useRef } from "react";
 import type { Block } from "../types";
 import { useModalStore } from "../stores/useModalStore";
 import { useProjectStore, type ProjectCard, type ProjectBoard } from "../stores/useProjectStore";
+import { pick } from "../utils/i18n";
 
 interface ProjectsBlockProps {
   block: Block;
 }
-
-const COLUMNS: { key: keyof ProjectBoard; label: string; microcopy: string }[] = [
-  { key: "queue", label: "Queue", microcopy: "Drag cards around like a PM board." },
-  { key: "doing", label: "Doing", microcopy: "Drop here to move to active." },
-  { key: "archive", label: "Archive", microcopy: "Drop here to archive it." },
-];
 
 /**
  * Projects block - Kanban-style board with queue/doing/archive columns.
@@ -23,10 +18,16 @@ export function ProjectsBlock({ block }: ProjectsBlockProps) {
   const dragCardRef = useRef<{ cardId: string; fromCol: keyof ProjectBoard } | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
+  const COLUMNS: { key: keyof ProjectBoard; label: string; microcopy: string }[] = [
+    { key: "queue", label: pick("待辦", "Queue"), microcopy: pick("像 PM 看板一樣拖動卡片。", "Drag cards around like a PM board.") },
+    { key: "doing", label: pick("進行中", "Doing"), microcopy: pick("拖到這裡標為進行中。", "Drop here to move to active.") },
+    { key: "archive", label: pick("封存", "Archive"), microcopy: pick("拖到這裡封存。", "Drop here to archive it.") },
+  ];
+
   const handleAddCard = (column: keyof ProjectBoard) => {
     const card: ProjectCard = {
       id: crypto.randomUUID?.() ?? Date.now().toString(36) + Math.random().toString(36).slice(2),
-      text: "New card",
+      text: pick("新卡片", "New card"),
       description: "",
       steps: [],
       checks: "",

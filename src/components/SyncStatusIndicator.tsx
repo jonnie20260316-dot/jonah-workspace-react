@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, Check, AlertCircle, WifiOff } from "lucide-react";
 import { useSyncStore } from "../stores/useSyncStore";
+import { pick } from "../utils/i18n";
 
 interface Props {
   onConflictClick?: () => void;
@@ -29,27 +30,27 @@ export function SyncStatusIndicator({ onConflictClick }: Props) {
     syncing: {
       icon: <Loader2 size={16} strokeWidth={2} className="sync-spinning" />,
       color: "var(--text-tertiary)",
-      label: "Syncing",
+      label: pick("同步中", "Syncing"),
     },
     synced: {
       icon: <Check size={16} strokeWidth={2.5} />,
       color: "var(--success)",
-      label: "Synced",
+      label: pick("已同步", "Synced"),
     },
     error: {
       icon: <AlertCircle size={16} strokeWidth={2} />,
       color: "var(--danger)",
-      label: "Sync error",
+      label: pick("同步失敗", "Sync error"),
     },
     conflict: {
       icon: <AlertCircle size={16} strokeWidth={2} />,
       color: "var(--gold)",
-      label: "Conflict",
+      label: pick("衝突", "Conflict"),
     },
     offline: {
       icon: <WifiOff size={16} strokeWidth={1.8} />,
       color: "var(--text-tertiary)",
-      label: "Offline",
+      label: pick("離線", "Offline"),
     },
   };
 

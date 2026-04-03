@@ -4,6 +4,7 @@ import { useBlockStore } from "../stores/useBlockStore";
 import { ZOOM_SENSITIVITY } from "../constants";
 import { BlockShell } from "../blocks/BlockShell";
 import { BLOCK_REGISTRY } from "../blocks/BlockRegistry";
+import { pick } from "../utils/i18n";
 
 export function Canvas() {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -156,10 +157,7 @@ export function Canvas() {
         <div className="canvas-empty-state">
           <div className="canvas-empty-pulse" />
           <p className="canvas-empty-text">
-            在這裡，構建你的一天<br />
-            <span style={{ fontSize: 14, fontFamily: "var(--font-body)" }}>
-              Build your day, right here.
-            </span>
+            {pick("在這裡，構建你的一天", "Build your day, right here.")}
           </p>
         </div>
       )}

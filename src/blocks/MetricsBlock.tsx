@@ -1,5 +1,6 @@
 import { useBlockField } from "../hooks/useBlockField";
 import type { Block } from "../types";
+import { pick } from "../utils/i18n";
 
 interface MetricsBlockProps {
   block: Block;
@@ -9,10 +10,10 @@ export function MetricsBlock({ block }: MetricsBlockProps) {
   const [notes, setNotes] = useBlockField(block.id, "notes", "");
 
   const metrics = [
-    { label: "記錄連續", value: "07" },
-    { label: "完成週數", value: "18" },
-    { label: "小勝利", value: "12" },
-    { label: "嘗試次數", value: "05" },
+    { label: pick("記錄連續", "Streak"), value: "07" },
+    { label: pick("完成週數", "Weeks"), value: "18" },
+    { label: pick("小勝利", "Wins"), value: "12" },
+    { label: pick("嘗試次數", "Tries"), value: "05" },
   ];
 
   return (
@@ -56,11 +57,11 @@ export function MetricsBlock({ block }: MetricsBlockProps) {
 
       {/* Notes */}
       <div>
-        <label>備註</label>
+        <label>{pick("備註", "Notes")}</label>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="連結到 OpenClaw 週報、月報、季報"
+          placeholder={pick("連結到 OpenClaw 週報、月報、季報", "Link to OpenClaw reports")}
           rows={4}
         />
       </div>

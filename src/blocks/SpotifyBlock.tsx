@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { Block } from "../types";
 import { useModalStore } from "../stores/useModalStore";
 import { loadJSON, saveJSON } from "../utils/storage";
+import { pick } from "../utils/i18n";
 
 interface SpotifyPreset {
   id: string;
@@ -160,7 +161,7 @@ export function SpotifyBlock({ block }: SpotifyBlockProps) {
               fontSize: "calc(14px * var(--text-scale))",
             }}
           >
-            Click '+ Add' to paste a Spotify link
+            {pick("點擊「＋新增」貼上 Spotify 連結", "Click '+ Add' to paste a Spotify link")}
           </div>
         ) : (
           <iframe

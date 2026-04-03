@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { Block } from "../types";
 import { useModalStore } from "../stores/useModalStore";
 import { loadJSON } from "../utils/storage";
+import { pick } from "../utils/i18n";
 
 interface PromptField {
   id: string;
@@ -75,7 +76,7 @@ export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
         }}
       >
         <div style={{ opacity: 0.45, fontSize: "calc(13px * var(--text-scale))" }}>
-          No prompts configured yet.
+          {pick("尚未設定提示。", "No prompts configured yet.")}
         </div>
         <button
           onClick={() => openPnModal(block.id, "config")}
@@ -89,7 +90,7 @@ export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
             cursor: "pointer",
           }}
         >
-          Configure Prompts
+          {pick("設定提示", "Configure Prompts")}
         </button>
       </div>
     );
@@ -120,7 +121,7 @@ export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
             cursor: "pointer",
           }}
         >
-          + New Entry
+          {pick("＋新記錄", "+ New Entry")}
         </button>
         <button
           onClick={() => openPnModal(block.id, "config")}
@@ -134,7 +135,7 @@ export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
             cursor: "pointer",
           }}
         >
-          Config
+          {pick("設定", "Config")}
         </button>
       </div>
 
@@ -218,7 +219,7 @@ export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
             textAlign: "center",
           }}
         >
-          No entries yet. Click "+ New Entry" to start.
+          {pick("還沒有記錄，點擊「＋新記錄」開始。", 'No entries yet. Click "+ New Entry" to start.')}
         </div>
       )}
     </div>

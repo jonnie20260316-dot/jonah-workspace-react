@@ -1,5 +1,6 @@
 import { useBlockField } from "../hooks/useBlockField";
 import type { Block } from "../types";
+import { pick } from "../utils/i18n";
 
 interface ContentBlockProps {
   block: Block;
@@ -25,7 +26,7 @@ export function ContentBlock({ block }: ContentBlockProps) {
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="What is this draft for…"
+        placeholder={pick("這份草稿的目的…", "What is this draft for…")}
         style={{
           padding: "12px",
           fontSize: "calc(14px * var(--text-scale))",
@@ -70,7 +71,7 @@ export function ContentBlock({ block }: ContentBlockProps) {
           userSelect: "none",
         }}
       >
-        📋 History
+        📋 {pick("歷史", "History")}
       </div>
     </div>
   );

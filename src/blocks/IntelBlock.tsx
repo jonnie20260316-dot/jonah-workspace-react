@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useBlockField } from "../hooks/useBlockField";
 import type { Block } from "../types";
+import { pick } from "../utils/i18n";
 
 interface IntelBlockProps {
   block: Block;
@@ -71,7 +72,7 @@ export function IntelBlock({ block }: IntelBlockProps) {
             cursor: "pointer",
           }}
         >
-          Load defaults
+          {pick("載入預設", "Load defaults")}
         </button>
         <button
           onClick={() => intelFileRef.current?.click()}
@@ -85,7 +86,7 @@ export function IntelBlock({ block }: IntelBlockProps) {
             cursor: "pointer",
           }}
         >
-          Import intel
+          {pick("匯入情報", "Import intel")}
         </button>
         <button
           onClick={() => trendFileRef.current?.click()}
@@ -99,7 +100,7 @@ export function IntelBlock({ block }: IntelBlockProps) {
             cursor: "pointer",
           }}
         >
-          Import trend
+          {pick("匯入趨勢", "Import trend")}
         </button>
         <input ref={intelFileRef} type="file" accept=".txt,.md" style={{ display: "none" }} onChange={handleImportFile(setIntel, "intel")} />
         <input ref={trendFileRef} type="file" accept=".txt,.md" style={{ display: "none" }} onChange={handleImportFile(setTrend, "trend")} />
@@ -120,7 +121,7 @@ export function IntelBlock({ block }: IntelBlockProps) {
         <textarea
           value={intel}
           onChange={(e) => setIntel(e.target.value)}
-          placeholder="Morning intelligence"
+          placeholder={pick("早晨情報", "Morning intelligence")}
           rows={8}
           style={{
             width: "100%",
@@ -145,12 +146,12 @@ export function IntelBlock({ block }: IntelBlockProps) {
           }}
         >
           <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>
-            Hook of the day
+            {pick("今日鉤子", "Hook of the day")}
           </label>
           <textarea
             value={hook}
             onChange={(e) => setHook(e.target.value)}
-            placeholder="Today's hook"
+            placeholder={pick("今天的鉤子…", "Today's hook")}
             rows={7}
             style={{
               width: "100%",
@@ -172,12 +173,12 @@ export function IntelBlock({ block }: IntelBlockProps) {
           }}
         >
           <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>
-            Trend angle
+            {pick("趨勢角度", "Trend angle")}
           </label>
           <textarea
             value={trend}
             onChange={(e) => setTrend(e.target.value)}
-            placeholder="Trend insight"
+            placeholder={pick("趨勢洞察…", "Trend insight")}
             rows={7}
             style={{
               width: "100%",

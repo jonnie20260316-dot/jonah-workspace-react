@@ -1,5 +1,6 @@
 import { useBlockField } from "../hooks/useBlockField";
 import type { Block } from "../types";
+import { pick } from "../utils/i18n";
 
 interface IntentionBlockProps {
   block: Block;
@@ -20,7 +21,7 @@ export function IntentionBlock({ block }: IntentionBlockProps) {
       <textarea
         value={goal}
         onChange={(e) => setGoal(e.target.value)}
-        placeholder="What's the goal?"
+        placeholder={pick("今天的目標？", "What's the goal?")}
         style={{
           width: "100%",
           minHeight: "80px",
@@ -38,7 +39,7 @@ export function IntentionBlock({ block }: IntentionBlockProps) {
           type="text"
           value={next}
           onChange={(e) => setNext(e.target.value)}
-          placeholder="Next step?"
+          placeholder={pick("下一步？", "Next step?")}
           style={{
             padding: "8px",
             border: "1px solid #e0e0e0",
@@ -51,7 +52,7 @@ export function IntentionBlock({ block }: IntentionBlockProps) {
           type="text"
           value={theme}
           onChange={(e) => setTheme(e.target.value)}
-          placeholder="Theme"
+          placeholder={pick("主題", "Theme")}
           style={{
             padding: "8px",
             border: "1px solid #e0e0e0",

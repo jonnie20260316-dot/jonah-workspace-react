@@ -1,5 +1,6 @@
 import { useBlockField } from "../hooks/useBlockField";
 import type { Block } from "../types";
+import { pick } from "../utils/i18n";
 
 interface KitBlockProps {
   block: Block;
@@ -20,11 +21,11 @@ export function KitBlock({ block }: KitBlockProps) {
       {/* Keep / Improve / Try (3-column grid) */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Keep</label>
+          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>{pick("保留", "Keep")}</label>
           <textarea
             value={keep}
             onChange={(e) => setKeep(e.target.value)}
-            placeholder="What to keep..."
+            placeholder={pick("什麼值得保留…", "What to keep...")}
             style={{
               padding: "8px",
               border: "1px solid #e0e0e0",
@@ -38,11 +39,11 @@ export function KitBlock({ block }: KitBlockProps) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Improve</label>
+          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>{pick("改進", "Improve")}</label>
           <textarea
             value={improve}
             onChange={(e) => setImprove(e.target.value)}
-            placeholder="What to improve..."
+            placeholder={pick("什麼需要改進…", "What to improve...")}
             style={{
               padding: "8px",
               border: "1px solid #e0e0e0",
@@ -56,11 +57,11 @@ export function KitBlock({ block }: KitBlockProps) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Try</label>
+          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>{pick("嘗試", "Try")}</label>
           <textarea
             value={tryField}
             onChange={(e) => setTryField(e.target.value)}
-            placeholder="What to try..."
+            placeholder={pick("想嘗試什麼…", "What to try...")}
             style={{
               padding: "8px",
               border: "1px solid #e0e0e0",
@@ -76,11 +77,11 @@ export function KitBlock({ block }: KitBlockProps) {
 
       {/* Growth (full width) */}
       <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-        <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Growth Notes</label>
+        <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>{pick("成長筆記", "Growth Notes")}</label>
         <textarea
           value={growth}
           onChange={(e) => setGrowth(e.target.value)}
-          placeholder="Growth insights..."
+          placeholder={pick("成長洞察…", "Growth insights...")}
           style={{
             padding: "8px",
             border: "1px solid #e0e0e0",

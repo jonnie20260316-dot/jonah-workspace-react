@@ -36,7 +36,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "便利貼",
     subtitle: "Quick thought",
     zhSubtitle: "隨手記",
-    size: { w: 400, h: 300 },
+    size: { w: 440, h: 330 },
   },
   intention: {
     component: IntentionBlock,
@@ -44,7 +44,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "意圖",
     subtitle: "Goal & theme",
     zhSubtitle: "目標與主題",
-    size: { w: 500, h: 280 },
+    size: { w: 550, h: 310 },
     unique: true,
   },
   threads: {
@@ -53,7 +53,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "對話串",
     subtitle: "Messages",
     zhSubtitle: "訊息",
-    size: { w: 500, h: 320 },
+    size: { w: 550, h: 352 },
   },
   kit: {
     component: KitBlock,
@@ -61,7 +61,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "KIT",
     subtitle: "Keep · Improve · Try",
     zhSubtitle: "保持・改善・嘗試",
-    size: { w: 800, h: 360 },
+    size: { w: 880, h: 396 },
     unique: true,
   },
   journal: {
@@ -70,7 +70,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "日記",
     subtitle: "Daily reflection",
     zhSubtitle: "每日反思",
-    size: { w: 600, h: 400 },
+    size: { w: 660, h: 440 },
     unique: true,
   },
   tasks: {
@@ -79,7 +79,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "任務",
     subtitle: "Work tracking",
     zhSubtitle: "工作追蹤",
-    size: { w: 500, h: 380 },
+    size: { w: 550, h: 418 },
   },
   projects: {
     component: ProjectsBlock,
@@ -87,7 +87,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "專案",
     subtitle: "Kanban board",
     zhSubtitle: "看板",
-    size: { w: 800, h: 400 },
+    size: { w: 880, h: 440 },
   },
   intel: {
     component: IntelBlock,
@@ -95,7 +95,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "情報",
     subtitle: "Morning brief",
     zhSubtitle: "早晨資訊",
-    size: { w: 500, h: 300 },
+    size: { w: 550, h: 330 },
   },
   timer: {
     component: TimerBlock,
@@ -103,7 +103,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "計時器",
     subtitle: "Pomodoro focus",
     zhSubtitle: "番茄鐘",
-    size: { w: 400, h: 520 },
+    size: { w: 440, h: 572 },
   },
   content: {
     component: ContentBlock,
@@ -111,7 +111,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "內容",
     subtitle: "Rich text",
     zhSubtitle: "富文本",
-    size: { w: 700, h: 400 },
+    size: { w: 770, h: 440 },
   },
   swipe: {
     component: SwipeBlock,
@@ -119,7 +119,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "刷卡",
     subtitle: "LLM automation",
     zhSubtitle: "LLM 自動化",
-    size: { w: 800, h: 450 },
+    size: { w: 880, h: 495 },
   },
   video: {
     component: VideoBlock,
@@ -127,7 +127,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "影片",
     subtitle: "Video reference",
     zhSubtitle: "影片參考",
-    size: { w: 500, h: 300 },
+    size: { w: 550, h: 330 },
   },
   metrics: {
     component: MetricsBlock,
@@ -135,7 +135,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "指標",
     subtitle: "Growth tracking",
     zhSubtitle: "統計追蹤",
-    size: { w: 500, h: 280 },
+    size: { w: 550, h: 310 },
   },
   spotify: {
     component: SpotifyBlock,
@@ -143,7 +143,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "Spotify",
     subtitle: "Music control",
     zhSubtitle: "音樂控制",
-    size: { w: 500, h: 300 },
+    size: { w: 550, h: 330 },
   },
   dashboard: {
     component: DashboardBlock,
@@ -151,7 +151,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "儀表板",
     subtitle: "Overview",
     zhSubtitle: "總覽",
-    size: { w: 600, h: 350 },
+    size: { w: 660, h: 385 },
   },
   "threads-intel": {
     component: ThreadsIntelBlock,
@@ -159,7 +159,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "對話分析",
     subtitle: "Thread analysis",
     zhSubtitle: "分析",
-    size: { w: 700, h: 450 },
+    size: { w: 770, h: 495 },
   },
   "prompted-notes": {
     component: PromptedNotesBlock,
@@ -167,7 +167,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "問答筆記",
     subtitle: "Custom forms",
     zhSubtitle: "自定義表單",
-    size: { w: 600, h: 360 },
+    size: { w: 660, h: 396 },
   },
   "video-capture": {
     component: VideoCaptureBlock,
@@ -175,7 +175,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     zhTitle: "錄影",
     subtitle: "Record & clip",
     zhSubtitle: "錄製剪輯",
-    size: { w: 900, h: 620 },
+    size: { w: 990, h: 682 },
   },
 };
 
