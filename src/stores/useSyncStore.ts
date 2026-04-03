@@ -27,6 +27,79 @@ type FSHandle = FileSystemDirectoryHandle & {
   queryPermission: (opts: { mode: string }) => Promise<string>;
 };
 
+// ─── Electron IPC bridge ─────────────────────────────────────────────────────
+declare global {
+  interface Window {
+    electronAPI?: {
+      isElectron: true;
+      openDirectory: () => Promise<string | null>;
+      readFile: (dirPath: string, filename: string) => Promise<string | null>;
+      writeFile: (dirPath: string, filename: string, content: string) => Promise<boolean>;
+      fileExists: (dirPath: string, filename: string) => Promise<boolean>;
+    };
+  }
+}
+
+const ELECTRON_SYNC_DIR_KEY = "electron-sync-dir";
+
+function isElectron(): boolean {
+  return !!window.electronAPI?.isElectron;
+}
+
+function getElectronSyncDir(): string | null {
+  return localStorage.getItem(ELECTRON_SYNC_DIR_KEY);
+}
+
+function setElectronSyncDir(dirPath: string): void {
+  localStorage.setItem(ELECTRON_SYNC_DIR_KEY, dirPath);
+}
+
+/** Electron push: write sync JSON via IPC. Returns the payload + new push count. */
+async function electronPush(
+  syncMeta: SyncMeta,
+  deviceId: string,
+  selectedIds?: string[]
+): Promise<{ payload: SyncPayload; newPushCount: number }> {
+  const api = window.electronAPI!;
+  let dirPath = getElectronSyncDir();
+  if (!dirPath) {
+    dirPath = await api.openDirectory();
+    if (!dirPath) throw Object.assign(new Error("User cancelled"), { name: "AbortError" });
+    setElectronSyncDir(dirPath);
+  }
+
+  const newPushCount = (syncMeta.pushCount ?? 0) + 1;
+  let payload = buildSyncPayload(deviceId || getOrCreateDeviceId(), newPushCount);
+  if (selectedIds?.length) payload = filterPayloadForSync(payload, selectedIds);
+
+  const ok = await api.writeFile(dirPath, SYNC_FILENAME, JSON.stringify(payload, null, 2));
+  if (!ok) throw new Error("[electron-sync] write failed");
+
+  return { payload, newPushCount };
+}
+
+/** Electron pull: read sync JSON via IPC. Returns parsed payload or null. */
+async function electronPull(
+  autoMode: boolean
+): Promise<SyncPayload | null> {
+  const api = window.electronAPI!;
+  let dirPath = getElectronSyncDir();
+  if (!dirPath) {
+    if (autoMode) return null;
+    dirPath = await api.openDirectory();
+    if (!dirPath) throw Object.assign(new Error("User cancelled"), { name: "AbortError" });
+    setElectronSyncDir(dirPath);
+  }
+
+  const exists = await api.fileExists(dirPath, SYNC_FILENAME);
+  if (!exists) return null;
+
+  const text = await api.readFile(dirPath, SYNC_FILENAME);
+  if (!text) return null;
+
+  return JSON.parse(text) as SyncPayload;
+}
+
 interface SyncStore {
   syncMeta: SyncMeta;
   syncStatus: SyncStatus;
@@ -110,34 +183,37 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
     set({ syncStatus: "syncing" });
 
     try {
-      // Get or request folder
-      let handle = await getSyncHandle();
-      if (!handle) {
-        handle = await (window as unknown as { showDirectoryPicker: (opts: object) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker({ mode: "readwrite" });
-        await setSyncHandle(handle);
+      let payload: SyncPayload;
+      let newPushCount: number;
+
+      if (isElectron()) {
+        // ── Electron path: IPC-based file write ──────────────────────────────
+        ({ payload, newPushCount } = await electronPush(syncMeta, deviceId, selectedIds));
+      } else {
+        // ── Browser path: File System Access API ─────────────────────────────
+        let handle = await getSyncHandle();
+        if (!handle) {
+          handle = await (window as unknown as { showDirectoryPicker: (opts: object) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker({ mode: "readwrite" });
+          await setSyncHandle(handle);
+        }
+
+        const perm = await (handle as FSHandle).requestPermission({ mode: "readwrite" });
+        if (perm !== "granted") {
+          set({ syncStatus: "error" });
+          return;
+        }
+
+        newPushCount = (syncMeta.pushCount ?? 0) + 1;
+        payload = buildSyncPayload(deviceId || getOrCreateDeviceId(), newPushCount);
+        if (selectedIds?.length) payload = filterPayloadForSync(payload, selectedIds);
+
+        const fileHandle = await handle!.getFileHandle(SYNC_FILENAME, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(JSON.stringify(payload, null, 2));
+        await writable.close();
       }
 
-      // Verify write permission
-      const perm = await (handle as FSHandle).requestPermission({ mode: "readwrite" });
-      if (perm !== "granted") {
-        set({ syncStatus: "error" });
-        return;
-      }
-
-      // Build payload
-      const newPushCount = (syncMeta.pushCount ?? 0) + 1;
-      let payload = buildSyncPayload(deviceId || getOrCreateDeviceId(), newPushCount);
-      if (selectedIds && selectedIds.length > 0) {
-        payload = filterPayloadForSync(payload, selectedIds);
-      }
-
-      // Write file
-      const fileHandle = await handle!.getFileHandle(SYNC_FILENAME, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(JSON.stringify(payload, null, 2));
-      await writable.close();
-
-      // Update meta
+      // Update meta (shared for both paths)
       const newMeta: SyncMeta = {
         ...syncMeta,
         lastPushedAt: payload.pushedAt,
@@ -146,7 +222,6 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
       saveJSON("sync-meta", newMeta);
       set({ syncMeta: newMeta, syncStatus: "synced" });
     } catch (err) {
-      // AbortError = user cancelled picker
       if ((err as DOMException)?.name === "AbortError") {
         set({ syncStatus: "idle" });
       } else {
@@ -162,37 +237,46 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
     set({ syncStatus: "syncing" });
 
     try {
-      // Get or request folder
-      let handle = await getSyncHandle();
-      if (!handle) {
-        if (autoMode) {
+      let remote: SyncPayload;
+
+      if (isElectron()) {
+        // ── Electron path: IPC-based file read ───────────────────────────────
+        const result = await electronPull(autoMode);
+        if (!result) {
           set({ syncStatus: "idle" });
           return "cancelled";
         }
-        handle = await (window as unknown as { showDirectoryPicker: (opts: object) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker({ mode: "read" });
-        await setSyncHandle(handle);
-      }
+        remote = result;
+      } else {
+        // ── Browser path: File System Access API ─────────────────────────────
+        let handle = await getSyncHandle();
+        if (!handle) {
+          if (autoMode) {
+            set({ syncStatus: "idle" });
+            return "cancelled";
+          }
+          handle = await (window as unknown as { showDirectoryPicker: (opts: object) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker({ mode: "read" });
+          await setSyncHandle(handle);
+        }
 
-      // Verify read permission
-      const perm = await (handle as FSHandle).requestPermission({ mode: "read" });
-      if (perm !== "granted") {
-        set({ syncStatus: autoMode ? "idle" : "error" });
-        return "cancelled";
-      }
+        const perm = await (handle as FSHandle).requestPermission({ mode: "read" });
+        if (perm !== "granted") {
+          set({ syncStatus: autoMode ? "idle" : "error" });
+          return "cancelled";
+        }
 
-      // Read sync file
-      let fileHandle: FileSystemFileHandle;
-      try {
-        fileHandle = await handle!.getFileHandle(SYNC_FILENAME);
-      } catch {
-        // File doesn't exist yet
-        set({ syncStatus: "idle" });
-        return "cancelled";
-      }
+        let fileHandle: FileSystemFileHandle;
+        try {
+          fileHandle = await handle!.getFileHandle(SYNC_FILENAME);
+        } catch {
+          set({ syncStatus: "idle" });
+          return "cancelled";
+        }
 
-      const file = await fileHandle.getFile();
-      const text = await file.text();
-      const remote: SyncPayload = JSON.parse(text);
+        const file = await fileHandle.getFile();
+        const text = await file.text();
+        remote = JSON.parse(text);
+      }
 
       // ─── Conflict detection ───────────────────────────────────────────────
 

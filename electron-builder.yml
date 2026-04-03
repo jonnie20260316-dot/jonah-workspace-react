@@ -1,0 +1,43 @@
+appId: com.jonnie.jonahworkspace
+productName: Jonah Workspace
+copyright: Copyright © 2026 Jonnie
+
+directories:
+  output: release/
+  buildResources: build/
+
+files:
+  - dist/**
+  - electron/**
+  - package.json
+  - "!node_modules/**"
+  - "!src/**"
+  - "!*.md"
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  icon: build/icon.icns
+  category: public.app-category.productivity
+  darkModeSupport: true
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.png
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+
+publish:
+  provider: github
+  owner: jonnie20260316-dot
+  repo: jonah-workspace-react
+  private: true
