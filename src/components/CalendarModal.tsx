@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { pick } from "../utils/i18n";
 import { useLang } from "../hooks/useLang";
 
 interface CalendarModalProps {
   currentDate: string;      // YYYY-MM-DD
+  anchorRect: DOMRect;
   onSelectDate: (date: string) => void;
   onClose: () => void;
 }
@@ -62,7 +64,7 @@ const EN_MONTHS = ["January", "February", "March", "April", "May", "June", "July
 const ZH_DOW = ["日", "一", "二", "三", "四", "五", "六"];
 const EN_DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-export function CalendarModal({ currentDate, onSelectDate, onClose }: CalendarModalProps) {
+export function CalendarModal({ currentDate, anchorRect, onSelectDate, onClose }: CalendarModalProps) {
   useLang();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -101,8 +103,17 @@ export function CalendarModal({ currentDate, onSelectDate, onClose }: CalendarMo
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  return (
-    <div className="cal-popup" ref={ref}>
+  // Compute fixed position from anchor rect, clamped to viewport
+  const POPUP_WIDTH = 260;
+  const rawLeft = anchorRect.left + anchorRect.width / 2 - POPUP_WIDTH / 2;
+  const clampedLeft = Math.max(8, Math.min(rawLeft, window.innerWidth - POPUP_WIDTH - 8));
+
+  return createPortal(
+    <div
+      className="cal-popup"
+      ref={ref}
+      style={{ position: "fixed", top: anchorRect.bottom + 8, left: clampedLeft }}
+    >
       <div className="cal-header">
         <button className="cal-nav" onClick={prevMonth}>
           <ChevronLeft size={14} />
@@ -135,6 +146,7 @@ export function CalendarModal({ currentDate, onSelectDate, onClose }: CalendarMo
           </button>
         ))}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

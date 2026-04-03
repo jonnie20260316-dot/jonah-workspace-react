@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useSessionStore } from "../stores/useSessionStore";
 import { pick } from "../utils/i18n";
 import { useLang } from "../hooks/useLang";
@@ -13,10 +13,19 @@ export function DateNav() {
   useLang();
   const { activeDate, navigateDate, setActiveDate } = useSessionStore();
   const [calOpen, setCalOpen] = useState(false);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const dateBtnRef = useRef<HTMLButtonElement>(null);
   const isToday = activeDate === todayString();
 
+  const handleCalToggle = () => {
+    if (!calOpen && dateBtnRef.current) {
+      setAnchorRect(dateBtnRef.current.getBoundingClientRect());
+    }
+    setCalOpen((v) => !v);
+  };
+
   return (
-    <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 6 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
       <button
         onClick={() => navigateDate(-1)}
         style={arrowBtn}
@@ -26,7 +35,8 @@ export function DateNav() {
       </button>
 
       <button
-        onClick={() => setCalOpen((v) => !v)}
+        ref={dateBtnRef}
+        onClick={handleCalToggle}
         style={{
           ...dateBtn,
           fontWeight: isToday ? 700 : 400,
@@ -45,9 +55,10 @@ export function DateNav() {
         ›
       </button>
 
-      {calOpen && (
+      {calOpen && anchorRect && (
         <CalendarModal
           currentDate={activeDate}
+          anchorRect={anchorRect}
           onSelectDate={(date) => {
             setActiveDate(date);
             setCalOpen(false);
