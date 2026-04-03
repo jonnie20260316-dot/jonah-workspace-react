@@ -1,81 +1,98 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, session, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 
-// In packaged app, __dirname points to the electron/ folder inside resources.
-// In dev, __dirname is the project root's electron/ folder.
 const isDev = !app.isPackaged;
 
-// ─── Auto-updater config ────────────────────────────────────────────────────
-autoUpdater.autoDownload = false; // Ask user before downloading
+// ─── Updater: push status to renderer ────────────────────────────────────────
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = false;
+
+let mainWindow = null;
+
+function sendUpdaterStatus(payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('updater:status', payload);
+  }
+}
+
+autoUpdater.on('checking-for-update', () => {
+  sendUpdaterStatus({ status: 'checking' });
+});
 
 autoUpdater.on('update-available', (info) => {
-  dialog.showMessageBox({
-    type: 'info',
-    title: 'Update available',
-    message: `Version ${info.version} is available. Download now?`,
-    buttons: ['Download', 'Later'],
-    defaultId: 0,
-  }).then(({ response }) => {
-    if (response === 0) autoUpdater.downloadUpdate();
-  });
+  // Auto-start download — user already clicked "Check for updates"
+  sendUpdaterStatus({ status: 'downloading', percent: 0, version: info.version });
+  autoUpdater.downloadUpdate();
 });
 
-autoUpdater.on('update-downloaded', () => {
-  dialog.showMessageBox({
-    type: 'info',
-    title: 'Update ready',
-    message: 'Update downloaded. Restart to apply?',
-    buttons: ['Restart now', 'Later'],
-    defaultId: 0,
-  }).then(({ response }) => {
-    if (response === 0) autoUpdater.quitAndInstall();
-  });
+autoUpdater.on('update-not-available', () => {
+  sendUpdaterStatus({ status: 'up-to-date' });
 });
 
-autoUpdater.on('error', (err) => {
-  // Silently log in dev; don't alert users in prod for minor update errors
-  if (isDev) console.error('[updater]', err);
+autoUpdater.on('download-progress', (progress) => {
+  sendUpdaterStatus({ status: 'downloading', percent: Math.round(progress.percent) });
 });
 
-// ─── Window ─────────────────────────────────────────────────────────────────
+autoUpdater.on('update-downloaded', (info) => {
+  sendUpdaterStatus({ status: 'ready', version: info.version });
+});
+
+autoUpdater.on('error', () => {
+  sendUpdaterStatus({ status: 'error' });
+});
+
+// ─── Window ───────────────────────────────────────────────────────────────────
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
     minWidth: 800,
     minHeight: 600,
-    titleBarStyle: 'hiddenInset', // macOS native look
+    titleBarStyle: 'hiddenInset',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false, // needed for preload to require electron modules
+      sandbox: false,
     },
   });
 
-  // Camera / microphone permissions
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-    const allowed = ['media', 'camera', 'microphone', 'display-capture'];
-    callback(allowed.includes(permission));
+    callback(['media', 'camera', 'microphone', 'display-capture'].includes(permission));
   });
 
   if (isDev) {
-    win.loadURL('http://localhost:5173');
-    win.webContents.openDevTools();
+    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.webContents.openDevTools();
   } else {
-    win.loadFile(path.join(__dirname, '../dist/index.html'));
-    // Check for updates a few seconds after launch
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    // Silent background check on launch — UI handles the result
     setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 5000);
   }
 
-  return win;
+  mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-// ─── IPC: Folder picker ──────────────────────────────────────────────────────
+// ─── IPC: Updater ─────────────────────────────────────────────────────────────
+ipcMain.handle('updater:check', async () => {
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch {
+    sendUpdaterStatus({ status: 'error' });
+  }
+});
+
+ipcMain.handle('updater:install', () => {
+  autoUpdater.quitAndInstall();
+});
+
+ipcMain.handle('app:version', () => app.getVersion());
+
+// ─── IPC: Folder picker ───────────────────────────────────────────────────────
 ipcMain.handle('dialog:open-directory', async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   const result = await dialog.showOpenDialog(win || BrowserWindow.getFocusedWindow(), {
@@ -86,15 +103,13 @@ ipcMain.handle('dialog:open-directory', async (event) => {
   return result.canceled ? null : result.filePaths[0];
 });
 
-// ─── IPC: File system operations ─────────────────────────────────────────────
+// ─── IPC: File system ─────────────────────────────────────────────────────────
 ipcMain.handle('fs:read-file', async (_event, dirPath, filename) => {
   try {
     const filePath = path.join(dirPath, filename);
     if (!fs.existsSync(filePath)) return null;
     return fs.readFileSync(filePath, 'utf-8');
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 });
 
 ipcMain.handle('fs:write-file', async (_event, dirPath, filename, content) => {
@@ -102,26 +117,18 @@ ipcMain.handle('fs:write-file', async (_event, dirPath, filename, content) => {
     if (!fs.existsSync(dirPath)) return false;
     fs.writeFileSync(path.join(dirPath, filename), content, 'utf-8');
     return true;
-  } catch (err) {
-    console.error('[fs:write-file]', err);
-    return false;
-  }
+  } catch { return false; }
 });
 
 ipcMain.handle('fs:file-exists', async (_event, dirPath, filename) => {
-  try {
-    return fs.existsSync(path.join(dirPath, filename));
-  } catch {
-    return false;
-  }
+  try { return fs.existsSync(path.join(dirPath, filename)); }
+  catch { return false; }
 });
 
-// ─── App lifecycle ───────────────────────────────────────────────────────────
+// ─── App lifecycle ────────────────────────────────────────────────────────────
 app.whenReady().then(() => {
   createWindow();
-
   app.on('activate', () => {
-    // macOS: re-create window if dock icon is clicked and no windows open
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });

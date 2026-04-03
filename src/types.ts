@@ -108,3 +108,31 @@ export interface SyncQueueItem {
   queuedAt: string;
   retryCount: number;
 }
+
+// ─── Electron IPC bridge ──────────────────────────────────────────────────────
+export type UpdateStatus =
+  | { status: "idle" }
+  | { status: "checking" }
+  | { status: "up-to-date" }
+  | { status: "downloading"; percent: number; version?: string }
+  | { status: "ready"; version?: string }
+  | { status: "error" };
+
+declare global {
+  interface Window {
+    electronAPI?: {
+      isElectron: true;
+      // File system
+      openDirectory: () => Promise<string | null>;
+      readFile: (dirPath: string, filename: string) => Promise<string | null>;
+      writeFile: (dirPath: string, filename: string, content: string) => Promise<boolean>;
+      fileExists: (dirPath: string, filename: string) => Promise<boolean>;
+      // App
+      getAppVersion: () => Promise<string>;
+      // Updates
+      checkForUpdates: () => Promise<void>;
+      installUpdate: () => void;
+      onUpdateStatus: (cb: (data: UpdateStatus) => void) => () => void;
+    };
+  }
+}

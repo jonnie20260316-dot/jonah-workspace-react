@@ -27,19 +27,6 @@ type FSHandle = FileSystemDirectoryHandle & {
   queryPermission: (opts: { mode: string }) => Promise<string>;
 };
 
-// ─── Electron IPC bridge ─────────────────────────────────────────────────────
-declare global {
-  interface Window {
-    electronAPI?: {
-      isElectron: true;
-      openDirectory: () => Promise<string | null>;
-      readFile: (dirPath: string, filename: string) => Promise<string | null>;
-      writeFile: (dirPath: string, filename: string, content: string) => Promise<boolean>;
-      fileExists: (dirPath: string, filename: string) => Promise<boolean>;
-    };
-  }
-}
-
 const ELECTRON_SYNC_DIR_KEY = "electron-sync-dir";
 
 function isElectron(): boolean {

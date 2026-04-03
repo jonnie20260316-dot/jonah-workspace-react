@@ -10,7 +10,7 @@ import { STORAGE_PREFIX } from "../constants";
 import { normaliseViewport } from "../utils/viewport";
 import { SelectiveSyncModal } from "./SelectiveSyncModal";
 import { ConflictResolutionModal } from "./ConflictResolutionModal";
-import type { Lang, SyncPayload, ConflictInfo } from "../types";
+import type { Lang, SyncPayload, ConflictInfo, UpdateStatus } from "../types";
 
 function storageUsageKB(): number {
   let total = 0;
@@ -219,6 +219,14 @@ export function GearMenu() {
         <div style={{ height: "100%", width: `${pct}%`, background: pct > 80 ? "#e55" : "#4a9", borderRadius: 2, transition: "width 0.3s" }} />
       </div>
 
+      {/* App updater — Electron only */}
+      {window.electronAPI?.isElectron && (
+        <>
+          <div style={divider} />
+          <AppUpdater />
+        </>
+      )}
+
       {/* Selective sync modal */}
       {syncModal && (
         <SelectiveSyncModal
@@ -273,6 +281,109 @@ function ToggleRow({ left, right, active, onLeft, onRight }: {
     <div style={{ display: "flex", gap: 4 }}>
       <button onClick={onLeft} style={{ ...base, background: active === "left" ? "#1a1a1a" : "#eee", color: active === "left" ? "#fff" : "#555" }}>{left}</button>
       <button onClick={onRight} style={{ ...base, background: active === "right" ? "#1a1a1a" : "#eee", color: active === "right" ? "#fff" : "#555" }}>{right}</button>
+    </div>
+  );
+}
+
+// ─── AppUpdater component ─────────────────────────────────────────────────────
+function AppUpdater() {
+  const [update, setUpdate] = useState<UpdateStatus>({ status: "idle" });
+  const [version, setVersion] = useState<string>("");
+
+  useEffect(() => {
+    window.electronAPI!.getAppVersion().then(setVersion);
+    const unsub = window.electronAPI!.onUpdateStatus(setUpdate);
+    return unsub;
+  }, []);
+
+  // Auto-clear "up-to-date" after 4 seconds
+  useEffect(() => {
+    if (update.status === "up-to-date") {
+      const t = setTimeout(() => setUpdate({ status: "idle" }), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [update.status]);
+
+  const { status } = update;
+
+  const handleClick = () => {
+    if (status === "idle" || status === "up-to-date" || status === "error") {
+      setUpdate({ status: "checking" });
+      window.electronAPI!.checkForUpdates();
+    } else if (status === "ready") {
+      window.electronAPI!.installUpdate();
+    }
+  };
+
+  // ── Button label ──────────────────────────────────────────────────────────
+  let label: string;
+  let btnBg = "rgba(36,50,49,0.08)";
+  let btnColor = "var(--text-secondary)";
+  let btnDisabled = false;
+
+  if (status === "checking") {
+    label = pick("檢查中…", "Checking…");
+    btnDisabled = true;
+  } else if (status === "downloading") {
+    const pct = (update as { status: "downloading"; percent: number }).percent;
+    label = pick(`下載中… ${pct}%`, `Downloading… ${pct}%`);
+    btnDisabled = true;
+  } else if (status === "ready") {
+    label = pick("重啟並安裝更新", "Restart & install update");
+    btnBg = "var(--accent)";
+    btnColor = "var(--text-inverted)";
+  } else if (status === "up-to-date") {
+    label = pick("已是最新版本 ✓", "You're up to date ✓");
+    btnBg = "rgba(42,138,92,0.12)";
+    btnColor = "var(--success)";
+  } else if (status === "error") {
+    label = pick("無法檢查更新，再試一次", "Couldn't check — try again");
+    btnBg = "var(--danger-soft)";
+    btnColor = "var(--danger)";
+  } else {
+    label = pick("檢查更新", "Check for updates");
+  }
+
+  return (
+    <div>
+      {/* Download progress bar */}
+      {status === "downloading" && (
+        <div style={{ height: 3, background: "var(--line)", borderRadius: 2, marginBottom: 6 }}>
+          <div style={{
+            height: "100%",
+            width: `${(update as { status: "downloading"; percent: number }).percent}%`,
+            background: "var(--accent)",
+            borderRadius: 2,
+            transition: "width 0.4s var(--ease-standard)",
+          }} />
+        </div>
+      )}
+
+      <button
+        onClick={handleClick}
+        disabled={btnDisabled}
+        style={{
+          display: "block", width: "100%",
+          background: btnBg, color: btnColor,
+          border: "1px solid var(--line)",
+          borderRadius: "var(--radius-sm)",
+          padding: "6px 10px", textAlign: "left",
+          fontSize: 12, cursor: btnDisabled ? "default" : "pointer",
+          marginBottom: 4,
+          opacity: btnDisabled ? 0.7 : 1,
+          transition: "background 0.15s, color 0.15s",
+          fontWeight: status === "ready" ? 600 : 400,
+        }}
+      >
+        {label}
+      </button>
+
+      {/* Version line */}
+      {version && (
+        <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
+          {pick("版本", "Version")} {version}
+        </div>
+      )}
     </div>
   );
 }
