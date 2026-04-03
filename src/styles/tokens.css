@@ -68,6 +68,9 @@
   --space-6: 32px;
   --space-7: 42px;
 
+  /* === Text Scale === */
+  --text-scale: 1;
+
   /* === Typography === */
   --font-display: "Songti TC", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --font-body: -apple-system, "PingFang TC", "PingFang SC", "Noto Sans TC", "Noto Sans SC", "Microsoft YaHei", BlinkMacSystemFont, "Segoe UI", sans-serif;

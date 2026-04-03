@@ -25,7 +25,7 @@ function storageUsageKB(): number {
 
 export function GearMenu() {
   const { gearMenuOpen, closeGearMenu } = useUIStore();
-  const { lang, snapMode, overlapMode, setLang, setSnapMode, setOverlapMode } = useSessionStore();
+  const { lang, snapMode, overlapMode, textScale, setLang, setSnapMode, setOverlapMode, setTextScale } = useSessionStore();
   const { syncMeta, deviceId, syncStatus, clearConflict } = useSyncStore();
   const panelRef = useRef<HTMLDivElement>(null);
   const conflictResolveRef = useRef<((value: boolean) => void) | null>(null);
@@ -176,6 +176,31 @@ export function GearMenu() {
           onLeft={() => setOverlapMode(true)}
           onRight={() => setOverlapMode(false)}
         />
+      </Section>
+
+      {/* Font Size */}
+      <Section label={pick("字型大小", "Font Size")}>
+        <div style={{ display: "flex", gap: 4 }}>
+          {([0.82, 0.9, 1.0, 1.1, 1.25] as const).map((scale) => (
+            <button
+              key={scale}
+              onClick={() => setTextScale(scale)}
+              style={{
+                flex: 1,
+                padding: "4px 0",
+                fontSize: Math.round(11 * scale),
+                border: "1px solid var(--line)",
+                borderRadius: 4,
+                cursor: "pointer",
+                background: textScale === scale ? "#1a1a1a" : "#eee",
+                color: textScale === scale ? "#fff" : "#555",
+                transition: "background 0.15s, color 0.15s",
+              }}
+            >
+              A
+            </button>
+          ))}
+        </div>
       </Section>
 
       <div style={divider} />

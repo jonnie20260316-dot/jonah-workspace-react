@@ -63,7 +63,7 @@
 }
 .block-title h2 {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   font-weight: 600;
   color: var(--ink);
   white-space: nowrap;
@@ -183,7 +183,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   background: var(--surface-1);
   color: var(--ink);
   transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
@@ -219,7 +219,7 @@
 .block-body h3,
 .block-section-title {
   font-family: var(--font-display);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
   color: var(--ink);
   margin-bottom: var(--space-2);
@@ -543,7 +543,7 @@
 }
 .cal-month {
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-weight: 600;
   color: var(--ink);
 }

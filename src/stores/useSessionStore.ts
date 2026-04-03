@@ -20,9 +20,11 @@ interface SessionStore {
   lang: Lang;
   snapMode: boolean;
   overlapMode: boolean;
+  textScale: number;
   setLang: (l: Lang) => void;
   setSnapMode: (v: boolean) => void;
   setOverlapMode: (v: boolean) => void;
+  setTextScale: (v: number) => void;
   setActiveDate: (date: string) => void;
   navigateDate: (offset: number) => void;
 }
@@ -33,11 +35,15 @@ storageSetActiveDate(initialDate);
 const initialLang = (loadText("lang") || DEFAULT_LANG) as Lang;
 setLang(initialLang);
 
+const initialTextScale = parseFloat(loadText("text-scale") || "1") || 1;
+document.documentElement.style.setProperty("--text-scale", String(initialTextScale));
+
 export const useSessionStore = create<SessionStore>((set, get) => ({
   activeDate: initialDate,
   lang: initialLang,
   snapMode: loadText("snap", "true") === "true",
   overlapMode: loadText("overlap", "true") === "true",
+  textScale: initialTextScale,
 
   setLang: (lang) => {
     saveText("lang", lang);
@@ -53,6 +59,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setOverlapMode: (v) => {
     saveText("overlap", String(v));
     set({ overlapMode: v });
+  },
+
+  setTextScale: (v) => {
+    saveText("text-scale", String(v));
+    document.documentElement.style.setProperty("--text-scale", String(v));
+    set({ textScale: v });
   },
 
   setActiveDate: (date) => {
