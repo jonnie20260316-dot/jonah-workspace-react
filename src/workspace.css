@@ -49,11 +49,16 @@
 }
 .board-block:hover .block-drag-handle { opacity: 1; }
 
-/* Type icon */
+/* Type icon — accent-tinted pill */
 .block-type-icon {
   display: flex;
   align-items: center;
-  color: var(--text-tertiary);
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background: rgba(var(--block-accent-rgb, var(--accent-rgb)), 0.12);
+  color: var(--block-accent, var(--accent));
   flex-shrink: 0;
 }
 
@@ -64,8 +69,8 @@
 }
 .block-title h2 {
   margin: 0;
-  font-size: calc(13px * var(--text-scale));
-  font-weight: 600;
+  font-size: calc(17px * var(--text-scale));
+  font-weight: 700;
   color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
