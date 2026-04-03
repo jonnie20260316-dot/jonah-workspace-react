@@ -10,7 +10,7 @@ files:
   - dist/**
   - electron/**
   - package.json
-  - "!node_modules/**"
+  - node_modules/**
   - "!src/**"
   - "!*.md"
 
@@ -23,6 +23,9 @@ mac:
   icon: build/icon.icns
   category: public.app-category.productivity
   darkModeSupport: true
+  extendInfo:
+    NSMicrophoneUsageDescription: "Jonah Workspace needs microphone access for voice recording."
+    NSCameraUsageDescription: "Jonah Workspace needs camera access for video capture."
 
 win:
   target:
