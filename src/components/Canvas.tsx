@@ -36,6 +36,7 @@ export function Canvas() {
             document.activeElement.blur(); // drop focus so no input receives the key
           }
           spacePressedRef.current = true;
+          document.body.dataset.panMode = "1";
           setCursor("grab");
         }
       }
@@ -45,6 +46,7 @@ export function Canvas() {
       if (e.code === "Space") {
         spacePressedRef.current = false;
         panStateRef.current = null;
+        delete document.body.dataset.panMode;
         setCursor("default");
       }
     };
