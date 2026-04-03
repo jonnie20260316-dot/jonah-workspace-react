@@ -1,5 +1,6 @@
 /* === Block Shell === */
 .board-block {
+  font-size: calc(13px * var(--text-scale, 1));
   background: var(--surface-0);
   border: 1.5px solid var(--line);
   border-radius: var(--radius-md);
@@ -200,7 +201,7 @@
 
 .block-body label {
   display: block;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   color: var(--text-tertiary);
   margin-bottom: 4px;

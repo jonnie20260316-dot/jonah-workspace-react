@@ -98,6 +98,7 @@ export function BlockShell({ block, children }: BlockShellProps) {
         zIndex: block.z,
         minWidth: "260px",
         minHeight: "200px",
+        ...(block.textScale != null ? { "--text-scale": String(block.textScale) } as React.CSSProperties : {}),
       }}
       onMouseDown={() => bringToFront(block.id)}
     >

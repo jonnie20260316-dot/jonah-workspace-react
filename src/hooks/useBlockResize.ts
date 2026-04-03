@@ -16,6 +16,8 @@ interface ResizeState {
   baseH: number;
   boardW: number;
   boardH: number;
+  altKey: boolean;
+  baseTextScale: number;
 }
 
 /**
@@ -52,6 +54,8 @@ export function useBlockResize(
         baseH: block.h,
         boardW: 20000,
         boardH: 15000,
+        altKey: e.altKey,
+        baseTextScale: block.textScale ?? 1,
       };
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
     };
@@ -113,12 +117,27 @@ export function useBlockResize(
           { w: resizeState.boardW, h: resizeState.boardH }
         );
 
-        updateBlock(blockId, {
-          x: clamped.x,
-          y: clamped.y,
-          w: clamped.w,
-          h: clamped.h,
-        });
+        // Opt+drag: symmetric resize + scale text proportionally
+        if (resizeState.altKey) {
+          const scaleW = newW / resizeState.baseW;
+          const scaleH = newH / resizeState.baseH;
+          const scaleFactor = Math.min(scaleW, scaleH);
+          const newTextScale = Math.max(0.5, Math.min(3, resizeState.baseTextScale * scaleFactor));
+          updateBlock(blockId, {
+            x: clamped.x,
+            y: clamped.y,
+            w: clamped.w,
+            h: clamped.h,
+            textScale: newTextScale,
+          });
+        } else {
+          updateBlock(blockId, {
+            x: clamped.x,
+            y: clamped.y,
+            w: clamped.w,
+            h: clamped.h,
+          });
+        }
       });
     };
 

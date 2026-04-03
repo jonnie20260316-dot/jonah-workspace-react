@@ -31,6 +31,7 @@ export interface Block {
   collapsed: boolean;
   archived: boolean;
   color: string;
+  textScale?: number;
 }
 
 export interface ViewportState {
