@@ -5,6 +5,8 @@ Newest sessions at the top.
 
 ---
 
+## 2026-04-03 | Language Switch Bug Fix — 11 components missing useLang() subscription; added hook to ContentBlock, IntelBlock, IntentionBlock, KitBlock, MetricsBlock, ProjectsBlock, PromptedNotesBlock, SpotifyBlock, ThreadsBlock, Canvas, SyncStatusIndicator; all pick() calls now re-render on lang change; build ✓
+
 ## 2026-04-03 | Context migration — CLAUDE.md + full history (recaps/lessons) copied from main workspace; React repo now self-contained with all 34 prevention rules and complete session history
 
 ## 2026-04-03 | Redo Lost React Work + Electron Fixes — Recovered Phase 9B/9C/font/calendar/pan after data loss (uncommitted work deleted); fixed electron-updater bundle; added mic/camera plist entries; 7 commits pushed; JW-34 added (Commit-Before-Delete)
