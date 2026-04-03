@@ -1,0 +1,105 @@
+/* === Block Bloom (creation animation) === */
+@keyframes blockBloom {
+  0%   { opacity: 0; transform: scale(0.88); filter: blur(2px); }
+  60%  { opacity: 1; transform: scale(1.02); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1.00); filter: blur(0); }
+}
+
+.block-bloom {
+  animation: blockBloom 320ms var(--ease-spring) forwards;
+}
+
+/* === Gear Menu === */
+@keyframes gearEnter {
+  from { opacity: 0; transform: scale(0.92) translateY(-8px); }
+  to   { opacity: 1; transform: scale(1.0) translateY(0); }
+}
+@keyframes gearExit {
+  from { opacity: 1; transform: scale(1.0) translateY(0); }
+  to   { opacity: 0; transform: scale(0.92) translateY(-8px); }
+}
+
+/* === Sidebar overlay === */
+@keyframes sidebarOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* === FAB picker === */
+@keyframes fabPickerIn {
+  from { opacity: 0; transform: scale(0.88) translateY(12px); }
+  to   { opacity: 1; transform: scale(1.0) translateY(0); }
+}
+
+/* === Toast === */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1.0); }
+}
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0) scale(1.0); }
+  to   { opacity: 0; transform: translateY(8px) scale(0.96); }
+}
+
+/* === Sync spinner === */
+@keyframes syncSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.sync-spinning {
+  animation: syncSpin 1s linear infinite;
+}
+
+/* === Synced check fade-out === */
+@keyframes syncedFade {
+  0%   { opacity: 1; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.sync-synced-fade {
+  animation: syncedFade 3s var(--ease-standard) forwards;
+}
+
+/* === Empty canvas pulse ring === */
+@keyframes emptyPulse {
+  0%   { transform: scale(1); opacity: 0.5; }
+  70%  { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* === Timer overtime ring pulse === */
+@keyframes timerOvertimePulse {
+  0%   { opacity: 0.8; stroke-width: 22; }
+  50%  { opacity: 0.2; stroke-width: 28; }
+  100% { opacity: 0.8; stroke-width: 22; }
+}
+
+/* === Calendar popup enter/exit === */
+@keyframes calPopupIn {
+  from { opacity: 0; transform: scale(0.94) translateY(-6px); }
+  to   { opacity: 1; transform: scale(1.0) translateY(0); }
+}
+@keyframes calPopupOut {
+  from { opacity: 1; transform: scale(1.0) translateY(0); }
+  to   { opacity: 0; transform: scale(0.94) translateY(-6px); }
+}
+
+/* === Timer settings panel slide-down === */
+@keyframes timerSettingsIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes timerSettingsOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-8px); }
+}
+
+/* === Rich text toolbar enter/exit === */
+@keyframes richToolbarIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes richToolbarOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(4px); }
+}

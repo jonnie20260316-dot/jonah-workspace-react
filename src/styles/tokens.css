@@ -1,0 +1,151 @@
+:root {
+  /* === Canvas & Surface === */
+  --canvas-bg: #f4ecde;
+  --canvas-bg-deep: #e4d3bf;
+  --surface-0: rgba(255, 252, 246, 0.86);
+  --surface-1: rgba(255, 250, 243, 0.95);
+  --surface-raised: #fff;
+  --surface-card: rgba(255, 252, 248, 0.92);
+
+  /* === Text Hierarchy === */
+  --ink: #243231;
+  --text-secondary: #64706d;
+  --text-tertiary: #9a918a;
+  --text-placeholder: #c0b8b0;
+  --text-inverted: #fefdf9;
+
+  /* === Accent (teal) === */
+  --accent: #1f786f;
+  --accent-deep: #0f4b44;
+  --accent-soft: rgba(31, 120, 111, 0.12);
+  --accent-rgb: 31, 120, 111;
+
+  /* === Semantic === */
+  --gold: #bc7542;
+  --danger: #c0392b;
+  --danger-soft: rgba(192, 57, 43, 0.12);
+  --success: #2a8a5c;
+
+  /* === Borders === */
+  --line: rgba(36, 50, 49, 0.12);
+  --line-strong: rgba(36, 50, 49, 0.20);
+
+  /* === Shadows (multi-layer, warm-tinted) === */
+  --shadow-raised:
+    0 1px 2px rgba(73, 50, 23, 0.04),
+    0 2px 8px rgba(73, 50, 23, 0.06),
+    0 4px 16px rgba(73, 50, 23, 0.03);
+  --shadow-float:
+    0 2px 4px rgba(73, 50, 23, 0.06),
+    0 8px 24px rgba(73, 50, 23, 0.10),
+    0 16px 48px rgba(73, 50, 23, 0.05);
+  --shadow-drag:
+    0 4px 8px rgba(73, 50, 23, 0.10),
+    0 16px 48px rgba(73, 50, 23, 0.15),
+    0 32px 80px rgba(73, 50, 23, 0.06);
+  --shadow-overlay:
+    0 1px 3px rgba(73, 50, 23, 0.08),
+    0 4px 16px rgba(73, 50, 23, 0.12),
+    0 8px 32px rgba(73, 50, 23, 0.06);
+  --shadow-modal:
+    0 8px 16px rgba(73, 50, 23, 0.10),
+    0 24px 64px rgba(73, 50, 23, 0.18),
+    0 48px 96px rgba(73, 50, 23, 0.08);
+
+  /* === Border Radius === */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+
+  /* === Spacing === */
+  --space-1: 6px;
+  --space-2: 10px;
+  --space-3: 14px;
+  --space-4: 18px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 42px;
+
+  /* === Typography === */
+  --font-display: "Songti TC", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-body: -apple-system, "PingFang TC", "PingFang SC", "Noto Sans TC", "Noto Sans SC", "Microsoft YaHei", BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+
+  /* === Motion === */
+  --dur-instant: 80ms;
+  --dur-micro: 120ms;
+  --dur-fast: 180ms;
+  --dur-medium: 260ms;
+  --dur-slow: 380ms;
+  --ease-standard: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1.0);
+  --ease-enter: cubic-bezier(0.0, 0.0, 0.2, 1.0);
+  --ease-exit: cubic-bezier(0.4, 0.0, 1.0, 1.0);
+}
+
+/* === Block Color Themes === */
+/* sage (default teal) */
+.block-color-sage {
+  --block-accent: #1f786f;
+  --block-accent-deep: #0f4b44;
+  --block-accent-rgb: 31, 120, 111;
+}
+/* amber */
+.block-color-amber {
+  --block-accent: #bc7542;
+  --block-accent-deep: #8a4e24;
+  --block-accent-rgb: 188, 117, 66;
+}
+/* clay */
+.block-color-clay {
+  --block-accent: #b45a3c;
+  --block-accent-deep: #7a3520;
+  --block-accent-rgb: 180, 90, 60;
+}
+/* plum */
+.block-color-plum {
+  --block-accent: #82508c;
+  --block-accent-deep: #5a2e66;
+  --block-accent-rgb: 130, 80, 140;
+}
+/* slate */
+.block-color-slate {
+  --block-accent: #5a6e7a;
+  --block-accent-deep: #3a4e5c;
+  --block-accent-rgb: 90, 110, 122;
+}
+/* moss */
+.block-color-moss {
+  --block-accent: #5a8246;
+  --block-accent-deep: #3a5c2a;
+  --block-accent-rgb: 90, 130, 70;
+}
+
+/* Apply theme visuals to any block with a color theme */
+.block-color-sage,
+.block-color-amber,
+.block-color-clay,
+.block-color-plum,
+.block-color-slate,
+.block-color-moss {
+  border-left: 3px solid var(--block-accent) !important;
+  box-shadow:
+    0 1px 2px rgba(73, 50, 23, 0.04),
+    0 2px 8px rgba(var(--block-accent-rgb), 0.12),
+    0 4px 16px rgba(73, 50, 23, 0.03) !important;
+}
+
+.block-color-sage .block-head,
+.block-color-amber .block-head,
+.block-color-clay .block-head,
+.block-color-plum .block-head,
+.block-color-slate .block-head,
+.block-color-moss .block-head {
+  background: linear-gradient(
+    180deg,
+    rgba(var(--block-accent-rgb), 0.07) 0%,
+    transparent 100%
+  ) !important;
+}

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "context-link": {
+      "command": "context-link",
+      "args": ["serve", "--project-root", "."]
+    }
+  }
+}
