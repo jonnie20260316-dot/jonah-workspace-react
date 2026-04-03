@@ -63,7 +63,7 @@ export function IntelBlock({ block }: IntelBlockProps) {
           onClick={handleLoadDefaults}
           style={{
             padding: "4px 8px",
-            fontSize: "12px",
+            fontSize: "calc(12px * var(--text-scale))",
             backgroundColor: "#333",
             color: "#fff",
             border: "none",
@@ -77,7 +77,7 @@ export function IntelBlock({ block }: IntelBlockProps) {
           onClick={() => intelFileRef.current?.click()}
           style={{
             padding: "4px 8px",
-            fontSize: "12px",
+            fontSize: "calc(12px * var(--text-scale))",
             backgroundColor: "#ddd",
             color: "#000",
             border: "none",
@@ -91,7 +91,7 @@ export function IntelBlock({ block }: IntelBlockProps) {
           onClick={() => trendFileRef.current?.click()}
           style={{
             padding: "4px 8px",
-            fontSize: "12px",
+            fontSize: "calc(12px * var(--text-scale))",
             backgroundColor: "#ddd",
             color: "#000",
             border: "none",
@@ -113,10 +113,10 @@ export function IntelBlock({ block }: IntelBlockProps) {
           borderRadius: "4px",
         }}
       >
-        <div style={{ fontSize: "11px", color: "#666", marginBottom: "8px" }}>
+        <div style={{ fontSize: "calc(11px * var(--text-scale))", color: "#666", marginBottom: "8px" }}>
           {source}
         </div>
-        <label style={{ fontSize: "12px", fontWeight: "500" }}>Intel</label>
+        <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Intel</label>
         <textarea
           value={intel}
           onChange={(e) => setIntel(e.target.value)}
@@ -129,7 +129,7 @@ export function IntelBlock({ block }: IntelBlockProps) {
             border: "1px solid #e0e0e0",
             borderRadius: "2px",
             fontFamily: "inherit",
-            fontSize: "13px",
+            fontSize: "calc(13px * var(--text-scale))",
             resize: "vertical",
           }}
         />
@@ -144,7 +144,7 @@ export function IntelBlock({ block }: IntelBlockProps) {
             borderRadius: "4px",
           }}
         >
-          <label style={{ fontSize: "12px", fontWeight: "500" }}>
+          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>
             Hook of the day
           </label>
           <textarea
@@ -159,7 +159,7 @@ export function IntelBlock({ block }: IntelBlockProps) {
               border: "1px solid #e0e0e0",
               borderRadius: "2px",
               fontFamily: "inherit",
-              fontSize: "13px",
+              fontSize: "calc(13px * var(--text-scale))",
               resize: "vertical",
             }}
           />
@@ -171,7 +171,7 @@ export function IntelBlock({ block }: IntelBlockProps) {
             borderRadius: "4px",
           }}
         >
-          <label style={{ fontSize: "12px", fontWeight: "500" }}>
+          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>
             Trend angle
           </label>
           <textarea
@@ -186,7 +186,7 @@ export function IntelBlock({ block }: IntelBlockProps) {
               border: "1px solid #e0e0e0",
               borderRadius: "2px",
               fontFamily: "inherit",
-              fontSize: "13px",
+              fontSize: "calc(13px * var(--text-scale))",
               resize: "vertical",
             }}
           />

@@ -97,7 +97,7 @@ export function SpotifyBlock({ block }: SpotifyBlockProps) {
             onClick={() => switchPreset(preset.id)}
             style={{
               padding: "6px 12px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               backgroundColor: preset.id === activeId ? "#1DB954" : "#ddd",
               color: preset.id === activeId ? "#fff" : "#000",
               border: "none",
@@ -113,7 +113,7 @@ export function SpotifyBlock({ block }: SpotifyBlockProps) {
           onClick={() => openSpotifyModal(block.id)}
           style={{
             padding: "6px 8px",
-            fontSize: "12px",
+            fontSize: "calc(12px * var(--text-scale))",
             backgroundColor: "#ddd",
             border: "none",
             borderRadius: "2px",
@@ -128,7 +128,7 @@ export function SpotifyBlock({ block }: SpotifyBlockProps) {
             style={{
               marginLeft: "auto",
               padding: "6px 8px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               backgroundColor: compact ? "#333" : "#ddd",
               color: compact ? "#fff" : "#000",
               border: "none",
@@ -157,7 +157,7 @@ export function SpotifyBlock({ block }: SpotifyBlockProps) {
               justifyContent: "center",
               height: "200px",
               color: "#999",
-              fontSize: "14px",
+              fontSize: "calc(14px * var(--text-scale))",
             }}
           >
             Click '+ Add' to paste a Spotify link

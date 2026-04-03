@@ -82,11 +82,11 @@ export function ProjectsBlock({ block }: ProjectsBlockProps) {
         onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-float)"; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-raised)"; }}
       >
-        <p style={{ margin: "0 0 4px", fontSize: "13px", fontWeight: "500" }}>
+        <p style={{ margin: "0 0 4px", fontSize: "calc(13px * var(--text-scale))", fontWeight: "500" }}>
           {card.text}
         </p>
         {stepsCount > 0 && (
-          <div style={{ fontSize: "11px", color: "#666", marginBottom: "4px" }}>
+          <div style={{ fontSize: "calc(11px * var(--text-scale))", color: "#666", marginBottom: "4px" }}>
             {checkedCount}/{stepsCount} steps
           </div>
         )}
@@ -99,7 +99,7 @@ export function ProjectsBlock({ block }: ProjectsBlockProps) {
                   padding: "2px 6px",
                   backgroundColor: "#e0e0e0",
                   borderRadius: "2px",
-                  fontSize: "10px",
+                  fontSize: "calc(10px * var(--text-scale))",
                 }}
               >
                 {tag}
@@ -129,9 +129,9 @@ export function ProjectsBlock({ block }: ProjectsBlockProps) {
               marginBottom: "8px",
             }}
           >
-            <h4 style={{ margin: "0", fontSize: "14px" }}>
+            <h4 style={{ margin: "0", fontSize: "calc(14px * var(--text-scale))" }}>
               {column.label}
-              <span style={{ fontSize: "11px", color: "#999", marginLeft: "6px" }}>
+              <span style={{ fontSize: "calc(11px * var(--text-scale))", color: "#999", marginLeft: "6px" }}>
                 {projectBoard[column.key].length}
               </span>
             </h4>
@@ -139,7 +139,7 @@ export function ProjectsBlock({ block }: ProjectsBlockProps) {
               onClick={() => handleAddCard(column.key)}
               style={{
                 padding: "4px 8px",
-                fontSize: "12px",
+                fontSize: "calc(12px * var(--text-scale))",
                 backgroundColor: "#ddd",
                 border: "none",
                 borderRadius: "2px",
@@ -172,7 +172,7 @@ export function ProjectsBlock({ block }: ProjectsBlockProps) {
 
           <p
             style={{
-              fontSize: "11px",
+              fontSize: "calc(11px * var(--text-scale))",
               color: "#999",
               margin: "6px 0 0",
             }}

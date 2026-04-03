@@ -60,7 +60,7 @@ export function DashboardBlock({ block }: DashboardBlockProps) {
             onClick={() => setView(v.key)}
             style={{
               padding: "6px 12px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               backgroundColor: view === v.key ? "#333" : "#ddd",
               color: view === v.key ? "#fff" : "#000",
               border: "none",
@@ -80,7 +80,7 @@ export function DashboardBlock({ block }: DashboardBlockProps) {
           backgroundColor: "#f9f9f9",
           borderRadius: "4px",
           minHeight: "150px",
-          fontSize: "13px",
+          fontSize: "calc(13px * var(--text-scale))",
           whiteSpace: "pre-wrap",
           lineHeight: "1.5",
           color: "#333",
@@ -97,7 +97,7 @@ export function DashboardBlock({ block }: DashboardBlockProps) {
           borderRadius: "4px",
         }}
       >
-        <label style={{ fontSize: "12px", fontWeight: "500" }}>
+        <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>
           Quick command
         </label>
         <input
@@ -112,7 +112,7 @@ export function DashboardBlock({ block }: DashboardBlockProps) {
             border: "1px solid #e0e0e0",
             borderRadius: "2px",
             fontFamily: "inherit",
-            fontSize: "13px",
+            fontSize: "calc(13px * var(--text-scale))",
           }}
         />
       </div>

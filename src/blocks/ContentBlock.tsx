@@ -28,7 +28,7 @@ export function ContentBlock({ block }: ContentBlockProps) {
         placeholder="What is this draft for…"
         style={{
           padding: "12px",
-          fontSize: "14px",
+          fontSize: "calc(14px * var(--text-scale))",
           fontWeight: "500",
           border: "none",
           borderBottom: "1px solid #e0e0e0",
@@ -52,7 +52,7 @@ export function ContentBlock({ block }: ContentBlockProps) {
           outline: "none",
           whiteSpace: "pre-wrap",
           wordWrap: "break-word",
-          fontSize: "13px",
+          fontSize: "calc(13px * var(--text-scale))",
           lineHeight: "1.5",
         }}
         onBlur={handleBodyChange}
@@ -64,7 +64,7 @@ export function ContentBlock({ block }: ContentBlockProps) {
         style={{
           padding: "8px 12px",
           borderTop: "1px solid #e0e0e0",
-          fontSize: "11px",
+          fontSize: "calc(11px * var(--text-scale))",
           backgroundColor: "#fafafa",
           cursor: "pointer",
           userSelect: "none",

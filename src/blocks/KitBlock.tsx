@@ -20,7 +20,7 @@ export function KitBlock({ block }: KitBlockProps) {
       {/* Keep / Improve / Try (3-column grid) */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label style={{ fontSize: "12px", fontWeight: "500" }}>Keep</label>
+          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Keep</label>
           <textarea
             value={keep}
             onChange={(e) => setKeep(e.target.value)}
@@ -30,7 +30,7 @@ export function KitBlock({ block }: KitBlockProps) {
               border: "1px solid #e0e0e0",
               borderRadius: "4px",
               fontFamily: "inherit",
-              fontSize: "14px",
+              fontSize: "calc(14px * var(--text-scale))",
               minHeight: "100px",
               resize: "vertical",
             }}
@@ -38,7 +38,7 @@ export function KitBlock({ block }: KitBlockProps) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label style={{ fontSize: "12px", fontWeight: "500" }}>Improve</label>
+          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Improve</label>
           <textarea
             value={improve}
             onChange={(e) => setImprove(e.target.value)}
@@ -48,7 +48,7 @@ export function KitBlock({ block }: KitBlockProps) {
               border: "1px solid #e0e0e0",
               borderRadius: "4px",
               fontFamily: "inherit",
-              fontSize: "14px",
+              fontSize: "calc(14px * var(--text-scale))",
               minHeight: "100px",
               resize: "vertical",
             }}
@@ -56,7 +56,7 @@ export function KitBlock({ block }: KitBlockProps) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label style={{ fontSize: "12px", fontWeight: "500" }}>Try</label>
+          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Try</label>
           <textarea
             value={tryField}
             onChange={(e) => setTryField(e.target.value)}
@@ -66,7 +66,7 @@ export function KitBlock({ block }: KitBlockProps) {
               border: "1px solid #e0e0e0",
               borderRadius: "4px",
               fontFamily: "inherit",
-              fontSize: "14px",
+              fontSize: "calc(14px * var(--text-scale))",
               minHeight: "100px",
               resize: "vertical",
             }}
@@ -76,7 +76,7 @@ export function KitBlock({ block }: KitBlockProps) {
 
       {/* Growth (full width) */}
       <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-        <label style={{ fontSize: "12px", fontWeight: "500" }}>Growth Notes</label>
+        <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Growth Notes</label>
         <textarea
           value={growth}
           onChange={(e) => setGrowth(e.target.value)}
@@ -86,7 +86,7 @@ export function KitBlock({ block }: KitBlockProps) {
             border: "1px solid #e0e0e0",
             borderRadius: "4px",
             fontFamily: "inherit",
-            fontSize: "14px",
+            fontSize: "calc(14px * var(--text-scale))",
             minHeight: "80px",
             resize: "vertical",
           }}

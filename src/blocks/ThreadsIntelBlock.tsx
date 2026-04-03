@@ -129,10 +129,10 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: "13px", fontWeight: "500" }}>
+        <span style={{ fontSize: "calc(13px * var(--text-scale))", fontWeight: "500" }}>
           @{record.account || "unknown"}
         </span>
-        <span style={{ fontSize: "11px", color: "#999" }}>{record.date}</span>
+        <span style={{ fontSize: "calc(11px * var(--text-scale))", color: "#999" }}>{record.date}</span>
       </div>
       {record.painTags && record.painTags.length > 0 && (
         <div style={{ display: "flex", gap: "4px", marginTop: "4px", flexWrap: "wrap" }}>
@@ -143,7 +143,7 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
                 padding: "2px 6px",
                 backgroundColor: "#e0e0e0",
                 borderRadius: "2px",
-                fontSize: "10px",
+                fontSize: "calc(10px * var(--text-scale))",
               }}
             >
               {tag}
@@ -189,7 +189,7 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
               onClick={() => setTab(t.key)}
               style={{
                 padding: "6px 12px",
-                fontSize: "12px",
+                fontSize: "calc(12px * var(--text-scale))",
                 backgroundColor: tab === t.key ? "#333" : "#ddd",
                 color: tab === t.key ? "#fff" : "#000",
                 border: "none",
@@ -207,7 +207,7 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
             onClick={handleExport}
             style={{
               padding: "6px 8px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               backgroundColor: "#ddd",
               border: "none",
               borderRadius: "2px",
@@ -221,7 +221,7 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
             onClick={handleImport}
             style={{
               padding: "6px 8px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               backgroundColor: "#ddd",
               border: "none",
               borderRadius: "2px",
@@ -238,7 +238,7 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
             onClick={() => openTiModal(block.id)}
             style={{
               padding: "6px 12px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               backgroundColor: "#333",
               color: "#fff",
               border: "none",
@@ -266,7 +266,7 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
               style={{
                 textAlign: "center",
                 paddingTop: "40px",
-                fontSize: "12px",
+                fontSize: "calc(12px * var(--text-scale))",
                 color: "#666",
               }}
             >
@@ -289,7 +289,7 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
               padding: "6px 8px",
               border: "1px solid #e0e0e0",
               borderRadius: "2px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
             }}
           />
           <div
@@ -307,7 +307,7 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
                 style={{
                   textAlign: "center",
                   paddingTop: "40px",
-                  fontSize: "12px",
+                  fontSize: "calc(12px * var(--text-scale))",
                   color: "#666",
                 }}
               >
@@ -340,8 +340,8 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
               textAlign: "center",
             }}
           >
-            <div style={{ fontSize: "11px", color: "#666" }}>Total Records</div>
-            <div style={{ fontSize: "20px", fontWeight: "bold" }}>{records.length}</div>
+            <div style={{ fontSize: "calc(11px * var(--text-scale))", color: "#666" }}>Total Records</div>
+            <div style={{ fontSize: "calc(20px * var(--text-scale))", fontWeight: "bold" }}>{records.length}</div>
           </div>
           <div
             style={{
@@ -351,8 +351,8 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
               textAlign: "center",
             }}
           >
-            <div style={{ fontSize: "11px", color: "#666" }}>Today</div>
-            <div style={{ fontSize: "20px", fontWeight: "bold" }}>{todayRecords.length}</div>
+            <div style={{ fontSize: "calc(11px * var(--text-scale))", color: "#666" }}>Today</div>
+            <div style={{ fontSize: "calc(20px * var(--text-scale))", fontWeight: "bold" }}>{todayRecords.length}</div>
           </div>
           <div
             style={{
@@ -362,8 +362,8 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
               textAlign: "center",
             }}
           >
-            <div style={{ fontSize: "11px", color: "#666" }}>Common Tags</div>
-            <div style={{ fontSize: "12px", color: "#999" }}>{topTags || "—"}</div>
+            <div style={{ fontSize: "calc(11px * var(--text-scale))", color: "#666" }}>Common Tags</div>
+            <div style={{ fontSize: "calc(12px * var(--text-scale))", color: "#999" }}>{topTags || "—"}</div>
           </div>
           <div
             style={{
@@ -373,8 +373,8 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
               textAlign: "center",
             }}
           >
-            <div style={{ fontSize: "11px", color: "#666" }}>Archived</div>
-            <div style={{ fontSize: "20px", fontWeight: "bold" }}>{archivedCount}</div>
+            <div style={{ fontSize: "calc(11px * var(--text-scale))", color: "#666" }}>Archived</div>
+            <div style={{ fontSize: "calc(20px * var(--text-scale))", fontWeight: "bold" }}>{archivedCount}</div>
           </div>
         </div>
       )}

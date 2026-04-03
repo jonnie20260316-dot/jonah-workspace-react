@@ -226,7 +226,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
             onClick={() => setCamSource("builtin")}
             style={{
               padding: "6px 12px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               backgroundColor: camSource === "builtin" ? "#333" : "#ddd",
               color: camSource === "builtin" ? "#fff" : "#000",
               border: "none",
@@ -240,7 +240,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
             onClick={() => setCamSource("iriun")}
             style={{
               padding: "6px 12px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               backgroundColor: camSource === "iriun" ? "#333" : "#ddd",
               color: camSource === "iriun" ? "#fff" : "#000",
               border: "none",
@@ -253,13 +253,13 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
         </div>
 
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <span style={{ fontSize: "12px" }}>Mic</span>
+          <span style={{ fontSize: "calc(12px * var(--text-scale))" }}>Mic</span>
           <select
             value={micSource}
             onChange={(e) => setMicSource(e.target.value)}
             style={{
               padding: "4px 8px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               border: "1px solid #ddd",
               borderRadius: "2px",
             }}
@@ -301,10 +301,10 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
             style={{
               textAlign: "center",
               color: "#999",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
             }}
           >
-            <div style={{ fontSize: "24px", marginBottom: "8px" }}>📷</div>
+            <div style={{ fontSize: "calc(24px * var(--text-scale))", marginBottom: "8px" }}>📷</div>
             <div>Click Stream to start camera</div>
           </div>
         )}
@@ -317,7 +317,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
               top: "12px",
               left: "12px",
               color: "#ff0000",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               fontWeight: "bold",
               textShadow: "0 1px 2px rgba(0,0,0,0.8)",
             }}
@@ -344,7 +344,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
             onClick={isStreaming ? stopStream : startStream}
             style={{
               padding: "6px 12px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               backgroundColor: isStreaming ? "#e53935" : "#4caf50",
               color: "#fff",
               border: "none",
@@ -359,7 +359,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
             disabled={!isStreaming}
             style={{
               padding: "6px 12px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               backgroundColor: isRecording ? "#ff0000" : "#555",
               color: "#fff",
               border: "none",
@@ -375,7 +375,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
               onClick={() => setEditOpen(!editOpen)}
               style={{
                 padding: "4px 8px",
-                fontSize: "12px",
+                fontSize: "calc(12px * var(--text-scale))",
                 backgroundColor: editOpen ? "#333" : "#555",
                 color: "#fff",
                 border: "none",
@@ -390,7 +390,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
               onClick={() => setStatsAdv(!statsAdv)}
               style={{
                 padding: "4px 8px",
-                fontSize: "12px",
+                fontSize: "calc(12px * var(--text-scale))",
                 backgroundColor: statsAdv ? "#333" : "#555",
                 color: "#fff",
                 border: "none",
@@ -412,7 +412,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
             padding: "8px",
             backgroundColor: "#f5f5f5",
             borderRadius: "4px",
-            fontSize: "11px",
+            fontSize: "calc(11px * var(--text-scale))",
             color: "#666",
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",
@@ -442,7 +442,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
               key={prop}
               style={{ display: "flex", gap: "8px", alignItems: "center" }}
             >
-              <span style={{ fontSize: "11px", width: "55px", textTransform: "capitalize" }}>
+              <span style={{ fontSize: "calc(11px * var(--text-scale))", width: "55px", textTransform: "capitalize" }}>
                 {prop.slice(0, 6)}
               </span>
               <input
@@ -455,7 +455,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
                 }
                 style={{ flex: 1 }}
               />
-              <span style={{ fontSize: "10px", width: "30px" }}>{filters[prop]}%</span>
+              <span style={{ fontSize: "calc(10px * var(--text-scale))", width: "30px" }}>{filters[prop]}%</span>
             </div>
           ))}
           <div style={{ display: "flex", gap: "4px" }}>
@@ -468,7 +468,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
                 }}
                 style={{
                   padding: "4px 8px",
-                  fontSize: "11px",
+                  fontSize: "calc(11px * var(--text-scale))",
                   backgroundColor: playbackSpeed === speed ? "#333" : "#ddd",
                   color: playbackSpeed === speed ? "#fff" : "#000",
                   border: "none",
@@ -495,7 +495,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
         >
           <div
             style={{
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               fontWeight: "500",
               marginBottom: "8px",
             }}
@@ -518,7 +518,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
                   padding: "6px 8px",
                   backgroundColor: "#fff",
                   borderRadius: "2px",
-                  fontSize: "11px",
+                  fontSize: "calc(11px * var(--text-scale))",
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
@@ -534,7 +534,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
                       padding: "2px 4px",
                       backgroundColor: "#e0e0e0",
                       borderRadius: "2px",
-                      fontSize: "10px",
+                      fontSize: "calc(10px * var(--text-scale))",
                     }}
                   >
                     {video.format}
@@ -543,7 +543,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
                     onClick={() => deleteVideo(video.id)}
                     style={{
                       padding: "2px 6px",
-                      fontSize: "10px",
+                      fontSize: "calc(10px * var(--text-scale))",
                       color: "#999",
                       background: "none",
                       border: "none",

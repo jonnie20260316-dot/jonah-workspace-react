@@ -32,7 +32,7 @@ export function VideoBlock({ block }: VideoBlockProps) {
               padding: "4px 8px",
               backgroundColor: "#e0e0e0",
               borderRadius: "2px",
-              fontSize: "11px",
+              fontSize: "calc(11px * var(--text-scale))",
             }}
           >
             Record self
@@ -42,7 +42,7 @@ export function VideoBlock({ block }: VideoBlockProps) {
               padding: "4px 8px",
               backgroundColor: "#e0e0e0",
               borderRadius: "2px",
-              fontSize: "11px",
+              fontSize: "calc(11px * var(--text-scale))",
             }}
           >
             Workflow capture
@@ -52,13 +52,13 @@ export function VideoBlock({ block }: VideoBlockProps) {
               padding: "4px 8px",
               backgroundColor: "#e0e0e0",
               borderRadius: "2px",
-              fontSize: "11px",
+              fontSize: "calc(11px * var(--text-scale))",
             }}
           >
             iPhone webcam later
           </span>
         </div>
-        <p style={{ fontSize: "12px", color: "#666", margin: "0" }}>
+        <p style={{ fontSize: "calc(12px * var(--text-scale))", color: "#666", margin: "0" }}>
           Continuity Camera is Apple-ID-bound, so this starts as a capture hub
           and import area until we solve the cross-Apple-ID iPhone webcam path.
         </p>
@@ -73,7 +73,7 @@ export function VideoBlock({ block }: VideoBlockProps) {
             borderRadius: "4px",
           }}
         >
-          <label style={{ fontSize: "12px", fontWeight: "500" }}>
+          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>
             Capture purpose
           </label>
           <textarea
@@ -88,7 +88,7 @@ export function VideoBlock({ block }: VideoBlockProps) {
               border: "1px solid #e0e0e0",
               borderRadius: "2px",
               fontFamily: "inherit",
-              fontSize: "13px",
+              fontSize: "calc(13px * var(--text-scale))",
               resize: "vertical",
             }}
           />
@@ -100,7 +100,7 @@ export function VideoBlock({ block }: VideoBlockProps) {
             borderRadius: "4px",
           }}
         >
-          <label style={{ fontSize: "12px", fontWeight: "500" }}>
+          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>
             Import / device path
           </label>
           <textarea
@@ -115,7 +115,7 @@ export function VideoBlock({ block }: VideoBlockProps) {
               border: "1px solid #e0e0e0",
               borderRadius: "2px",
               fontFamily: "inherit",
-              fontSize: "13px",
+              fontSize: "calc(13px * var(--text-scale))",
               resize: "vertical",
             }}
           />

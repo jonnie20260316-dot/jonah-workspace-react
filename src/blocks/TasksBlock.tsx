@@ -93,14 +93,14 @@ function TaskCard({
               border: "1px solid #e0e0e0",
               borderRadius: "2px",
               fontWeight: "500",
-              fontSize: "13px",
+              fontSize: "calc(13px * var(--text-scale))",
               textDecoration: done ? "line-through" : "none",
             }}
           />
 
           {/* Step checklist */}
           {stepList.length > 0 && (
-            <div style={{ marginTop: "8px", fontSize: "12px" }}>
+            <div style={{ marginTop: "8px", fontSize: "calc(12px * var(--text-scale))" }}>
               <div style={{ marginBottom: "4px", color: "#666" }}>
                 {checkedSet.size}/{stepList.length} steps
               </div>
@@ -137,7 +137,7 @@ function TaskCard({
                     onClick={() => deleteStep(i)}
                     style={{
                       padding: "0 4px",
-                      fontSize: "11px",
+                      fontSize: "calc(11px * var(--text-scale))",
                       color: "#999",
                       background: "none",
                       border: "none",
@@ -166,14 +166,14 @@ function TaskCard({
                 padding: "4px",
                 border: "1px solid #e0e0e0",
                 borderRadius: "2px",
-                fontSize: "12px",
+                fontSize: "calc(12px * var(--text-scale))",
               }}
             />
             <button
               onClick={addStep}
               style={{
                 padding: "4px 8px",
-                fontSize: "12px",
+                fontSize: "calc(12px * var(--text-scale))",
                 backgroundColor: "#ddd",
                 border: "none",
                 borderRadius: "2px",
@@ -228,7 +228,7 @@ export function TasksBlock({ block }: TasksBlockProps) {
             onClick={() => setView("cards")}
             style={{
               padding: "4px 8px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               backgroundColor: view === "cards" ? "#333" : "#ddd",
               color: view === "cards" ? "#fff" : "#000",
               borderRadius: "2px",
@@ -242,7 +242,7 @@ export function TasksBlock({ block }: TasksBlockProps) {
             onClick={() => setView("list")}
             style={{
               padding: "4px 8px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               backgroundColor: view === "list" ? "#333" : "#ddd",
               color: view === "list" ? "#fff" : "#000",
               borderRadius: "2px",
@@ -253,7 +253,7 @@ export function TasksBlock({ block }: TasksBlockProps) {
             List
           </button>
         </div>
-        <span style={{ fontSize: "11px", color: "#666" }}>
+        <span style={{ fontSize: "calc(11px * var(--text-scale))", color: "#666" }}>
           2 fixed + 4 flexible
         </span>
       </div>
@@ -285,7 +285,7 @@ export function TasksBlock({ block }: TasksBlockProps) {
           borderRadius: "4px",
         }}
       >
-        <label style={{ fontSize: "12px", fontWeight: "500" }}>
+        <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>
           Workflow observation / How I worked today
         </label>
         <textarea
@@ -300,7 +300,7 @@ export function TasksBlock({ block }: TasksBlockProps) {
             border: "1px solid #e0e0e0",
             borderRadius: "2px",
             fontFamily: "inherit",
-            fontSize: "13px",
+            fontSize: "calc(13px * var(--text-scale))",
             resize: "vertical",
           }}
         />

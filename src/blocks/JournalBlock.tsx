@@ -31,13 +31,13 @@ export function JournalBlock({ block }: JournalBlockProps) {
         }}
       >
         <div style={{ display: "flex", gap: "8px" }}>
-          <button style={{ padding: "4px 8px", fontSize: "12px" }}>
+          <button style={{ padding: "4px 8px", fontSize: "calc(12px * var(--text-scale))" }}>
             New prompt
           </button>
-          <button style={{ padding: "4px 8px", fontSize: "12px" }}>
+          <button style={{ padding: "4px 8px", fontSize: "calc(12px * var(--text-scale))" }}>
             Recent logs
           </button>
-          <button style={{ padding: "4px 8px", fontSize: "12px" }}>
+          <button style={{ padding: "4px 8px", fontSize: "calc(12px * var(--text-scale))" }}>
             Calendar
           </button>
         </div>
@@ -46,7 +46,7 @@ export function JournalBlock({ block }: JournalBlockProps) {
           onChange={(e) => setLogView(e.target.value)}
           style={{
             padding: "4px 8px",
-            fontSize: "12px",
+            fontSize: "calc(12px * var(--text-scale))",
             borderRadius: "2px",
             border: "1px solid #ccc",
           }}
@@ -65,7 +65,7 @@ export function JournalBlock({ block }: JournalBlockProps) {
             borderRadius: "4px",
           }}
         >
-          <label style={{ fontSize: "12px", fontWeight: "500" }}>
+          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>
             Mood / State
           </label>
           <input
@@ -80,7 +80,7 @@ export function JournalBlock({ block }: JournalBlockProps) {
               border: "1px solid #e0e0e0",
               borderRadius: "2px",
               fontFamily: "inherit",
-              fontSize: "13px",
+              fontSize: "calc(13px * var(--text-scale))",
             }}
           />
         </div>
@@ -91,7 +91,7 @@ export function JournalBlock({ block }: JournalBlockProps) {
             borderRadius: "4px",
           }}
         >
-          <label style={{ fontSize: "12px", fontWeight: "500" }}>
+          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>
             One-shot / Snapshot
           </label>
           <input
@@ -106,7 +106,7 @@ export function JournalBlock({ block }: JournalBlockProps) {
               border: "1px solid #e0e0e0",
               borderRadius: "2px",
               fontFamily: "inherit",
-              fontSize: "13px",
+              fontSize: "calc(13px * var(--text-scale))",
             }}
           />
         </div>
@@ -121,7 +121,7 @@ export function JournalBlock({ block }: JournalBlockProps) {
             borderRadius: "4px",
           }}
         >
-          <label style={{ fontSize: "12px", fontWeight: "500" }}>
+          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>
             Small wins
           </label>
           <textarea
@@ -136,7 +136,7 @@ export function JournalBlock({ block }: JournalBlockProps) {
               border: "1px solid #e0e0e0",
               borderRadius: "2px",
               fontFamily: "inherit",
-              fontSize: "13px",
+              fontSize: "calc(13px * var(--text-scale))",
               resize: "vertical",
             }}
           />
@@ -148,7 +148,7 @@ export function JournalBlock({ block }: JournalBlockProps) {
             borderRadius: "4px",
           }}
         >
-          <label style={{ fontSize: "12px", fontWeight: "500" }}>
+          <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>
             Big wins / Achievements
           </label>
           <textarea
@@ -163,7 +163,7 @@ export function JournalBlock({ block }: JournalBlockProps) {
               border: "1px solid #e0e0e0",
               borderRadius: "2px",
               fontFamily: "inherit",
-              fontSize: "13px",
+              fontSize: "calc(13px * var(--text-scale))",
               resize: "vertical",
             }}
           />
@@ -178,7 +178,7 @@ export function JournalBlock({ block }: JournalBlockProps) {
           borderRadius: "4px",
         }}
       >
-        <label style={{ fontSize: "12px", fontWeight: "500" }}>Journal log</label>
+        <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Journal log</label>
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
@@ -191,7 +191,7 @@ export function JournalBlock({ block }: JournalBlockProps) {
             border: "1px solid #e0e0e0",
             borderRadius: "2px",
             fontFamily: "inherit",
-            fontSize: "13px",
+            fontSize: "calc(13px * var(--text-scale))",
             resize: "vertical",
           }}
         />

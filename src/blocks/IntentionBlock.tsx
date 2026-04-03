@@ -28,7 +28,7 @@ export function IntentionBlock({ block }: IntentionBlockProps) {
           border: "1px solid #e0e0e0",
           borderRadius: "4px",
           fontFamily: "inherit",
-          fontSize: "14px",
+          fontSize: "calc(14px * var(--text-scale))",
         }}
       />
 
@@ -44,7 +44,7 @@ export function IntentionBlock({ block }: IntentionBlockProps) {
             border: "1px solid #e0e0e0",
             borderRadius: "4px",
             fontFamily: "inherit",
-            fontSize: "14px",
+            fontSize: "calc(14px * var(--text-scale))",
           }}
         />
         <input
@@ -57,7 +57,7 @@ export function IntentionBlock({ block }: IntentionBlockProps) {
             border: "1px solid #e0e0e0",
             borderRadius: "4px",
             fontFamily: "inherit",
-            fontSize: "14px",
+            fontSize: "calc(14px * var(--text-scale))",
           }}
         />
       </div>

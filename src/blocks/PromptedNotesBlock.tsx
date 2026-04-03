@@ -74,14 +74,14 @@ export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
           minHeight: "200px",
         }}
       >
-        <div style={{ opacity: 0.45, fontSize: "13px" }}>
+        <div style={{ opacity: 0.45, fontSize: "calc(13px * var(--text-scale))" }}>
           No prompts configured yet.
         </div>
         <button
           onClick={() => openPnModal(block.id, "config")}
           style={{
             padding: "8px 16px",
-            fontSize: "12px",
+            fontSize: "calc(12px * var(--text-scale))",
             backgroundColor: "#333",
             color: "#fff",
             border: "none",
@@ -112,7 +112,7 @@ export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
           onClick={() => openPnModal(block.id, "entry")}
           style={{
             padding: "6px 12px",
-            fontSize: "12px",
+            fontSize: "calc(12px * var(--text-scale))",
             backgroundColor: "#333",
             color: "#fff",
             border: "none",
@@ -127,7 +127,7 @@ export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
           style={{
             marginLeft: "auto",
             padding: "6px 12px",
-            fontSize: "12px",
+            fontSize: "calc(12px * var(--text-scale))",
             backgroundColor: "#ddd",
             border: "none",
             borderRadius: "2px",
@@ -141,7 +141,7 @@ export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
       {/* Today's entries */}
       {todayEntries.length > 0 && (
         <div>
-          <div style={{ fontSize: "11px", color: "#999", marginBottom: "6px" }}>
+          <div style={{ fontSize: "calc(11px * var(--text-scale))", color: "#999", marginBottom: "6px" }}>
             Today ({todayEntries.length})
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -154,10 +154,10 @@ export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
                   backgroundColor: "#f0f7ff",
                   borderRadius: "2px",
                   cursor: "pointer",
-                  fontSize: "12px",
+                  fontSize: "calc(12px * var(--text-scale))",
                 }}
               >
-                <div style={{ fontSize: "11px", color: "#666", marginBottom: "2px" }}>
+                <div style={{ fontSize: "calc(11px * var(--text-scale))", color: "#666", marginBottom: "2px" }}>
                   {new Date(entry.timestamp).toLocaleTimeString()}
                 </div>
                 <div style={{ color: "#333" }}>{entryPreview(entry)}</div>
@@ -170,7 +170,7 @@ export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
       {/* History entries */}
       {historyEntries.length > 0 && (
         <div>
-          <div style={{ fontSize: "11px", color: "#999", marginBottom: "6px" }}>
+          <div style={{ fontSize: "calc(11px * var(--text-scale))", color: "#999", marginBottom: "6px" }}>
             History ({historyEntries.length})
           </div>
           <div
@@ -191,13 +191,13 @@ export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
                   backgroundColor: "#f9f9f9",
                   borderRadius: "2px",
                   cursor: "pointer",
-                  fontSize: "12px",
+                  fontSize: "calc(12px * var(--text-scale))",
                 }}
               >
                 <div style={{ fontWeight: "500", marginBottom: "2px" }}>
                   {entry.date}
                 </div>
-                <div style={{ fontSize: "11px", color: "#666" }}>
+                <div style={{ fontSize: "calc(11px * var(--text-scale))", color: "#666" }}>
                   {entryPreview(entry)}
                 </div>
               </div>
@@ -213,7 +213,7 @@ export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
             padding: "20px",
             backgroundColor: "#f5f5f5",
             borderRadius: "4px",
-            fontSize: "12px",
+            fontSize: "calc(12px * var(--text-scale))",
             color: "#999",
             textAlign: "center",
           }}

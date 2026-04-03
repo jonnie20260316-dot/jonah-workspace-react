@@ -62,7 +62,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
           onClick={() => setMode("run")}
           style={{
             padding: "6px 12px",
-            fontSize: "12px",
+            fontSize: "calc(12px * var(--text-scale))",
             backgroundColor: mode === "run" ? "#333" : "#ddd",
             color: mode === "run" ? "#fff" : "#000",
             border: "none",
@@ -76,7 +76,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
           onClick={() => setMode("library")}
           style={{
             padding: "6px 12px",
-            fontSize: "12px",
+            fontSize: "calc(12px * var(--text-scale))",
             backgroundColor: mode === "library" ? "#333" : "#ddd",
             color: mode === "library" ? "#fff" : "#000",
             border: "none",
@@ -86,7 +86,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
         >
           Library
         </button>
-        <span style={{ marginLeft: "auto", fontSize: "11px", color: "#666" }}>
+        <span style={{ marginLeft: "auto", fontSize: "calc(11px * var(--text-scale))", color: "#666" }}>
           /hl · Threads · local-first
         </span>
       </div>
@@ -96,7 +96,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: "500" }}>Topic</label>
+              <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Topic</label>
               <input
                 type="text"
                 value={topic}
@@ -108,12 +108,12 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
                   padding: "6px",
                   border: "1px solid #e0e0e0",
                   borderRadius: "2px",
-                  fontSize: "13px",
+                  fontSize: "calc(13px * var(--text-scale))",
                 }}
               />
             </div>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: "500" }}>Audience</label>
+              <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Audience</label>
               <input
                 type="text"
                 value={audience}
@@ -125,7 +125,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
                   padding: "6px",
                   border: "1px solid #e0e0e0",
                   borderRadius: "2px",
-                  fontSize: "13px",
+                  fontSize: "calc(13px * var(--text-scale))",
                 }}
               />
             </div>
@@ -133,7 +133,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: "500" }}>Tone</label>
+              <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Tone</label>
               <input
                 type="text"
                 value={tone}
@@ -145,12 +145,12 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
                   padding: "6px",
                   border: "1px solid #e0e0e0",
                   borderRadius: "2px",
-                  fontSize: "13px",
+                  fontSize: "calc(13px * var(--text-scale))",
                 }}
               />
             </div>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: "500" }}>Goal</label>
+              <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Goal</label>
               <input
                 type="text"
                 value={goal}
@@ -162,14 +162,14 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
                   padding: "6px",
                   border: "1px solid #e0e0e0",
                   borderRadius: "2px",
-                  fontSize: "13px",
+                  fontSize: "calc(13px * var(--text-scale))",
                 }}
               />
             </div>
           </div>
 
           <div>
-            <label style={{ fontSize: "12px", fontWeight: "500" }}>/hl Brief</label>
+            <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>/hl Brief</label>
             <textarea
               value={brief}
               onChange={(e) => setBrief(e.target.value)}
@@ -181,7 +181,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
                 padding: "6px",
                 border: "1px solid #e0e0e0",
                 borderRadius: "2px",
-                fontSize: "13px",
+                fontSize: "calc(13px * var(--text-scale))",
                 resize: "vertical",
               }}
             />
@@ -199,7 +199,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
             <button
               style={{
                 padding: "4px 8px",
-                fontSize: "12px",
+                fontSize: "calc(12px * var(--text-scale))",
                 backgroundColor: "#333",
                 color: "#fff",
                 border: "none",
@@ -212,7 +212,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
             <button
               style={{
                 padding: "4px 8px",
-                fontSize: "12px",
+                fontSize: "calc(12px * var(--text-scale))",
                 backgroundColor: "#ddd",
                 color: "#000",
                 border: "none",
@@ -225,7 +225,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
           </div>
 
           <div>
-            <label style={{ fontSize: "12px", fontWeight: "500" }}>/hl Result</label>
+            <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>/hl Result</label>
             <textarea
               value={resultRaw}
               onChange={(e) => setResultRaw(e.target.value)}
@@ -237,7 +237,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
                 padding: "6px",
                 border: "1px solid #e0e0e0",
                 borderRadius: "2px",
-                fontSize: "13px",
+                fontSize: "calc(13px * var(--text-scale))",
                 resize: "vertical",
               }}
             />
@@ -250,7 +250,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: "500" }}>Post URL</label>
+              <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Post URL</label>
               <input
                 type="text"
                 value={postUrl}
@@ -262,12 +262,12 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
                   padding: "6px",
                   border: "1px solid #e0e0e0",
                   borderRadius: "2px",
-                  fontSize: "13px",
+                  fontSize: "calc(13px * var(--text-scale))",
                 }}
               />
             </div>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: "500" }}>Manual verdict</label>
+              <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Manual verdict</label>
               <input
                 type="text"
                 value={verdict}
@@ -279,14 +279,14 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
                   padding: "6px",
                   border: "1px solid #e0e0e0",
                   borderRadius: "2px",
-                  fontSize: "13px",
+                  fontSize: "calc(13px * var(--text-scale))",
                 }}
               />
             </div>
           </div>
 
           <div>
-            <label style={{ fontSize: "12px", fontWeight: "500" }}>Light metrics</label>
+            <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Light metrics</label>
             <textarea
               value={metrics}
               onChange={(e) => setMetrics(e.target.value)}
@@ -298,7 +298,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
                 padding: "6px",
                 border: "1px solid #e0e0e0",
                 borderRadius: "2px",
-                fontSize: "13px",
+                fontSize: "calc(13px * var(--text-scale))",
                 resize: "vertical",
               }}
             />
@@ -307,7 +307,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
           <button
             style={{
               padding: "6px 12px",
-              fontSize: "12px",
+              fontSize: "calc(12px * var(--text-scale))",
               backgroundColor: "#333",
               color: "#fff",
               border: "none",
@@ -319,7 +319,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
           </button>
 
           <div>
-            <label style={{ fontSize: "12px", fontWeight: "500" }}>Outcome Payload</label>
+            <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Outcome Payload</label>
             <textarea
               value={payload}
               onChange={(e) => setPayload(e.target.value)}
@@ -331,14 +331,14 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
                 padding: "6px",
                 border: "1px solid #e0e0e0",
                 borderRadius: "2px",
-                fontSize: "13px",
+                fontSize: "calc(13px * var(--text-scale))",
                 resize: "vertical",
               }}
             />
           </div>
 
           <div>
-            <label style={{ fontSize: "12px", fontWeight: "500" }}>Reference Notes</label>
+            <label style={{ fontSize: "calc(12px * var(--text-scale))", fontWeight: "500" }}>Reference Notes</label>
             <textarea
               value={referenceNotes}
               onChange={(e) => setReferenceNotes(e.target.value)}
@@ -350,7 +350,7 @@ export function SwipeBlock({ block }: SwipeBlockProps) {
                 padding: "6px",
                 border: "1px solid #e0e0e0",
                 borderRadius: "2px",
-                fontSize: "13px",
+                fontSize: "calc(13px * var(--text-scale))",
                 resize: "vertical",
               }}
             />

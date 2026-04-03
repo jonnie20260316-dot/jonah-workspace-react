@@ -27,7 +27,7 @@ export function ThreadsBlock({ block }: ThreadsBlockProps) {
           border: "1px solid #e0e0e0",
           borderRadius: "4px",
           fontFamily: "inherit",
-          fontSize: "14px",
+          fontSize: "calc(14px * var(--text-scale))",
           resize: "vertical",
         }}
       />
@@ -43,7 +43,7 @@ export function ThreadsBlock({ block }: ThreadsBlockProps) {
           border: "1px solid #e0e0e0",
           borderRadius: "4px",
           fontFamily: "inherit",
-          fontSize: "14px",
+          fontSize: "calc(14px * var(--text-scale))",
         }}
       />
     </div>
