@@ -19,18 +19,44 @@ interface VideoCaptureBlockProps {
   block: Block;
 }
 
+/* ── PipPreviewVideo: extracted child component (JW-29) ── */
+function PipPreviewVideo({ stream }: { stream: MediaStream | null }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.srcObject = stream;
+      if (stream) ref.current.play().catch(() => {});
+    }
+  }, [stream]);
+  return (
+    <video
+      ref={ref}
+      muted
+      playsInline
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        borderRadius: "8px",
+      }}
+    />
+  );
+}
+
 /**
  * Video Capture block - live streaming and recording with file export.
- * Fields: camera-source, mic-source, playback-speed
- * Extra storage: vc-saved-videos:{blockId}
+ * Supports camera mode, screen mode, and PiP (screen + camera overlay).
+ * Uses real device enumeration via enumerateDevices().
  */
 export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   const lang = useLang();
   const [captureMode, setCaptureMode] = useBlockField<"camera" | "screen">(block.id, "capture-mode", "camera");
   const [screenSysAudio, setScreenSysAudio] = useBlockField(block.id, "screen-sys-audio", true);
   const [screenMicOn, setScreenMicOn] = useBlockField(block.id, "screen-mic", false);
-  const [camSource, setCamSource] = useBlockField(block.id, "camera-source", "builtin");
-  const [micSource, setMicSource] = useBlockField(block.id, "mic-source", "default");
+  const [pipEnabled, setPipEnabled] = useBlockField(block.id, "pip-enabled", false);
+  const [pipPosition, setPipPosition] = useBlockField<{ x: number; y: number }>(block.id, "pip-position", { x: 0.8, y: 0.8 });
+  const [selectedCamId, setSelectedCamId] = useBlockField(block.id, "selected-cam-id", "");
+  const [selectedMicId, setSelectedMicId] = useBlockField(block.id, "selected-mic-id", "");
 
   const [isStreaming, setIsStreaming] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -43,6 +69,8 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   );
   const [streamStats, setStreamStats] = useState({ fps: "—", res: "—" });
   const [filters, setFilters] = useState({ brightness: 100, contrast: 100, saturation: 100 });
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -54,8 +82,184 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   const micStreamRef = useRef<MediaStream | null>(null);
   const captureModeRef = useRef(captureMode);
 
+  // PiP refs
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const pipVideoRef = useRef<HTMLVideoElement>(null);
+  const screenVideoRef = useRef<HTMLVideoElement>(null);
+  const pipStreamRef = useRef<MediaStream | null>(null);
+  const compositeStreamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number>(0);
+  const pipDragRef = useRef<{ dragging: boolean; offsetX: number; offsetY: number }>({ dragging: false, offsetX: 0, offsetY: 0 });
+  const stageRef = useRef<HTMLDivElement>(null);
+
   // Keep captureModeRef in sync for use inside recorder.onstop closure
   useEffect(() => { captureModeRef.current = captureMode; }, [captureMode]);
+
+  /* ── Step 2: Device enumeration ── */
+  const enumerateDevicesNow = useCallback(async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices.filter((d) => d.kind === "videoinput");
+      const audioInputs = devices.filter((d) => d.kind === "audioinput");
+      setCameras(videoInputs);
+      setMics(audioInputs);
+    } catch (err) {
+      console.error("enumerateDevices failed:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    enumerateDevicesNow();
+    const handler = () => enumerateDevicesNow();
+    navigator.mediaDevices.addEventListener("devicechange", handler);
+    return () => {
+      navigator.mediaDevices.removeEventListener("devicechange", handler);
+    };
+  }, [enumerateDevicesNow]);
+
+  /* ── Canvas composite loop (Step 4) ── */
+  const startCompositeLoop = useCallback(() => {
+    const canvas = canvasRef.current;
+    const screenVid = screenVideoRef.current;
+    const pipVid = pipVideoRef.current;
+    if (!canvas || !screenVid) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const draw = () => {
+      // Match canvas to screen video resolution
+      if (screenVid.videoWidth && screenVid.videoHeight) {
+        canvas.width = screenVid.videoWidth;
+        canvas.height = screenVid.videoHeight;
+      }
+
+      // Draw screen (full frame)
+      ctx.drawImage(screenVid, 0, 0, canvas.width, canvas.height);
+
+      // Draw PiP camera overlay
+      if (pipVid && pipVid.videoWidth > 0) {
+        const pipW = canvas.width * 0.2;
+        const pipH = pipW * (pipVid.videoHeight / pipVid.videoWidth);
+        // pipPosition is normalized 0-1; map to canvas coords with margin
+        const margin = 16;
+        const maxX = canvas.width - pipW - margin;
+        const maxY = canvas.height - pipH - margin;
+        const px = margin + pipPosition.x * maxX;
+        const py = margin + pipPosition.y * maxY;
+
+        // Rounded rectangle clip
+        const radius = 12;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(px + radius, py);
+        ctx.lineTo(px + pipW - radius, py);
+        ctx.quadraticCurveTo(px + pipW, py, px + pipW, py + radius);
+        ctx.lineTo(px + pipW, py + pipH - radius);
+        ctx.quadraticCurveTo(px + pipW, py + pipH, px + pipW - radius, py + pipH);
+        ctx.lineTo(px + radius, py + pipH);
+        ctx.quadraticCurveTo(px, py + pipH, px, py + pipH - radius);
+        ctx.lineTo(px, py + radius);
+        ctx.quadraticCurveTo(px, py, px + radius, py);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(pipVid, px, py, pipW, pipH);
+        ctx.restore();
+
+        // White border
+        ctx.save();
+        ctx.strokeStyle = "rgba(255,255,255,0.7)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(px + radius, py);
+        ctx.lineTo(px + pipW - radius, py);
+        ctx.quadraticCurveTo(px + pipW, py, px + pipW, py + radius);
+        ctx.lineTo(px + pipW, py + pipH - radius);
+        ctx.quadraticCurveTo(px + pipW, py + pipH, px + pipW - radius, py + pipH);
+        ctx.lineTo(px + radius, py + pipH);
+        ctx.quadraticCurveTo(px, py + pipH, px, py + pipH - radius);
+        ctx.lineTo(px, py + radius);
+        ctx.quadraticCurveTo(px, py, px + radius, py);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      rafRef.current = requestAnimationFrame(draw);
+    };
+
+    rafRef.current = requestAnimationFrame(draw);
+  }, [pipPosition]);
+
+  const stopCompositeLoop = useCallback(() => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+    }
+    if (compositeStreamRef.current) {
+      compositeStreamRef.current.getTracks().forEach((t) => t.stop());
+      compositeStreamRef.current = null;
+    }
+  }, []);
+
+  /* ── Step 5: PiP camera management ── */
+  const startPipCamera = useCallback(async () => {
+    try {
+      const constraints: MediaStreamConstraints = {
+        video: selectedCamId
+          ? { deviceId: { exact: selectedCamId }, width: { ideal: 640 }, height: { ideal: 480 } }
+          : { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      pipStreamRef.current = stream;
+
+      if (pipVideoRef.current) {
+        pipVideoRef.current.srcObject = stream;
+        pipVideoRef.current.play().catch(() => {});
+      }
+
+      // Re-enumerate to get real labels after permission grant
+      enumerateDevicesNow();
+
+      // Monitor track ended (camera disconnect)
+      stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+        stopPipCamera();
+        setPipEnabled(false);
+      });
+
+      // Start canvas composite
+      startCompositeLoop();
+
+      // Create composite stream from canvas
+      const canvas = canvasRef.current;
+      if (canvas && typeof canvas.captureStream === "function") {
+        compositeStreamRef.current = canvas.captureStream(30);
+      }
+    } catch (err) {
+      console.error("PiP camera failed:", err);
+      setPipEnabled(false);
+    }
+  }, [selectedCamId, enumerateDevicesNow, startCompositeLoop, setPipEnabled]);
+
+  const stopPipCamera = useCallback(() => {
+    stopCompositeLoop();
+    if (pipStreamRef.current) {
+      pipStreamRef.current.getTracks().forEach((t) => t.stop());
+      pipStreamRef.current = null;
+    }
+    if (pipVideoRef.current) pipVideoRef.current.srcObject = null;
+  }, [stopCompositeLoop]);
+
+  // Auto-manage PiP based on state (Step 5)
+  useEffect(() => {
+    if (pipEnabled && isStreaming && captureMode === "screen") {
+      startPipCamera();
+    } else {
+      stopPipCamera();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pipEnabled, isStreaming, captureMode]);
 
   // Cleanup on unmount (JW-28)
   useEffect(() => {
@@ -69,6 +273,13 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       if (audioCtxRef.current) {
         audioCtxRef.current.close();
       }
+      if (pipStreamRef.current) {
+        pipStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
+      if (compositeStreamRef.current) {
+        compositeStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (recTimerRef.current) clearInterval(recTimerRef.current);
     };
   }, []);
@@ -93,22 +304,25 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     }
   }, []);
 
+  /* ── Step 3: startStream with real deviceId ── */
   const startStream = useCallback(async () => {
-    // Guard against double-start — stop existing stream first
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
 
     try {
-      const videoConstraints =
-        camSource === "iriun"
-          ? { width: { ideal: 1920 }, height: { ideal: 1080 } }
-          : { facingMode: "user" as const, width: { ideal: 1920 }, height: { ideal: 1080 } };
+      const videoConstraints: MediaTrackConstraints = selectedCamId
+        ? { deviceId: { exact: selectedCamId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+        : { facingMode: "user" as const, width: { ideal: 1920 }, height: { ideal: 1080 } };
+
+      const audioConstraints: MediaTrackConstraints | boolean = selectedMicId
+        ? { deviceId: { exact: selectedMicId } }
+        : true;
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: videoConstraints,
-        audio: true,
+        audio: audioConstraints,
       });
 
       streamRef.current = stream;
@@ -117,6 +331,9 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
         videoRef.current.play();
       }
       setIsStreaming(true);
+
+      // Re-enumerate to get real labels
+      enumerateDevicesNow();
 
       const vTrack = stream.getVideoTracks()[0];
       if (vTrack) {
@@ -131,10 +348,9 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     } catch (err) {
       console.error("Camera access failed:", err);
     }
-  }, [camSource]);
+  }, [selectedCamId, selectedMicId, enumerateDevicesNow]);
 
   const stopStream = useCallback(() => {
-    // Stop recording first if active
     if (recorderRef.current && recorderRef.current.state !== "inactive") {
       recorderRef.current.stop();
       recorderRef.current = null;
@@ -157,13 +373,16 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       audioCtxRef.current.close();
       audioCtxRef.current = null;
     }
+    // PiP cleanup
+    stopPipCamera();
     if (videoRef.current) videoRef.current.srcObject = null;
+    if (screenVideoRef.current) screenVideoRef.current.srcObject = null;
     setIsStreaming(false);
     setStreamStats({ fps: "—", res: "—" });
-  }, []);
+  }, [stopPipCamera]);
 
+  /* ── Step 3: startScreenStream with real deviceId ── */
   const startScreenStream = useCallback(async () => {
-    // Guard: stop existing streams
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -186,10 +405,12 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       let finalStream: MediaStream;
 
       if (screenMicOn) {
-        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const micConstraints: MediaTrackConstraints = selectedMicId
+          ? { deviceId: { exact: selectedMicId } }
+          : {};
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: micConstraints });
         micStreamRef.current = micStream;
 
-        // Mix system audio + mic via Web Audio API
         const audioCtx = new AudioContext();
         audioCtxRef.current = audioCtx;
         const dest = audioCtx.createMediaStreamDestination();
@@ -202,8 +423,8 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
           sysSource.connect(dest);
         }
 
-        const micSource = audioCtx.createMediaStreamSource(micStream);
-        micSource.connect(dest);
+        const micSrc = audioCtx.createMediaStreamSource(micStream);
+        micSrc.connect(dest);
 
         finalStream = new MediaStream([
           ...displayStream.getVideoTracks(),
@@ -219,11 +440,21 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       });
 
       streamRef.current = finalStream;
+
+      // Feed screen video to both the visible preview and the hidden compositing video
       if (videoRef.current) {
         videoRef.current.srcObject = finalStream;
         videoRef.current.play();
       }
+      if (screenVideoRef.current) {
+        screenVideoRef.current.srcObject = new MediaStream(displayStream.getVideoTracks());
+        screenVideoRef.current.play().catch(() => {});
+      }
+
       setIsStreaming(true);
+
+      // Re-enumerate to get real labels
+      enumerateDevicesNow();
 
       const vTrack = displayStream.getVideoTracks()[0];
       if (vTrack) {
@@ -238,10 +469,21 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     } catch (err) {
       console.error("Screen capture failed:", err);
     }
-  }, [screenSysAudio, screenMicOn, stopStream]);
+  }, [screenSysAudio, screenMicOn, selectedMicId, stopStream, enumerateDevicesNow]);
 
+  /* ── Step 7: startRecording with composite support ── */
   const startRecording = useCallback(() => {
-    if (!streamRef.current) return;
+    // Choose stream: composite (PiP) or regular
+    let recordStream = streamRef.current;
+    if (captureMode === "screen" && pipEnabled && compositeStreamRef.current) {
+      // Composite video from canvas + audio from the main stream
+      const audioTracks = streamRef.current?.getAudioTracks() ?? [];
+      recordStream = new MediaStream([
+        ...compositeStreamRef.current.getVideoTracks(),
+        ...audioTracks,
+      ]);
+    }
+    if (!recordStream) return;
 
     const mimeType = MediaRecorder.isTypeSupported("video/mp4;codecs=avc1")
       ? "video/mp4"
@@ -249,7 +491,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       ? "video/webm;codecs=vp9"
       : "video/webm";
 
-    const recorder = new MediaRecorder(streamRef.current, { mimeType });
+    const recorder = new MediaRecorder(recordStream, { mimeType });
     chunksRef.current = [];
 
     recorder.ondataavailable = (e) => {
@@ -282,7 +524,6 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
         blobUrl,
         source: captureModeRef.current,
       };
-      // Use functional update to avoid stale savedVideos closure
       setSavedVideos((prev) => {
         const updated = [video, ...prev];
         saveJSON(`vc-saved-videos:${blockId}`, updated.map(({ blobUrl: _, ...rest }) => rest));
@@ -299,7 +540,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     recTimerRef.current = setInterval(() => {
       setRecSeconds(Math.round((Date.now() - recStartRef.current) / 1000));
     }, 1000);
-  }, [block.id]);
+  }, [block.id, captureMode, pipEnabled]);
 
   const formatRecTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -313,6 +554,70 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     const updated = savedVideos.filter((v) => v.id !== id);
     setSavedVideos(updated);
     saveJSON(`vc-saved-videos:${block.id}`, updated.map(({ blobUrl: _, ...rest }) => rest));
+  };
+
+  /* ── Step 6: PiP drag handlers ── */
+  const handlePipDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    const rect = stage.getBoundingClientRect();
+
+    // PiP overlay is 20% of stage width
+    const pipW = rect.width * 0.2;
+    const pipH = pipW * 0.75; // approx 4:3
+    const margin = 8;
+    const maxX = rect.width - pipW - margin;
+    const maxY = rect.height - pipH - margin;
+    const currentPx = margin + pipPosition.x * maxX;
+    const currentPy = margin + pipPosition.y * maxY;
+
+    pipDragRef.current = {
+      dragging: true,
+      offsetX: clientX - rect.left - currentPx,
+      offsetY: clientY - rect.top - currentPy,
+    };
+
+    const onMove = (ev: MouseEvent | TouchEvent) => {
+      if (!pipDragRef.current.dragging) return;
+      const cx = "touches" in ev ? ev.touches[0].clientX : ev.clientX;
+      const cy = "touches" in ev ? ev.touches[0].clientY : ev.clientY;
+      const stageRect = stage.getBoundingClientRect();
+      const mW = stageRect.width * 0.2;
+      const mH = mW * 0.75;
+      const mg = 8;
+      const mxX = stageRect.width - mW - mg;
+      const mxY = stageRect.height - mH - mg;
+
+      const rawX = cx - stageRect.left - pipDragRef.current.offsetX - mg;
+      const rawY = cy - stageRect.top - pipDragRef.current.offsetY - mg;
+      const nx = Math.max(0, Math.min(1, mxX > 0 ? rawX / mxX : 0));
+      const ny = Math.max(0, Math.min(1, mxY > 0 ? rawY / mxY : 0));
+      setPipPosition({ x: nx, y: ny });
+    };
+
+    const onUp = () => {
+      pipDragRef.current.dragging = false;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onUp);
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    document.addEventListener("touchmove", onMove);
+    document.addEventListener("touchend", onUp);
+  }, [pipPosition, setPipPosition]);
+
+  /* ── Helper: device label with fallback ── */
+  const deviceLabel = (dev: MediaDeviceInfo, idx: number, kind: "cam" | "mic") => {
+    const base = dev.label || (kind === "cam" ? `${pick("攝影機", "Camera")} ${idx + 1}` : `${pick("麥克風", "Mic")} ${idx + 1}`);
+    return dev.deviceId === "default" ? `${base} ${pick("(預設)", "(Default)")}` : base;
   };
 
   const modeToggleBtn = (mode: "camera" | "screen", label: string) => (
@@ -353,6 +658,28 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     </button>
   );
 
+  /* ── Compute PiP overlay position for the preview div ── */
+  const pipOverlayStyle = (): React.CSSProperties => {
+    const pipW = 20; // % of stage
+    const pipH = 15; // approx 4:3
+    const margin = 2; // %
+    const maxX = 100 - pipW - margin;
+    const maxY = 100 - pipH - margin;
+    return {
+      position: "absolute",
+      width: `${pipW}%`,
+      aspectRatio: "4/3",
+      left: `${margin + pipPosition.x * maxX}%`,
+      top: `${margin + pipPosition.y * maxY}%`,
+      borderRadius: "8px",
+      overflow: "hidden",
+      border: "2px solid rgba(255,255,255,0.7)",
+      cursor: "grab",
+      zIndex: 10,
+      boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+    };
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
       {/* Toolbar */}
@@ -376,63 +703,136 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
 
         {/* Row 2: Mode-specific controls */}
         {captureMode === "camera" ? (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button
-                onClick={() => setCamSource("builtin")}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: "calc(12px * var(--text-scale))",
-                  backgroundColor: camSource === "builtin" ? "#333" : "#ddd",
-                  color: camSource === "builtin" ? "#fff" : "#000",
-                  border: "none",
-                  borderRadius: "2px",
-                  cursor: "pointer",
-                }}
-              >
-                Built-in
-              </button>
-              <button
-                onClick={() => setCamSource("iriun")}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: "calc(12px * var(--text-scale))",
-                  backgroundColor: camSource === "iriun" ? "#333" : "#ddd",
-                  color: camSource === "iriun" ? "#fff" : "#000",
-                  border: "none",
-                  borderRadius: "2px",
-                  cursor: "pointer",
-                }}
-              >
-                Iriun
-              </button>
-            </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            {/* Camera device select */}
             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <span style={{ fontSize: "calc(12px * var(--text-scale))" }}>{pick("麥克風", "Mic")}</span>
+              <span style={{ fontSize: "calc(12px * var(--text-scale))", minWidth: "50px" }}>
+                {pick("鏡頭", "Camera")}
+              </span>
               <select
-                value={micSource}
-                onChange={(e) => setMicSource(e.target.value)}
+                value={selectedCamId}
+                onChange={(e) => setSelectedCamId(e.target.value)}
                 style={{
+                  flex: 1,
                   padding: "4px 8px",
                   fontSize: "calc(12px * var(--text-scale))",
                   border: "1px solid #ddd",
                   borderRadius: "2px",
                 }}
               >
-                <option value="default">{pick("預設", "Default")}</option>
-                <option value="dji">DJI</option>
-                <option value="ssl2">SSL 2</option>
+                <option value="">{pick("系統預設", "System Default")}</option>
+                {cameras.map((cam, i) => (
+                  <option key={cam.deviceId} value={cam.deviceId}>
+                    {deviceLabel(cam, i, "cam")}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* Mic device select */}
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <span style={{ fontSize: "calc(12px * var(--text-scale))", minWidth: "50px" }}>
+                {pick("麥克風", "Mic")}
+              </span>
+              <select
+                value={selectedMicId}
+                onChange={(e) => setSelectedMicId(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: "4px 8px",
+                  fontSize: "calc(12px * var(--text-scale))",
+                  border: "1px solid #ddd",
+                  borderRadius: "2px",
+                }}
+              >
+                <option value="">{pick("系統預設", "System Default")}</option>
+                {mics.map((mic, i) => (
+                  <option key={mic.deviceId} value={mic.deviceId}>
+                    {deviceLabel(mic, i, "mic")}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
         ) : (
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            {audioToggleBtn(screenSysAudio, () => setScreenSysAudio(!screenSysAudio), pick("系統音訊", "System Audio"))}
-            {audioToggleBtn(screenMicOn, () => setScreenMicOn(!screenMicOn), pick("麥克風", "Microphone"))}
-            {isStreaming && (
-              <span style={{ fontSize: "calc(10px * var(--text-scale))", color: "#999", marginLeft: "4px" }}>
-                {pick("停止串流以更改音訊", "Stop stream to change audio")}
-              </span>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            {/* Audio toggles row */}
+            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+              {audioToggleBtn(screenSysAudio, () => setScreenSysAudio(!screenSysAudio), pick("系統音訊", "System Audio"))}
+              {audioToggleBtn(screenMicOn, () => setScreenMicOn(!screenMicOn), pick("麥克風", "Microphone"))}
+              {/* PiP toggle */}
+              <button
+                onClick={() => { if (!isRecording) setPipEnabled(!pipEnabled); }}
+                disabled={isRecording}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: "calc(12px * var(--text-scale))",
+                  backgroundColor: pipEnabled ? "#1565c0" : "#ddd",
+                  color: pipEnabled ? "#fff" : "#000",
+                  border: "none",
+                  borderRadius: "2px",
+                  cursor: isRecording ? "not-allowed" : "pointer",
+                  opacity: isRecording ? 0.5 : 1,
+                }}
+              >
+                {pick("子母畫面", "PiP")}
+              </button>
+              {isStreaming && (
+                <span style={{ fontSize: "calc(10px * var(--text-scale))", color: "#999", marginLeft: "4px" }}>
+                  {pick("停止串流以更改音訊", "Stop stream to change audio")}
+                </span>
+              )}
+            </div>
+            {/* Mic device select when mic is enabled in screen mode */}
+            {screenMicOn && (
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <span style={{ fontSize: "calc(12px * var(--text-scale))", minWidth: "50px" }}>
+                  {pick("麥克風", "Mic")}
+                </span>
+                <select
+                  value={selectedMicId}
+                  onChange={(e) => setSelectedMicId(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: "4px 8px",
+                    fontSize: "calc(12px * var(--text-scale))",
+                    border: "1px solid #ddd",
+                    borderRadius: "2px",
+                  }}
+                >
+                  <option value="">{pick("系統預設", "System Default")}</option>
+                  {mics.map((mic, i) => (
+                    <option key={mic.deviceId} value={mic.deviceId}>
+                      {deviceLabel(mic, i, "mic")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {/* Camera device select when PiP is enabled */}
+            {pipEnabled && (
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <span style={{ fontSize: "calc(12px * var(--text-scale))", minWidth: "50px" }}>
+                  {pick("鏡頭", "Camera")}
+                </span>
+                <select
+                  value={selectedCamId}
+                  onChange={(e) => setSelectedCamId(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: "4px 8px",
+                    fontSize: "calc(12px * var(--text-scale))",
+                    border: "1px solid #ddd",
+                    borderRadius: "2px",
+                  }}
+                >
+                  <option value="">{pick("系統預設", "System Default")}</option>
+                  {cameras.map((cam, i) => (
+                    <option key={cam.deviceId} value={cam.deviceId}>
+                      {deviceLabel(cam, i, "cam")}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
           </div>
         )}
@@ -440,6 +840,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
 
       {/* Video stage */}
       <div
+        ref={stageRef}
         style={{
           position: "relative",
           height: "320px",
@@ -462,6 +863,22 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
             display: isStreaming ? "block" : "none",
           }}
         />
+
+        {/* Hidden elements for canvas compositing */}
+        <video ref={screenVideoRef} muted playsInline style={{ display: "none" }} />
+        <video ref={pipVideoRef} muted playsInline style={{ display: "none" }} />
+        <canvas ref={canvasRef} style={{ display: "none" }} />
+
+        {/* PiP overlay (draggable preview) */}
+        {pipEnabled && isStreaming && captureMode === "screen" && pipStreamRef.current && (
+          <div
+            style={pipOverlayStyle()}
+            onMouseDown={handlePipDragStart}
+            onTouchStart={handlePipDragStart}
+          >
+            <PipPreviewVideo stream={pipStreamRef.current} />
+          </div>
+        )}
 
         {!isStreaming && (
           <div
@@ -495,7 +912,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
               textShadow: "0 1px 2px rgba(0,0,0,0.8)",
             }}
           >
-            ● {captureMode === "screen" ? "SCR" : "REC"} {formatRecTime(recSeconds)}
+            ● {captureMode === "screen" ? (pipEnabled ? "PiP" : "SCR") : "REC"} {formatRecTime(recSeconds)}
           </div>
         )}
 

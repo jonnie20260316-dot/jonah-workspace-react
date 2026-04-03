@@ -5,6 +5,8 @@ Newest sessions at the top.
 
 ---
 
+## 2026-04-04 | PiP 畫中畫 + Real Device Enumeration — Screen + camera simultaneous recording; draggable PiP overlay (20%, rounded rect, 4:3 aspect); canvas.captureStream() composition to single output video; replaced hardcoded device lists with live navigator.mediaDevices.enumerateDevices(); device dropdown auto-updates on plug/unplug; devicechange listener cleanup (JW-28); build ✓ 1790 modules
+
 ## 2026-04-03 | Screen Recording — Added Camera/Screen mode toggle to VideoCaptureBlock; getDisplayMedia + Web Audio API mixer (system audio + mic); per-session audio toggles; mode-aware UI (objectFit, placeholder, SCR/REC indicator, source badge); bilingualized all strings; build ✓ 1790 modules
 
 ## 2026-04-03 | Language Switch Bug Fix — 11 components missing useLang() subscription; added hook to ContentBlock, IntelBlock, IntentionBlock, KitBlock, MetricsBlock, ProjectsBlock, PromptedNotesBlock, SpotifyBlock, ThreadsBlock, Canvas, SyncStatusIndicator; all pick() calls now re-render on lang change; build ✓
