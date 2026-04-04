@@ -1,7 +1,7 @@
 import {
   BookOpen, Layers2, CheckSquare, Kanban, Target, Zap, Timer,
   FileText, StickyNote, Repeat2, MessageSquare, Film,
-  BarChart2, Music2, LayoutDashboard, Brain, ClipboardList, Video,
+  BarChart2, Music2, LayoutDashboard, Brain, ClipboardList, Video, Play,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { BlockType } from "../types";
@@ -25,4 +25,5 @@ export const BLOCK_ICONS: Record<BlockType, LucideIcon> = {
   "threads-intel": Brain,
   "prompted-notes": ClipboardList,
   "video-capture": Video,
+  "youtube-studio": Play,
 };

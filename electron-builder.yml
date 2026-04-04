@@ -44,4 +44,3 @@ publish:
   provider: github
   owner: jonnie20260316-dot
   repo: jonah-workspace-react
-  private: true
