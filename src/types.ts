@@ -175,6 +175,9 @@ declare global {
       gitStatus: (dirPath: string) => Promise<{ ok: boolean; branch: string; remoteUrl: string; lastCommit: string }>;
       requestQuit: () => Promise<void>;
       onAboutToQuit: (cb: () => void) => () => void;
+      // Storage backup
+      backupStorage: (jsonStr: string) => Promise<{ ok: boolean; error?: string }>;
+      restoreStorage: () => Promise<{ ok: boolean; data?: string; error?: string }>;
     };
   }
 }

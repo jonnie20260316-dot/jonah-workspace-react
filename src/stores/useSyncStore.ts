@@ -136,7 +136,7 @@ const DEFAULT_SYNC_META: SyncMeta = {
 };
 
 /** Rehydrate all Zustand stores from localStorage after a pull */
-function rehydrateStores(): void {
+export function rehydrateStores(): void {
   const blocks = loadJSON<Block[]>("blocks", []);
   useBlockStore.setState({ blocks });
 

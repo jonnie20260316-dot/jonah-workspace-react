@@ -1,6 +1,8 @@
 import { useEffect } from "react";
-import { useSyncStore } from "../stores/useSyncStore";
+import { useSyncStore, rehydrateStores } from "../stores/useSyncStore";
 import { getSyncHandle } from "../utils/syncIdb";
+import { restoreFromFile } from "../utils/storage";
+import { useBlockStore } from "../stores/useBlockStore";
 
 type FSHandleBoot = FileSystemDirectoryHandle & {
   queryPermission: (opts: { mode: string }) => Promise<string>;
@@ -17,8 +19,17 @@ export function useSyncBoot(): void {
       const store = useSyncStore.getState();
       store.initDeviceId();
 
-      // Electron git sync path
+      // Electron path
       if (window.electronAPI?.isElectron) {
+        // If localStorage is empty (e.g. after a bad quit), restore from file backup
+        const blocks = useBlockStore.getState().blocks;
+        if (blocks.length === 0) {
+          const restored = await restoreFromFile();
+          if (restored) {
+            rehydrateStores();
+          }
+        }
+
         const { gitEnabled, gitDir } = store;
         if (gitEnabled && gitDir) {
           try {

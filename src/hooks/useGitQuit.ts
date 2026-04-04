@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useSyncStore } from "../stores/useSyncStore";
+import { backupToFile } from "../utils/storage";
 
 /**
  * Listen for quit signal from Electron main process.
@@ -12,6 +13,8 @@ export function useGitQuit(): void {
 
     const unsubscribe = window.electronAPI.onAboutToQuit(async () => {
       try {
+        // Write file backup first — insurance if git sync fails
+        await backupToFile();
         const { gitSyncOnQuit } = useSyncStore.getState();
         await gitSyncOnQuit();
       } catch (err) {

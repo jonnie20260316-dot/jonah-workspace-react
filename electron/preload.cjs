@@ -65,6 +65,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('youtube:stream-status', handler);
   },
 
+  // ── Storage backup ──────────────────────────────────────────────────────
+  backupStorage: (jsonStr) => ipcRenderer.invoke('storage:backup', jsonStr),
+  restoreStorage: () => ipcRenderer.invoke('storage:restore'),
+
   // ── Git sync ────────────────────────────────────────────────────────────
   gitInit: (dirPath, remoteUrl) => ipcRenderer.invoke('git:init', dirPath, remoteUrl),
   gitCommit: (dirPath) => ipcRenderer.invoke('git:commit', dirPath),

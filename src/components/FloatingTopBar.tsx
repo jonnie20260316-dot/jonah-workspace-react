@@ -1,4 +1,5 @@
-import { Menu, Save, Settings } from "lucide-react";
+import { useState } from "react";
+import { Menu, Save, Settings, Check } from "lucide-react";
 import { DateNav } from "./DateNav";
 import { SyncStatusIndicator } from "./SyncStatusIndicator";
 import { useUIStore } from "../stores/useUIStore";
@@ -6,17 +7,32 @@ import { pick } from "../utils/i18n";
 import { useLang } from "../hooks/useLang";
 import { useBlockStore } from "../stores/useBlockStore";
 import { useViewportStore } from "../stores/useViewportStore";
-import { saveJSON } from "../utils/storage";
+import { useSyncStore } from "../stores/useSyncStore";
+import { saveJSON, backupToFile } from "../utils/storage";
 
 export function FloatingTopBar() {
   useLang();
   const { toggleSidebar, toggleGearMenu, sidebarOpen, gearMenuOpen } = useUIStore();
+  const [saved, setSaved] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const { blocks } = useBlockStore.getState();
     const { viewport } = useViewportStore.getState();
     saveJSON("blocks", blocks);
     saveJSON("viewport", viewport);
+
+    // Persist to file backup (Electron only)
+    await backupToFile();
+
+    // Trigger git sync if enabled
+    const { gitEnabled, gitDir } = useSyncStore.getState();
+    if (gitEnabled && gitDir) {
+      useSyncStore.getState().gitSyncNow();
+    }
+
+    // Brief checkmark confirmation
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
   };
 
   return (
@@ -52,7 +68,7 @@ export function FloatingTopBar() {
           className="top-bar-btn"
           title={pick("儲存", "Save")}
         >
-          <Save size={18} strokeWidth={1.8} />
+          {saved ? <Check size={18} strokeWidth={1.8} /> : <Save size={18} strokeWidth={1.8} />}
         </button>
         <button
           onClick={toggleGearMenu}

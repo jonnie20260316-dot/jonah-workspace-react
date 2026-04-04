@@ -42,6 +42,7 @@ export const GLOBAL_KEYS = new Set<string>([
   "git-sync-enabled",
   "git-sync-dir",
   "git-sync-remote",
+  "text-scale",
 ]);
 
 export const GLOBAL_KEY_PREFIXES: string[] = [

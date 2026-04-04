@@ -183,8 +183,22 @@ async function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     const distPath = path.join(__dirname, '../dist');
-    await startLocalServer(distPath, 5173);
-    mainWindow.loadURL('http://localhost:5173');
+    // Try port 5173 first; fall back to 5174–5180 if port is already in use.
+    // IMPORTANT: always prefer 5173 — Chromium's localStorage is origin-scoped,
+    // so a different port = different origin = data not visible. If we end up on
+    // an alternate port the user will see a warning in GearMenu.
+    let chosenPort = 5173;
+    for (let p = 5173; p <= 5180; p++) {
+      try {
+        await startLocalServer(distPath, p);
+        chosenPort = p;
+        break;
+      } catch (err) {
+        if (err.code === 'EADDRINUSE' && p < 5180) continue;
+        throw err;
+      }
+    }
+    mainWindow.loadURL(`http://localhost:${chosenPort}`);
     // Silent background check on launch — UI handles the result
     setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 5000);
   }
@@ -289,6 +303,30 @@ ipcMain.handle('fs:write-file', async (_event, dirPath, filename, content) => {
 ipcMain.handle('fs:file-exists', async (_event, dirPath, filename) => {
   try { return fs.existsSync(path.join(dirPath, filename)); }
   catch { return false; }
+});
+
+// ─── IPC: Storage backup (insurance against localStorage loss on quit) ────────
+const BACKUP_FILENAME = 'jonah-workspace-backup.json';
+
+ipcMain.handle('storage:backup', async (_event, jsonStr) => {
+  try {
+    const backupPath = path.join(app.getPath('userData'), BACKUP_FILENAME);
+    fs.writeFileSync(backupPath, jsonStr, 'utf-8');
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('storage:restore', async () => {
+  try {
+    const backupPath = path.join(app.getPath('userData'), BACKUP_FILENAME);
+    if (!fs.existsSync(backupPath)) return { ok: false, error: 'no backup' };
+    const data = fs.readFileSync(backupPath, 'utf-8');
+    return { ok: true, data };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 });
 
 // ─── IPC: YouTube OAuth2 ─────────────────────────────────────────────────────
@@ -698,6 +736,7 @@ ipcMain.handle('app:request-quit', async (_event) => {
     clearTimeout(quitWatchdog);
     quitWatchdog = null;
   }
+  session.defaultSession.flushStorageData();
   app.quit();
 });
 
@@ -728,11 +767,14 @@ app.on('before-quit', (event) => {
 
   // Watchdog: force quit after 5 seconds if renderer doesn't respond
   quitWatchdog = setTimeout(() => {
-    if (localServer) { try { localServer.close(); } catch {} localServer = null; }
+    session.defaultSession.flushStorageData();
+    // Server cleanup handled in will-quit — don't kill it while renderer still alive
     app.quit();
   }, 5000);
 
-  if (localServer) { try { localServer.close(); } catch {} localServer = null; }
+  // NOTE: Do NOT close localServer here — the BrowserWindow is still alive at
+  // http://localhost:5173 and Chromium needs the server to flush localStorage.
+  // Server is closed in the 'will-quit' handler (after all windows are closed).
 
   // Deferred install: run custom installer on quit (bypasses Squirrel.Mac)
   if (deferInstall && downloadedFilePath && fs.existsSync(downloadedFilePath)) {
@@ -752,4 +794,9 @@ app.on('before-quit', (event) => {
     `;
     exec(script); // fire-and-forget: app is already quitting
   }
+});
+
+// Close HTTP server only after all windows are gone (localStorage already flushed)
+app.on('will-quit', () => {
+  if (localServer) { try { localServer.close(); } catch {} localServer = null; }
 });
