@@ -72,6 +72,8 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   const [filters, setFilters] = useState({ brightness: 100, contrast: 100, saturation: 100 });
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
+  const [screenSources, setScreenSources] = useState<{ id: string; name: string; thumbnail: string }[]>([]);
+  const [showSourcePicker, setShowSourcePicker] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -485,6 +487,43 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       console.error("Screen capture failed:", err);
     }
   }, [screenSysAudio, screenMicOn, selectedMicId, stopStream, enumerateDevicesNow]);
+
+  /* ── Screen source picker (Electron only) ── */
+  const isElectron = !!(window as unknown as { electronAPI?: { getScreenSources?: () => Promise<unknown> } }).electronAPI?.getScreenSources;
+
+  const handleScreenStreamClick = useCallback(async () => {
+    if (!isElectron) {
+      // Browser: getDisplayMedia shows its own native picker
+      startScreenStream();
+      return;
+    }
+    // Electron: fetch sources and show picker
+    try {
+      const api = (window as unknown as { electronAPI: {
+        getScreenSources: () => Promise<{ id: string; name: string; thumbnail: string }[]>;
+        selectScreenSource: (id: string) => Promise<void>;
+      } }).electronAPI;
+      const sources = await api.getScreenSources();
+      setScreenSources(sources);
+      setShowSourcePicker(true);
+    } catch (err) {
+      console.error("Failed to get screen sources:", err);
+    }
+  }, [isElectron, startScreenStream]);
+
+  const pickSource = useCallback(async (sourceId: string) => {
+    setShowSourcePicker(false);
+    setScreenSources([]);
+    try {
+      const api = (window as unknown as { electronAPI: {
+        selectScreenSource: (id: string) => Promise<void>;
+      } }).electronAPI;
+      await api.selectScreenSource(sourceId);
+      startScreenStream();
+    } catch (err) {
+      console.error("Failed to select screen source:", err);
+    }
+  }, [startScreenStream]);
 
   /* ── Step 7: startRecording with composite support ── */
   const startRecording = useCallback(() => {
@@ -946,7 +985,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
           }}
         >
           <button
-            onClick={isStreaming ? stopStream : (captureMode === "screen" ? startScreenStream : startStream)}
+            onClick={isStreaming ? stopStream : (captureMode === "screen" ? handleScreenStreamClick : startStream)}
             style={{
               padding: "6px 12px",
               fontSize: "calc(12px * var(--text-scale))",
@@ -1173,6 +1212,73 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
                   </button>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Screen source picker modal (Electron only) */}
+      {showSourcePicker && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.85)",
+            zIndex: 100,
+            display: "flex",
+            flexDirection: "column",
+            padding: "16px",
+            borderRadius: "4px",
+            overflow: "auto",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+            <span style={{ color: "#fff", fontSize: "calc(14px * var(--text-scale))", fontWeight: 600 }}>
+              {pick("選擇螢幕來源", "Choose Screen Source")}
+            </span>
+            <button
+              onClick={() => { setShowSourcePicker(false); setScreenSources([]); }}
+              style={{ background: "none", border: "none", color: "#999", fontSize: "calc(18px * var(--text-scale))", cursor: "pointer" }}
+            >
+              ✕
+            </button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
+            {screenSources.map((src) => (
+              <button
+                key={src.id}
+                onClick={() => pickSource(src.id)}
+                style={{
+                  background: "none",
+                  border: "2px solid #555",
+                  borderRadius: "8px",
+                  padding: "8px",
+                  cursor: "pointer",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "8px",
+                  transition: "border-color 0.15s",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#4caf50"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#555"; }}
+              >
+                <img
+                  src={src.thumbnail}
+                  alt={src.name}
+                  style={{ width: "100%", borderRadius: "4px", objectFit: "contain" }}
+                />
+                <span style={{
+                  color: "#ccc",
+                  fontSize: "calc(11px * var(--text-scale))",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  width: "100%",
+                  textAlign: "center",
+                }}>
+                  {src.id.startsWith("screen:") ? pick("整個螢幕", "Entire Screen") : src.name}
+                </span>
+              </button>
             ))}
           </div>
         </div>

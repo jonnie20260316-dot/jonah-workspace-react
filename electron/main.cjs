@@ -65,13 +65,35 @@ function createWindow() {
     callback(['media', 'camera', 'microphone', 'display-capture'].includes(permission));
   });
 
-  // Enable getDisplayMedia() in renderer — provide entire screen by default
+  // Enable getDisplayMedia() in renderer — use pre-selected source from picker
+  let selectedSourceId = null;
+
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
     desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
-      // Prefer full-screen source (id starts with "screen:") over individual windows
-      const screen = sources.find((s) => s.id.startsWith('screen:'));
-      callback({ video: screen || sources[0], audio: 'loopback' });
+      let chosen = sources[0];
+      if (selectedSourceId) {
+        chosen = sources.find((s) => s.id === selectedSourceId) || chosen;
+        selectedSourceId = null;
+      }
+      callback({ video: chosen, audio: 'loopback' });
     });
+  });
+
+  // IPC: Screen source picker support
+  ipcMain.handle('screen:get-sources', async () => {
+    const sources = await desktopCapturer.getSources({
+      types: ['screen', 'window'],
+      thumbnailSize: { width: 320, height: 180 },
+    });
+    return sources.map((s) => ({
+      id: s.id,
+      name: s.name,
+      thumbnail: s.thumbnail.toDataURL(),
+    }));
+  });
+
+  ipcMain.handle('screen:select-source', (_event, id) => {
+    selectedSourceId = id;
   });
 
   if (isDev) {

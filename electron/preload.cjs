@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   writeFile: (dirPath, filename, content) => ipcRenderer.invoke('fs:write-file', dirPath, filename, content),
   fileExists: (dirPath, filename) => ipcRenderer.invoke('fs:file-exists', dirPath, filename),
 
+  // ── Screen capture source picker ───────────────────────────────────────────
+  getScreenSources: () => ipcRenderer.invoke('screen:get-sources'),
+  selectScreenSource: (id) => ipcRenderer.invoke('screen:select-source', id),
+
   // ── App info ──────────────────────────────────────────────────────────────
   getAppVersion: () => ipcRenderer.invoke('app:version'),
 
