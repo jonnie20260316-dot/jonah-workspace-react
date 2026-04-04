@@ -5,6 +5,8 @@ Newest sessions at the top.
 
 ---
 
+## 2026-04-04 | YouTube Studio Block — Selectable Upcoming Broadcasts — User selection state + clickable list items; active broadcast priority (live/testing always displayed); detail panel refactored for selected `ready` broadcasts; 1 file, +24 lines; build ✓ 1794 modules
+
 ## 2026-04-04 | YouTube Studio Broadcast Creation + RTMP Streaming — Inline form for creating broadcasts (title + privacy select); three YouTube API calls in sequence (createBroadcast → createLiveStream → bindBroadcast); FFmpeg RTMP streaming pipeline: MediaRecorder → 1s chunks → Electron IPC → FFmpeg stdin; new useStreamStore Zustand store for sharing MediaStream between VideoCaptureBlock and YouTubeStudioBlock; 5 files changed (+399 lines); build ✓ 1794 modules
 
 ## 2026-04-04 | YouTube Studio API Integration — Replaced iframe stub with YouTube Live Streaming API v3 dashboard; Google OAuth2 via Electron BrowserWindow (auth code exchange in main process); token management with auto-refresh; dashboard: broadcast status pill, viewer count, stream health, Go Live/End Stream buttons; 30s auto-poll; 5 files changed; build ✓ 1793 modules
