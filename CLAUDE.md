@@ -182,6 +182,7 @@ Do not exit silent after architecture, workflow, storage, guardrail, or major UX
 | JW-36 | **Sibling-Code Parity Check** — When fixing a calculation, transform, or coordinate math in a hook/utility, grep for all files doing the same category of math. List them all. Verify each applies the same fix or document why it should differ. |
 | JW-37 | **Plan-Before-Build Gate (>3 files)** — Before implementing a feature touching >3 files or >100 lines, write a numbered plan listing files and changes per file. Get user confirmation before coding. If user says "stop and plan," revert uncommitted changes and produce the plan. Bug fixes and single-file changes exempt. |
 | JW-38 | **Hidden Media Elements Must Stay in Layout** — Never use `display: none` on `<video>`, `<audio>`, or `<canvas>` elements that will be read programmatically. Use `opacity: 0; position: absolute; pointer-events: none`. Ensure `autoPlay` and `playsInline` on video elements that must play without user gesture. |
+| JW-39 | **Input-Focus Guard Before Global Key Hijacking** — Any `window` keydown handler that calls `preventDefault()` or `blur()` for a canvas shortcut MUST first check `isTextInputFocused()`. If focus is in an `<input>`, `<textarea>`, or `contentEditable` element, return early. Applies to Space, Delete, Backspace, arrows — any key that doubles as a typing character and a canvas action. |
 
 ## Session Protocol — Wrap It Up
 
@@ -232,7 +233,7 @@ git push
 
 Session recaps and lessons-locked files are in `history/`. Check the latest before starting a new round of work.
 
-Current state: **OBS-style seamless switching + Pin HUD + YouTube Studio block live (2026-04-04)** — 15 commits today: PiP bug fixes (8 bugs), Electron screen capture with source picker, Opt+drag resize fix, Pin-to-Corner HUD, OBS-style seamless source switching (MediaStream track replacement), YouTube Studio iframe block, beta/stable update channel. React app at 1792 modules, build ✓. All commits pushed.
+Current state: **YouTube Studio API integration (2026-04-04 session 3)** — Replaced iframe stub with YouTube Live Streaming API v3 dashboard (OAuth2 via Electron BrowserWindow, token management, broadcast control, stream health). React app at 1793 modules, build ✓.
 
 Electron: bundle includes `node_modules` (electron-updater fix). macOS mic/camera plist entries added.
 

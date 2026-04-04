@@ -4,6 +4,24 @@ const { app, BrowserWindow, ipcMain, dialog, session, desktopCapturer } = requir
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
+
+// ─── YouTube OAuth2 credentials (loaded from gitignored file) ────────────────
+let YT_CLIENT_ID = '';
+let YT_CLIENT_SECRET = '';
+const YT_REDIRECT_URI = 'http://localhost';
+const YT_SCOPE = 'https://www.googleapis.com/auth/youtube';
+
+try {
+  const credPath = path.join(__dirname, '..', 'youtube-credentials.json');
+  if (fs.existsSync(credPath)) {
+    const creds = JSON.parse(fs.readFileSync(credPath, 'utf-8'));
+    YT_CLIENT_ID = creds.client_id || '';
+    YT_CLIENT_SECRET = creds.client_secret || '';
+  }
+} catch (err) {
+  console.warn('YouTube credentials not found:', err.message);
+}
 
 const isDev = !app.isPackaged;
 
@@ -162,6 +180,129 @@ ipcMain.handle('fs:write-file', async (_event, dirPath, filename, content) => {
 ipcMain.handle('fs:file-exists', async (_event, dirPath, filename) => {
   try { return fs.existsSync(path.join(dirPath, filename)); }
   catch { return false; }
+});
+
+// ─── IPC: YouTube OAuth2 ─────────────────────────────────────────────────────
+
+/** POST to Google token endpoint, returns parsed JSON */
+function googleTokenRequest(body) {
+  return new Promise((resolve, reject) => {
+    const data = new URLSearchParams(body).toString();
+    const req = https.request({
+      hostname: 'oauth2.googleapis.com',
+      path: '/token',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(data),
+      },
+    }, (res) => {
+      let raw = '';
+      res.on('data', (chunk) => { raw += chunk; });
+      res.on('end', () => {
+        try { resolve(JSON.parse(raw)); }
+        catch { reject(new Error('Failed to parse token response')); }
+      });
+    });
+    req.on('error', reject);
+    req.write(data);
+    req.end();
+  });
+}
+
+ipcMain.handle('youtube:auth-start', async () => {
+  const authUrl = `https://accounts.google.com/o/oauth2/auth?` +
+    `client_id=${encodeURIComponent(YT_CLIENT_ID)}` +
+    `&redirect_uri=${encodeURIComponent(YT_REDIRECT_URI)}` +
+    `&response_type=code` +
+    `&scope=${encodeURIComponent(YT_SCOPE)}` +
+    `&access_type=offline` +
+    `&prompt=consent`;
+
+  const authWin = new BrowserWindow({
+    width: 520,
+    height: 700,
+    parent: mainWindow,
+    modal: true,
+    webPreferences: { nodeIntegration: false, contextIsolation: true },
+  });
+  authWin.setMenuBarVisibility(false);
+  authWin.loadURL(authUrl);
+
+  // Intercept redirect to http://localhost?code=...
+  authWin.webContents.on('will-redirect', async (_event, url) => {
+    if (!url.startsWith(YT_REDIRECT_URI)) return;
+    const code = new URL(url).searchParams.get('code');
+    if (!code) { authWin.close(); return; }
+
+    try {
+      const tokens = await googleTokenRequest({
+        code,
+        client_id: YT_CLIENT_ID,
+        client_secret: YT_CLIENT_SECRET,
+        redirect_uri: YT_REDIRECT_URI,
+        grant_type: 'authorization_code',
+      });
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('youtube:tokens', {
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          expiry_date: Date.now() + (tokens.expires_in || 3600) * 1000 - 60000,
+        });
+      }
+    } catch (err) {
+      console.error('YouTube token exchange failed:', err);
+    }
+    authWin.close();
+  });
+
+  // Also handle the case where Google puts code in the final URL (no redirect)
+  authWin.webContents.on('will-navigate', async (_event, url) => {
+    if (!url.startsWith(YT_REDIRECT_URI)) return;
+    const code = new URL(url).searchParams.get('code');
+    if (!code) { authWin.close(); return; }
+
+    try {
+      const tokens = await googleTokenRequest({
+        code,
+        client_id: YT_CLIENT_ID,
+        client_secret: YT_CLIENT_SECRET,
+        redirect_uri: YT_REDIRECT_URI,
+        grant_type: 'authorization_code',
+      });
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('youtube:tokens', {
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          expiry_date: Date.now() + (tokens.expires_in || 3600) * 1000 - 60000,
+        });
+      }
+    } catch (err) {
+      console.error('YouTube token exchange failed:', err);
+    }
+    authWin.close();
+  });
+});
+
+ipcMain.handle('youtube:refresh-token', async (_event, refreshToken) => {
+  try {
+    const result = await googleTokenRequest({
+      refresh_token: refreshToken,
+      client_id: YT_CLIENT_ID,
+      client_secret: YT_CLIENT_SECRET,
+      grant_type: 'refresh_token',
+    });
+    if (result.access_token) {
+      return {
+        access_token: result.access_token,
+        expires_in: result.expires_in || 3600,
+      };
+    }
+    return null;
+  } catch (err) {
+    console.error('YouTube token refresh failed:', err);
+    return null;
+  }
 });
 
 // ─── App lifecycle ────────────────────────────────────────────────────────────

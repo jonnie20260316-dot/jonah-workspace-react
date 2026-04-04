@@ -45,4 +45,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('updater:status', handler);
     return () => ipcRenderer.removeListener('updater:status', handler);
   },
+
+  // ── YouTube OAuth2 ──────────────────────────────────────────────────────
+  youtubeAuthStart: () => ipcRenderer.invoke('youtube:auth-start'),
+  youtubeRefreshToken: (refreshToken) => ipcRenderer.invoke('youtube:refresh-token', refreshToken),
+  onYoutubeTokens: (callback) => {
+    const handler = (_event, tokens) => callback(tokens);
+    ipcRenderer.on('youtube:tokens', handler);
+    return () => ipcRenderer.removeListener('youtube:tokens', handler);
+  },
 });

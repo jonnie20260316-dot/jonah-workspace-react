@@ -26,3 +26,6 @@ dist-ssr
 *.bak
 *.bak2
 release/
+
+# OAuth credentials (not committed — load from local file)
+youtube-credentials.json

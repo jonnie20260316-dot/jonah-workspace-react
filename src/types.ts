@@ -113,6 +113,13 @@ export interface SyncQueueItem {
   retryCount: number;
 }
 
+// ─── YouTube API types ───────────────────────────────────────────────────────
+export interface YTTokens {
+  access_token: string;
+  refresh_token: string;
+  expiry_date: number;
+}
+
 // ─── Electron IPC bridge ──────────────────────────────────────────────────────
 export type UpdateStatus =
   | { status: "idle" }
@@ -143,6 +150,10 @@ declare global {
       installUpdate: () => void;
       deferUpdate: () => Promise<void>;
       onUpdateStatus: (cb: (data: UpdateStatus) => void) => () => void;
+      // YouTube OAuth2
+      youtubeAuthStart: () => Promise<void>;
+      youtubeRefreshToken: (refreshToken: string) => Promise<{ access_token: string; expires_in: number } | null>;
+      onYoutubeTokens: (cb: (tokens: YTTokens) => void) => () => void;
     };
   }
 }

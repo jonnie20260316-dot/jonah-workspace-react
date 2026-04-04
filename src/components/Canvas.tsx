@@ -32,8 +32,36 @@ export function Canvas() {
 
   // Keyboard: Space = pan mode
   useEffect(() => {
+    // Check if focus is inside a text input, textarea, or contenteditable
+    const isTextInputFocused = (): boolean => {
+      const el = document.activeElement;
+      if (!el) return false;
+
+      // Check if element itself is input or textarea
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+        return true;
+      }
+
+      // Check if element is contenteditable
+      if (el instanceof HTMLElement && el.contentEditable === "true") {
+        return true;
+      }
+
+      // Check if focus is inside an input/textarea (e.g., shadow DOM or nested structure)
+      if (el instanceof HTMLElement && (el.closest("input") || el.closest("textarea"))) {
+        return true;
+      }
+
+      return false;
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Space") {
+        // If focus is in a text input, let space propagate normally
+        if (isTextInputFocused()) {
+          return;
+        }
+
         e.preventDefault(); // suppress scroll + typing on ALL Space keydowns (including repeats)
         if (!e.repeat) {
           if (document.activeElement instanceof HTMLElement) {

@@ -71,6 +71,27 @@ Wrap-up written by: Claude Code (Opus 4.6)
 - JW-33 amended to require `var(--text-scale, 1)` fallbacks in CSS files
 - See `history/lessons/2026-04-04-lessons-locked.md`
 
+### Lane 7: Space Text Input Fix (Session 2)
+- `isTextInputFocused()` guard added to Canvas.tsx space pan handler
+- Typing space in journal/content/any block input restored
+- JW-39 added (Input-Focus Guard Before Global Key Hijacking)
+- **Files:** `src/components/Canvas.tsx`
+
+### Lane 8: YouTube Studio API Integration (Session 3)
+- Replaced iframe stub with YouTube Live Streaming API v3 dashboard
+- Google OAuth2 flow via Electron BrowserWindow (auth code exchange in main process)
+- Token management: localStorage storage, auto-refresh via IPC
+- Dashboard UI: broadcast status pill, viewer count, stream health, Go Live / End Stream buttons
+- 30s auto-poll with cleanup (JW-28)
+- **Files:** `electron/main.cjs`, `electron/preload.cjs`, `src/types.ts`, `src/utils/youtubeApi.ts` (new), `src/blocks/YouTubeStudioBlock.tsx` (rewrite)
+
+---
+
+## What Shipped (Updated — All Sessions)
+- 20+ commits across 8 lanes, all pushed to `origin/main`
+- 1793 modules, 0 TypeScript errors
+- New files: `PinnedHUD.tsx`, `youtubeApi.ts`; rewritten: `YouTubeStudioBlock.tsx`
+
 ## Pending / Next
-- User testing needed for: seamless source switching, PinnedHUD, YouTube Studio block (JW-16)
+- User testing: YouTube Studio OAuth flow, seamless source switching, PinnedHUD
 - DMG rebuild: `npm run electron:build:mac`
