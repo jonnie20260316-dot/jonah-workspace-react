@@ -65,9 +65,13 @@ function createWindow() {
     callback(['media', 'camera', 'microphone', 'display-capture'].includes(permission));
   });
 
-  // Enable getDisplayMedia() in renderer — use native macOS/system picker
+  // Enable getDisplayMedia() in renderer — provide entire screen by default
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
-    callback({ video: null, audio: 'loopback', useSystemPicker: true });
+    desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
+      // Prefer full-screen source (id starts with "screen:") over individual windows
+      const screen = sources.find((s) => s.id.startsWith('screen:'));
+      callback({ video: screen || sources[0], audio: 'loopback' });
+    });
   });
 
   if (isDev) {
