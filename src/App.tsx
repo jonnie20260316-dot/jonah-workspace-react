@@ -10,11 +10,14 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useTimerTick } from "./hooks/useTimerTick";
 import { useSyncBoot } from "./hooks/useSyncBoot";
 import { useGitQuit } from "./hooks/useGitQuit";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { FitButton } from "./components/FitButton";
 
 export default function App() {
   useTimerTick();
   useSyncBoot();
   useGitQuit();
+  useKeyboardShortcuts();
 
   return (
     <ErrorBoundary>
@@ -29,6 +32,7 @@ export default function App() {
         <FAB />
         <ModalLayer />
         <ToastContainer />
+        <FitButton />
       </div>
     </ErrorBoundary>
   );

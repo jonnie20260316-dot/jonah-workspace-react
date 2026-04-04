@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, memo } from "react";
 import type { ReactNode } from "react";
 import { ChevronUp, ChevronDown, ArchiveX, Palette, GripVertical, Pin, PinOff } from "lucide-react";
 import { useBlockStore } from "../stores/useBlockStore";
+import { useSessionStore } from "../stores/useSessionStore";
 import { useBlockDrag } from "../hooks/useBlockDrag";
 import { useBlockResize } from "../hooks/useBlockResize";
 import { BLOCK_ICONS } from "../utils/blockIcons";
@@ -44,6 +45,8 @@ interface BlockShellProps {
 
 function BlockShellInner({ block, children }: BlockShellProps) {
   const { updateBlock, archiveBlock, bringToFront } = useBlockStore();
+  const { selectedIds, setSelectedIds, addToSelection } = useSessionStore();
+  const isSelected = selectedIds.includes(block.id);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   // Block bloom: animate on first mount, then clear class
   const [justCreated, setJustCreated] = useState(true);
@@ -96,7 +99,7 @@ function BlockShellInner({ block, children }: BlockShellProps) {
 
   return (
     <article
-      className={`board-block type-${block.type} ${block.collapsed ? "is-collapsed" : ""} ${colorClass} ${justCreated ? "block-bloom" : ""}`}
+      className={`board-block type-${block.type} ${block.collapsed ? "is-collapsed" : ""} ${colorClass} ${justCreated ? "block-bloom" : ""} ${isSelected ? "block-selected" : ""}`}
       data-id={block.id}
       data-type={block.type}
       style={{
@@ -110,7 +113,16 @@ function BlockShellInner({ block, children }: BlockShellProps) {
         minHeight: "200px",
         ...(block.textScale != null ? { "--text-scale": String(block.textScale) } as React.CSSProperties : {}),
       }}
-      onMouseDown={() => bringToFront(block.id)}
+      onMouseDown={(e) => {
+        bringToFront(block.id);
+        if (!(e.target as HTMLElement).closest("button")) {
+          if (e.shiftKey) {
+            addToSelection(block.id);
+          } else {
+            setSelectedIds([block.id]);
+          }
+        }
+      }}
     >
       {/* Block Header */}
       <div ref={headerRef} className="block-head">

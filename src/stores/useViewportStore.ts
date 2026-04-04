@@ -6,7 +6,7 @@ import {
   screenToBoardPoint,
 } from "../utils/viewport";
 import { MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from "../constants";
-import type { ViewportState, BoardSize } from "../types";
+import type { ViewportState, BoardSize, Block } from "../types";
 
 interface ViewportStore {
   viewport: ViewportState;
@@ -25,6 +25,7 @@ interface ViewportStore {
     viewportRect?: DOMRect
   ) => void;
   pan: (dx: number, dy: number) => void;
+  fitToContent: (blocks: Block[]) => void;
 }
 
 export const useViewportStore = create<ViewportStore>((set, get) => ({
@@ -83,4 +84,26 @@ export const useViewportStore = create<ViewportStore>((set, get) => ({
       saveJSON("viewport", clamped);
       return { viewport: clamped };
     }),
+
+  fitToContent: (blocks) => {
+    const visible = blocks.filter((b) => !b.archived && !b.pinned);
+    if (visible.length === 0) return;
+    const padding = 80;
+    const minX = Math.min(...visible.map((b) => b.x));
+    const minY = Math.min(...visible.map((b) => b.y));
+    const maxX = Math.max(...visible.map((b) => b.x + b.w));
+    const maxY = Math.max(...visible.map((b) => b.y + b.h));
+    const bboxW = maxX - minX + padding * 2;
+    const bboxH = maxY - minY + padding * 2;
+    const viewW = window.innerWidth;
+    const viewH = window.innerHeight;
+    const fitScale = Math.min(viewW / bboxW, viewH / bboxH, MAX_ZOOM);
+    const centerBoardX = minX - padding + bboxW / 2;
+    const centerBoardY = minY - padding + bboxH / 2;
+    const newX = centerBoardX - viewW / (2 * fitScale);
+    const newY = centerBoardY - viewH / (2 * fitScale);
+    const viewport = { x: newX, y: newY, scale: fitScale };
+    saveJSON("viewport", viewport);
+    set({ viewport });
+  },
 }));
