@@ -32,6 +32,7 @@ function makeShapePreview(type: string, x: number, y: number, w: number, h: numb
 export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
   const drawRef = useRef<{ startX: number; startY: number } | null>(null);
   const brushPointsRef = useRef<[number, number][]>([]);
+  const textClickRef = useRef<{ x: number; y: number } | null>(null);
   const [preview, setPreview] = useState<SurfaceElement | null>(null);
 
   // Connector tool state
@@ -61,6 +62,9 @@ export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
   }
 
   function onPointerDown(e: React.PointerEvent) {
+    // Clear stale text click ref
+    textClickRef.current = null;
+
     const { activeTool, setActiveTool, setSelectedIds, setEditingTextId } =
       useSessionStore.getState();
     if (!viewportRef.current) return;
@@ -77,36 +81,9 @@ export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
       return;
     }
 
-    // Text tool: single click → create element immediately → enter edit mode
+    // Text tool: record click position for creation on pointer-up (avoids focus timing issues)
     if (activeTool === "text") {
-      useHistoryStore.getState().push({
-        blocks: useBlockStore.getState().blocks,
-        elements: useSurfaceStore.getState().elements,
-      });
-      const b = getBoardPoint(e);
-      const id = crypto.randomUUID();
-      const el: SurfaceElement = {
-        id,
-        type: "text",
-        x: b.x,
-        y: b.y,
-        w: 200,
-        h: 40,
-        z: Date.now(),
-        fillColor: "transparent",
-        strokeColor: "transparent",
-        strokeWidth: 0,
-        strokeStyle: "solid",
-        opacity: 1,
-        text: "",
-        fontSize: 18,
-        fontWeight: "normal",
-        textAlign: "left",
-      };
-      useSurfaceStore.getState().addElement(el);
-      setSelectedIds([id]);
-      setEditingTextId(id);
-      setActiveTool("select");
+      textClickRef.current = getBoardPoint(e);
       e.stopPropagation();
       return;
     }
@@ -176,7 +153,32 @@ export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
   }
 
   function onPointerUp() {
-    const { activeTool, setActiveTool, setSelectedIds } = useSessionStore.getState();
+    const { activeTool, setActiveTool, setSelectedIds, setEditingTextId } = useSessionStore.getState();
+
+    // Text: commit element
+    if (textClickRef.current) {
+      const b = textClickRef.current;
+      textClickRef.current = null;
+
+      useHistoryStore.getState().push({
+        blocks: useBlockStore.getState().blocks,
+        elements: useSurfaceStore.getState().elements,
+      });
+
+      const id = crypto.randomUUID();
+      const el: SurfaceElement = {
+        id, type: "text",
+        x: b.x, y: b.y, w: 200, h: 40, z: Date.now(),
+        fillColor: "transparent", strokeColor: "transparent",
+        strokeWidth: 0, strokeStyle: "solid", opacity: 1,
+        text: "", fontSize: 18, fontWeight: "normal", textAlign: "left",
+      };
+      useSurfaceStore.getState().addElement(el);
+      setSelectedIds([id]);
+      setEditingTextId(id);
+      setActiveTool("select");
+      return;
+    }
 
     // Connector: commit
     if (activeTool === "connector") {

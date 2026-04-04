@@ -247,6 +247,7 @@ function FrameEl({ el, isSelected, onSelect, onUpdate, onDelete, onEnter, blockC
         <div
           className="frame-header"
           onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onSelect(); }}
           onDoubleClick={(e) => { e.stopPropagation(); onEnter?.(); }}
         >
           {/* Name input */}
