@@ -4,6 +4,7 @@ import { useBlockStore } from "../stores/useBlockStore";
 import { ZOOM_SENSITIVITY } from "../constants";
 import { BlockShell } from "../blocks/BlockShell";
 import { BLOCK_REGISTRY } from "../blocks/BlockRegistry";
+import { PinnedHUD } from "./PinnedHUD";
 import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
 
@@ -139,9 +140,9 @@ export function Canvas() {
           backgroundSize: "24px 24px",
         }}
       >
-        {/* Render all non-archived blocks */}
+        {/* Render all non-archived, non-pinned blocks */}
         {blocks
-          .filter((b) => !b.archived)
+          .filter((b) => !b.archived && !b.pinned)
           .map((block) => {
             const BlockComponent = BLOCK_REGISTRY[block.type]?.component;
             if (!BlockComponent) return null;
@@ -153,6 +154,9 @@ export function Canvas() {
             );
           })}
       </div>
+
+      {/* Pinned blocks HUD — viewport-fixed, outside canvas transform */}
+      <PinnedHUD />
 
       {/* Empty state — viewport-fixed, not on the canvas */}
       {blocks.filter((b) => !b.archived).length === 0 && (

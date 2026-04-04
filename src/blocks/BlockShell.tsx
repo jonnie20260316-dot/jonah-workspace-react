@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import type { ReactNode } from "react";
-import { ChevronUp, ChevronDown, ArchiveX, Palette, GripVertical } from "lucide-react";
+import { ChevronUp, ChevronDown, ArchiveX, Palette, GripVertical, Pin, PinOff } from "lucide-react";
 import { useBlockStore } from "../stores/useBlockStore";
 import { useBlockDrag } from "../hooks/useBlockDrag";
 import { useBlockResize } from "../hooks/useBlockResize";
@@ -66,6 +66,16 @@ export function BlockShell({ block, children }: BlockShellProps) {
 
   const handleCollapse = () => updateBlock(block.id, { collapsed: !block.collapsed });
   const handleArchive = () => archiveBlock(block.id);
+  const handlePin = () => {
+    if (block.pinned) {
+      updateBlock(block.id, { pinned: false });
+    } else {
+      // Assign next pinnedOrder
+      const pinnedBlocks = useBlockStore.getState().blocks.filter((b) => b.pinned);
+      const maxOrder = pinnedBlocks.reduce((max, b) => Math.max(max, b.pinnedOrder ?? 0), 0);
+      updateBlock(block.id, { pinned: true, collapsed: true, pinnedOrder: maxOrder + 1 });
+    }
+  };
 
   const handleColor = (themeId: string) => {
     updateBlock(block.id, { color: themeId });
@@ -121,6 +131,14 @@ export function BlockShell({ block, children }: BlockShellProps) {
 
         {/* Actions */}
         <div className="block-actions">
+          {/* Pin / Unpin */}
+          <button
+            onClick={handlePin}
+            title={pick(block.pinned ? "取消固定" : "固定", block.pinned ? "Unpin" : "Pin")}
+          >
+            {block.pinned ? <PinOff size={14} /> : <Pin size={14} />}
+          </button>
+
           {/* Collapse / Expand */}
           <button
             onClick={handleCollapse}

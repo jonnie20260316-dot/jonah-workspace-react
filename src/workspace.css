@@ -792,3 +792,54 @@ body[data-pan-mode] [contenteditable] {
 body[data-pan-mode] .board-block {
   cursor: grab !important;
 }
+
+/* ── Pinned HUD ─────────────────────────────────────────────────────────────── */
+.pinned-hud {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 10000;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+
+.pinned-hud-item {
+  pointer-events: all;
+}
+
+.pinned-hud .board-block {
+  pointer-events: all;
+  width: 280px !important;
+  min-width: unset !important;
+  min-height: unset !important;
+  height: auto !important;
+  position: relative !important;
+  left: unset !important;
+  top: unset !important;
+  z-index: unset !important;
+  box-shadow: var(--shadow-float);
+  border-radius: var(--radius-lg);
+}
+
+.pinned-hud .block-drag-handle {
+  opacity: 1;
+  cursor: grab;
+}
+
+.pinned-hud .block-head:active .block-drag-handle {
+  cursor: grabbing;
+}
+
+.pinned-hud .resize-handle {
+  display: none;
+}
+
+.pinned-hud .block-body {
+  max-height: 300px;
+  overflow-y: auto;
+}
