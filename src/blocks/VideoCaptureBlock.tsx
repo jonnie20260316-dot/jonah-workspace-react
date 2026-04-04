@@ -541,6 +541,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
         // Update hidden compositing video (for PiP canvas path)
         if (screenVideoRef.current) {
           screenVideoRef.current.srcObject = new MediaStream([newVideoTrack]);
+          screenVideoRef.current.play().catch((err) => console.warn("Screen video play failed:", err));
         }
 
         // Re-attach ended listener
@@ -557,6 +558,11 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
         });
         newVideoTrack = camStream.getVideoTracks()[0];
         if (!newVideoTrack) return;
+
+        // Clear the screen compositing video — no longer needed in camera mode
+        if (screenVideoRef.current) {
+          screenVideoRef.current.srcObject = null;
+        }
       }
 
       // Replace video track on live stream (MediaRecorder stays attached)
@@ -566,11 +572,13 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
           t.stop();
         });
         streamRef.current.addTrack(newVideoTrack);
+        useStreamStore.getState().setActiveStream(streamRef.current);
       }
 
       // Update visible preview
       if (videoRef.current) {
         videoRef.current.srcObject = streamRef.current;
+        videoRef.current.play().catch((err) => console.warn("Preview play failed:", err));
       }
 
       // Update mode and stats
