@@ -41,6 +41,34 @@ export function useKeyboardShortcuts(): void {
           case "H":
             setActiveTool("pan");
             break;
+          case "r":
+          case "R":
+            setActiveTool("rect");
+            break;
+          case "e":
+          case "E":
+            setActiveTool("ellipse");
+            break;
+          case "d":
+          case "D":
+            setActiveTool("diamond");
+            break;
+          case "t":
+          case "T":
+            setActiveTool("text");
+            break;
+          case "p":
+          case "P":
+            setActiveTool("brush");
+            break;
+          case "l":
+          case "L":
+            setActiveTool("connector");
+            break;
+          case "f":
+          case "F":
+            setActiveTool("frame");
+            break;
           case "Escape":
             setActiveTool("select");
             clearSelection();

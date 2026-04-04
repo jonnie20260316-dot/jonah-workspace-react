@@ -12,6 +12,7 @@ import { useSyncBoot } from "./hooks/useSyncBoot";
 import { useGitQuit } from "./hooks/useGitQuit";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { FitButton } from "./components/FitButton";
+import { ToolBar } from "./components/ToolBar";
 
 export default function App() {
   useTimerTick();
@@ -33,6 +34,7 @@ export default function App() {
         <ModalLayer />
         <ToastContainer />
         <FitButton />
+        <ToolBar />
       </div>
     </ErrorBoundary>
   );

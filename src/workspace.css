@@ -51,6 +51,57 @@
   color: var(--ink);
   box-shadow: var(--shadow-float);
 }
+
+/* ========== ToolBar ========== */
+.tool-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 185;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--surface-2, #1e1e1e);
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  user-select: none;
+}
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, rgba(255,255,255,0.5));
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.tool-btn:hover {
+  background: var(--surface-3, rgba(255,255,255,0.08));
+  color: var(--text-primary, rgba(255,255,255,0.9));
+}
+
+.tool-btn.active {
+  background: var(--accent, #4f9cf9);
+  color: #fff;
+}
+
+.tool-bar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border, rgba(255,255,255,0.1));
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
 .board-block.is-collapsed .block-body { display: none; }
 
 /* === Block Header === */

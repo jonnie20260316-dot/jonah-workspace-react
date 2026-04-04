@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { useViewportStore } from "../stores/useViewportStore";
 import { useBlockStore } from "../stores/useBlockStore";
+import { useSessionStore } from "../stores/useSessionStore";
 import { ZOOM_SENSITIVITY } from "../constants";
 import { BlockShell } from "../blocks/BlockShell";
 import { BLOCK_REGISTRY } from "../blocks/BlockRegistry";
@@ -10,12 +11,25 @@ import { SurfaceForeground } from "./SurfaceForeground";
 import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
 
+const TOOL_CURSOR: Record<string, string> = {
+  select:    "default",
+  pan:       "grab",
+  rect:      "crosshair",
+  ellipse:   "crosshair",
+  diamond:   "crosshair",
+  text:      "text",
+  brush:     "crosshair",
+  connector: "crosshair",
+  frame:     "crosshair",
+};
+
 export function Canvas() {
   useLang();
   const viewportRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const { viewport, zoomTo } = useViewportStore();
   const { blocks } = useBlockStore();
+  const activeTool = useSessionStore((s) => s.activeTool);
   const panStateRef = useRef<{
     startX: number;
     startY: number;
@@ -23,7 +37,10 @@ export function Canvas() {
     baseY: number;
   } | null>(null);
   const spacePressedRef = useRef(false);
-  const [cursor, setCursor] = useState("default");
+  const [spaceOverride, setSpaceOverride] = useState<string | null>(null);
+
+  // Resolved cursor: space pan overrides tool cursor
+  const cursor = spaceOverride ?? TOOL_CURSOR[activeTool] ?? "default";
 
   // Apply viewport transform imperatively
   useEffect(() => {
@@ -71,7 +88,7 @@ export function Canvas() {
           }
           spacePressedRef.current = true;
           document.body.dataset.panMode = "1";
-          setCursor("grab");
+          setSpaceOverride("grab");
         }
       }
     };
@@ -81,7 +98,7 @@ export function Canvas() {
         spacePressedRef.current = false;
         panStateRef.current = null;
         delete document.body.dataset.panMode;
-        setCursor("default");
+        setSpaceOverride(null);
       }
     };
 
@@ -120,7 +137,7 @@ export function Canvas() {
       baseX: viewport.x,
       baseY: viewport.y,
     };
-    setCursor("grabbing");
+    setSpaceOverride("grabbing");
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
 
@@ -136,7 +153,7 @@ export function Canvas() {
 
   const onPointerUp = () => {
     panStateRef.current = null;
-    setCursor(spacePressedRef.current ? "grab" : "default");
+    setSpaceOverride(spacePressedRef.current ? "grab" : null);
   };
 
   return (
