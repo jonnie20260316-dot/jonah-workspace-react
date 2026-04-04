@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, Fragment } from "react";
 import { useViewportStore } from "../stores/useViewportStore";
 import { useBlockStore } from "../stores/useBlockStore";
 import { useSessionStore } from "../stores/useSessionStore";
+import { useSurfaceStore } from "../stores/useSurfaceStore";
 import { ZOOM_SENSITIVITY } from "../constants";
 import { BlockShell } from "../blocks/BlockShell";
 import { BLOCK_REGISTRY } from "../blocks/BlockRegistry";
@@ -9,9 +10,12 @@ import { PinnedHUD } from "./PinnedHUD";
 import { SurfaceBackground } from "./SurfaceBackground";
 import { SurfaceForeground } from "./SurfaceForeground";
 import { FrameSwitcher } from "./FrameSwitcher";
+import { ContextMenu } from "./ContextMenu";
 import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
 import { useDrawTool } from "../hooks/useDrawTool";
+import { screenToBoardPoint } from "../utils/viewport";
+import { rectsIntersect } from "../utils/geometry";
 
 const TOOL_CURSOR: Record<string, string> = {
   select:    "default",
@@ -43,6 +47,13 @@ export function Canvas() {
   const spacePressedRef = useRef(false);
   const [spaceOverride, setSpaceOverride] = useState<string | null>(null);
   const drawTool = useDrawTool(viewportRef);
+
+  // Drag-select rect
+  const dragSelectRef = useRef<{ startBX: number; startBY: number } | null>(null);
+  const [dragSelectRect, setDragSelectRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+
+  // Context menu
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; targetId: string | null } | null>(null);
 
   // Resolved cursor: space pan overrides tool cursor
   const cursor = spaceOverride ?? TOOL_CURSOR[activeTool] ?? "default";
@@ -95,6 +106,45 @@ export function Canvas() {
         if (isTextInputFocused()) return;
         e.preventDefault();
         setFrameSwitcherOpen(true);
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "a") {
+        if (isTextInputFocused()) return;
+        e.preventDefault();
+        const ids = useBlockStore.getState().blocks
+          .filter((b) => !b.archived && !b.pinned)
+          .map((b) => b.id);
+        useSessionStore.getState().setSelectedIds(ids);
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "d") {
+        if (isTextInputFocused()) return;
+        e.preventDefault();
+        const { selectedIds } = useSessionStore.getState();
+        const { blocks: allBlocks, addBlock } = useBlockStore.getState();
+        const newIds: string[] = [];
+        for (const id of selectedIds) {
+          const block = allBlocks.find((b) => b.id === id);
+          if (!block) continue;
+          const newId = crypto.randomUUID();
+          addBlock({ ...block, id: newId, x: block.x + 20, y: block.y + 20 });
+          newIds.push(newId);
+        }
+        if (newIds.length) useSessionStore.getState().setSelectedIds(newIds);
+        return;
+      }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (isTextInputFocused()) return;
+        const { selectedIds } = useSessionStore.getState();
+        if (!selectedIds.length) return;
+        e.preventDefault();
+        const { archiveBlock } = useBlockStore.getState();
+        const { elements, removeElement } = useSurfaceStore.getState();
+        for (const id of selectedIds) {
+          if (elements.some((el) => el.id === id)) removeElement(id);
+          else archiveBlock(id);
+        }
+        useSessionStore.getState().clearSelection();
         return;
       }
       if (e.code === "Space") {
@@ -152,6 +202,7 @@ export function Canvas() {
 
   // Pointer pan (Space + drag) and draw tool delegation
   const onPointerDown = (e: React.PointerEvent) => {
+    setContextMenu(null);
     if (spacePressedRef.current) {
       panStateRef.current = {
         startX: e.clientX,
@@ -169,9 +220,19 @@ export function Canvas() {
       drawTool.onPointerDown(e);
       return;
     }
-    // Select tool: click on empty canvas → clear selection
-    if (activeTool === "select" && (e.target as HTMLElement) === e.currentTarget) {
+    // Select tool: click on empty canvas (canvasRef bg or viewport bg) → clear selection + start drag-select
+    const targetEl = e.target as HTMLElement;
+    const isEmptyCanvas =
+      targetEl === canvasRef.current || targetEl === viewportRef.current;
+    if (activeTool === "select" && isEmptyCanvas) {
       clearSelection();
+      if (!viewportRef.current) return;
+      const { viewport: vp } = useViewportStore.getState();
+      const rect = viewportRef.current.getBoundingClientRect();
+      const b = screenToBoardPoint(e.clientX, e.clientY, vp, rect);
+      dragSelectRef.current = { startBX: b.x, startBY: b.y };
+      setDragSelectRect({ x: b.x, y: b.y, w: 0, h: 0 });
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
     }
   };
 
@@ -185,12 +246,44 @@ export function Canvas() {
       }));
       return;
     }
+    if (dragSelectRef.current && viewportRef.current) {
+      const { viewport: vp } = useViewportStore.getState();
+      const rect = viewportRef.current.getBoundingClientRect();
+      const b = screenToBoardPoint(e.clientX, e.clientY, vp, rect);
+      const { startBX, startBY } = dragSelectRef.current;
+      setDragSelectRect({
+        x: Math.min(startBX, b.x),
+        y: Math.min(startBY, b.y),
+        w: Math.abs(b.x - startBX),
+        h: Math.abs(b.y - startBY),
+      });
+      return;
+    }
     drawTool.onPointerMove(e);
   };
 
   const onPointerUp = () => {
     panStateRef.current = null;
     setSpaceOverride(spacePressedRef.current ? "grab" : null);
+    if (dragSelectRef.current) {
+      dragSelectRef.current = null;
+      setDragSelectRect((sel) => {
+        if (sel && (sel.w > 5 || sel.h > 5)) {
+          const { blocks: allBlocks } = useBlockStore.getState();
+          const { elements } = useSurfaceStore.getState();
+          const ids: string[] = [];
+          for (const b of allBlocks) {
+            if (!b.archived && !b.pinned && rectsIntersect(b, sel)) ids.push(b.id);
+          }
+          for (const el of elements) {
+            if (el.type !== "frame" && rectsIntersect(el, sel)) ids.push(el.id);
+          }
+          if (ids.length) useSessionStore.getState().setSelectedIds(ids);
+        }
+        return null;
+      });
+      return;
+    }
     drawTool.onPointerUp();
   };
 
@@ -213,6 +306,16 @@ export function Canvas() {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        const targetEl = e.target as HTMLElement;
+        const blockEl = targetEl.closest("[data-id]");
+        setContextMenu({
+          x: e.clientX,
+          y: e.clientY,
+          targetId: blockEl?.getAttribute("data-id") ?? null,
+        });
+      }}
     >
       <div
         ref={canvasRef}
@@ -245,7 +348,7 @@ export function Canvas() {
           })}
 
         {/* Surface foreground: connectors, selection handles — above blocks */}
-        <SurfaceForeground viewportRef={viewportRef} connectorDraft={drawTool.connectorDraft} />
+        <SurfaceForeground viewportRef={viewportRef} connectorDraft={drawTool.connectorDraft} dragSelectRect={dragSelectRect} />
       </div>
 
       {/* Pinned blocks HUD — viewport-fixed, outside canvas transform */}
@@ -262,6 +365,14 @@ export function Canvas() {
       )}
     </div>
     <FrameSwitcher open={frameSwitcherOpen} onClose={() => setFrameSwitcherOpen(false)} />
+    {contextMenu && (
+      <ContextMenu
+        x={contextMenu.x}
+        y={contextMenu.y}
+        targetId={contextMenu.targetId}
+        onClose={() => setContextMenu(null)}
+      />
+    )}
     </Fragment>
   );
 }

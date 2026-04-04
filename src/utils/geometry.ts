@@ -17,6 +17,14 @@ export function getConnectionPoints(
   ];
 }
 
+/** Returns true if two axis-aligned rects overlap */
+export function rectsIntersect(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number }
+): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
 /** Returns the connection point on bounds nearest to (mx, my), with its distance */
 export function nearestConnectionPoint(
   mx: number,

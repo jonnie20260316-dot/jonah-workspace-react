@@ -12,6 +12,7 @@ type Corner = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 interface Props {
   viewportRef: RefObject<HTMLDivElement | null>;
   connectorDraft?: { fx: number; fy: number; tx: number; ty: number } | null;
+  dragSelectRect?: { x: number; y: number; w: number; h: number } | null;
 }
 
 const HANDLE_SIZE = 8;
@@ -55,7 +56,7 @@ function applyResize(
  * SurfaceForeground — top SVG layer of the Edgeless whiteboard.
  * Renders connectors, selection handles, and snap dots above all blocks.
  */
-export function SurfaceForeground({ viewportRef, connectorDraft }: Props) {
+export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect }: Props) {
   const { elements, updateElement } = useSurfaceStore();
   const { selectedIds, setSelectedIds, activeTool } = useSessionStore();
 
@@ -233,7 +234,22 @@ export function SurfaceForeground({ viewportRef, connectorDraft }: Props) {
         ))}
       </g>
 
-      <g className="surface-drag-rect" />
+      <g className="surface-drag-rect">
+        {dragSelectRect && dragSelectRect.w > 2 && dragSelectRect.h > 2 && (
+          <rect
+            x={dragSelectRect.x}
+            y={dragSelectRect.y}
+            width={dragSelectRect.w}
+            height={dragSelectRect.h}
+            fill="rgba(79,156,249,0.07)"
+            stroke="var(--accent, #4f9cf9)"
+            strokeWidth={1.5}
+            strokeDasharray="5 3"
+            rx={3}
+            pointerEvents="none"
+          />
+        )}
+      </g>
     </svg>
   );
 }

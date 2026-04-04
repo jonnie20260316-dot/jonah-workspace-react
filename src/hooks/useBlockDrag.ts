@@ -16,6 +16,8 @@ interface DragState {
   blockH: number;
   boardW: number;
   boardH: number;
+  // Multi-select: base positions of all other selected blocks
+  multiBlocks?: Record<string, { x: number; y: number; w: number; h: number }>;
 }
 
 /**
@@ -43,6 +45,19 @@ export function useBlockDrag(
       const block = useBlockStore.getState().blocks.find((b) => b.id === blockId);
       if (!block) return;
 
+      // Capture base positions for all other selected blocks (multi-drag)
+      const { selectedIds } = useSessionStore.getState();
+      let multiBlocks: Record<string, { x: number; y: number; w: number; h: number }> | undefined;
+      if (selectedIds.includes(blockId) && selectedIds.length > 1) {
+        const allBlocks = useBlockStore.getState().blocks;
+        multiBlocks = {};
+        for (const id of selectedIds) {
+          if (id === blockId) continue;
+          const b = allBlocks.find((bl) => bl.id === id);
+          if (b) multiBlocks[id] = { x: b.x, y: b.y, w: b.w, h: b.h };
+        }
+      }
+
       dragState = {
         startX: e.clientX,
         startY: e.clientY,
@@ -52,6 +67,7 @@ export function useBlockDrag(
         blockH: block.h,
         boardW: 20000,
         boardH: 15000,
+        multiBlocks,
       };
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
     };
@@ -88,6 +104,16 @@ export function useBlockDrag(
         );
 
         updateBlock(blockId, { x: clamped.x, y: clamped.y });
+
+        // Move all other selected blocks by the same raw delta
+        if (dragState.multiBlocks) {
+          for (const [id, base] of Object.entries(dragState.multiBlocks)) {
+            const bx = snapValue(base.x + deltaX, GRID, snapMode);
+            const by = snapValue(base.y + deltaY, GRID, snapMode);
+            const cl = clampBlockBounds(bx, by, base.w, base.h, { w: dragState.boardW, h: dragState.boardH });
+            updateBlock(id, { x: cl.x, y: cl.y });
+          }
+        }
       });
     };
 
