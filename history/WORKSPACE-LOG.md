@@ -5,6 +5,8 @@ Newest sessions at the top.
 
 ---
 
+## 2026-04-04 | Persistence Stability + Update Check Fix (v1.0.7 SHIPPED) — Three critical persistence issues fixed: (1) GitHub settings lost across quit/restart — added github-sync-* keys to GLOBAL_KEYS + boot-time migration for stranded session-scoped keys; (2) sync kills active recordings — implemented granular block merge (JSON comparison + per-block updates) to preserve React component identity instead of full array replacement, plus same-device sync skip to avoid rehydration on own data; (3) macOS screen recording permission reset — added permission status detection + bilingual user guidance banner. Update checker broken: dev-app-update.yml missing from bundled app → created + added to electron-builder.yml; error reporting silent → modified updater:check handler to pass error message to UI. Version bump 1.0.6 → 1.0.7. Both x64+arm64 DMGs built successfully. GitHub release created with all artifacts. 12 files changed, +247 lines; build ✓ 1795 modules. See history/recaps/2026-04-04-v1.0.7-persistence-update-check-fix.md
+
 ## 2026-04-04 | GitHub REST API Sync Fix (v1.0.6) — Root-cause fix for git sync never working: replaced `child_process.exec('git push ...')` (cannot authenticate HTTPS interactively, hangs 30s silently) with direct GitHub Contents API calls (GET + PUT with PAT, 15s timeout, immediate error); new GearMenu UI (repo URL + PAT password input, inline errors); auto-migration from old git-sync-remote key; added 2-minute auto-backup interval; quit sync now max 15s instead of 30s; 9 files, -109 net lines; build ✓ 1795 modules; new prevention rule GIT-EXEC-1; v1.0.6 DMG built
 
 ---
