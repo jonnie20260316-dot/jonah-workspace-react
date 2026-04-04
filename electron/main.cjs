@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
+const http = require('http');
 
 // ─── FFmpeg binary path (from ffmpeg-static) ─────────────────────────────────
 let ffmpegPath;
@@ -43,6 +44,7 @@ const isDev = !app.isPackaged;
 // ─── Updater: push status to renderer ────────────────────────────────────────
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = false;
+autoUpdater.forceDevUpdateConfig = true; // skip macOS code-signature check for ad-hoc signed apps
 
 let mainWindow = null;
 
@@ -78,8 +80,50 @@ autoUpdater.on('error', (err) => {
   sendUpdaterStatus({ status: 'error', message: err?.message || String(err) });
 });
 
+// ─── Local HTTP server (production) — keeps origin at localhost:5173 ─────────
+let localServer = null;
+
+const MIME = {
+  '.html': 'text/html',
+  '.js':   'application/javascript',
+  '.css':  'text/css',
+  '.json': 'application/json',
+  '.wasm': 'application/wasm',
+  '.svg':  'image/svg+xml',
+  '.png':  'image/png',
+  '.ico':  'image/x-icon',
+  '.webp': 'image/webp',
+  '.ttf':  'font/ttf',
+  '.woff': 'font/woff',
+  '.woff2':'font/woff2',
+};
+
+function startLocalServer(distPath, port) {
+  return new Promise((resolve, reject) => {
+    localServer = http.createServer((req, res) => {
+      let urlPath = req.url.split('?')[0];
+      if (urlPath === '/') urlPath = '/index.html';
+      const filePath = path.join(distPath, urlPath);
+      const ext = path.extname(filePath).toLowerCase();
+
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+        fs.createReadStream(filePath).pipe(res);
+      } else {
+        // SPA fallback
+        const index = path.join(distPath, 'index.html');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        fs.createReadStream(index).pipe(res);
+      }
+    });
+
+    localServer.on('error', reject);
+    localServer.listen(port, '127.0.0.1', () => resolve());
+  });
+}
+
 // ─── Window ───────────────────────────────────────────────────────────────────
-function createWindow() {
+async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -133,7 +177,9 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    const distPath = path.join(__dirname, '../dist');
+    await startLocalServer(distPath, 5173);
+    mainWindow.loadURL('http://localhost:5173');
     // Silent background check on launch — UI handles the result
     setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 5000);
   }
@@ -443,4 +489,8 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('before-quit', () => {
+  if (localServer) { try { localServer.close(); } catch {} localServer = null; }
 });

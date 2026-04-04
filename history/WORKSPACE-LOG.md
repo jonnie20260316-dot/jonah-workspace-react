@@ -50,3 +50,5 @@ Newest sessions at the top.
 ## 2026-04-02 | Phase 3: Blocks Functional — 8 broken blocks fixed (Tasks/Timer/Projects/ThreadsIntel/PromptedNotes/Spotify/VideoCapture/Intel); deep audit 20+ bugs; JW-24–JW-29 added
 
 ## 2026-04-02 | React Migration Kickoff — Full planning, URD, pre-flight checklist; zero workspace.html changes
+
+## 2026-04-04 | Data persistence + auto-update fix — local HTTP server in prod (same origin as dev), forceDevUpdateConfig for unsigned app; v1.0.3 release
