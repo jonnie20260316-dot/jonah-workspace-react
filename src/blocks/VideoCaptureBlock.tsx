@@ -25,7 +25,7 @@ function PipPreviewVideo({ stream }: { stream: MediaStream | null }) {
   useEffect(() => {
     if (ref.current) {
       ref.current.srcObject = stream;
-      if (stream) ref.current.play().catch(() => {});
+      if (stream) ref.current.play().catch((err) => console.warn("PiP preview play failed:", err));
     }
   }, [stream]);
   return (
@@ -67,6 +67,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   const [savedVideos, setSavedVideos] = useState<SavedVideo[]>(() =>
     loadJSON(`vc-saved-videos:${block.id}`, [])
   );
+  const [isPipActive, setIsPipActive] = useState(false);
   const [streamStats, setStreamStats] = useState({ fps: "—", res: "—" });
   const [filters, setFilters] = useState({ brightness: 100, contrast: 100, saturation: 100 });
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
@@ -89,11 +90,15 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   const pipStreamRef = useRef<MediaStream | null>(null);
   const compositeStreamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number>(0);
+  const pipPositionRef = useRef(pipPosition);
   const pipDragRef = useRef<{ dragging: boolean; offsetX: number; offsetY: number }>({ dragging: false, offsetX: 0, offsetY: 0 });
   const stageRef = useRef<HTMLDivElement>(null);
 
   // Keep captureModeRef in sync for use inside recorder.onstop closure
   useEffect(() => { captureModeRef.current = captureMode; }, [captureMode]);
+
+  // Keep pipPositionRef in sync so RAF loop reads fresh position (BUG 1 fix)
+  useEffect(() => { pipPositionRef.current = pipPosition; }, [pipPosition]);
 
   /* ── Step 2: Device enumeration ── */
   const enumerateDevicesNow = useCallback(async () => {
@@ -145,8 +150,9 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
         const margin = 16;
         const maxX = canvas.width - pipW - margin;
         const maxY = canvas.height - pipH - margin;
-        const px = margin + pipPosition.x * maxX;
-        const py = margin + pipPosition.y * maxY;
+        const pos = pipPositionRef.current;
+        const px = margin + pos.x * maxX;
+        const py = margin + pos.y * maxY;
 
         // Rounded rectangle clip
         const radius = 12;
@@ -189,7 +195,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     };
 
     rafRef.current = requestAnimationFrame(draw);
-  }, [pipPosition]);
+  }, []);
 
   const stopCompositeLoop = useCallback(() => {
     if (rafRef.current) {
@@ -216,7 +222,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
 
       if (pipVideoRef.current) {
         pipVideoRef.current.srcObject = stream;
-        pipVideoRef.current.play().catch(() => {});
+        pipVideoRef.current.play().catch((err) => console.warn("PiP video play failed:", err));
       }
 
       // Re-enumerate to get real labels after permission grant
@@ -236,6 +242,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       if (canvas && typeof canvas.captureStream === "function") {
         compositeStreamRef.current = canvas.captureStream(30);
       }
+      setIsPipActive(true);
     } catch (err) {
       console.error("PiP camera failed:", err);
       setPipEnabled(false);
@@ -243,6 +250,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   }, [selectedCamId, enumerateDevicesNow, startCompositeLoop, setPipEnabled]);
 
   const stopPipCamera = useCallback(() => {
+    setIsPipActive(false);
     stopCompositeLoop();
     if (pipStreamRef.current) {
       pipStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -258,8 +266,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     } else {
       stopPipCamera();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pipEnabled, isStreaming, captureMode]);
+  }, [pipEnabled, isStreaming, captureMode, startPipCamera, stopPipCamera]);
 
   // Cleanup on unmount (JW-28)
   useEffect(() => {
@@ -448,7 +455,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       }
       if (screenVideoRef.current) {
         screenVideoRef.current.srcObject = new MediaStream(displayStream.getVideoTracks());
-        screenVideoRef.current.play().catch(() => {});
+        screenVideoRef.current.play().catch((err) => console.warn("Screen video play failed:", err));
       }
 
       setIsStreaming(true);
@@ -865,12 +872,12 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
         />
 
         {/* Hidden elements for canvas compositing */}
-        <video ref={screenVideoRef} muted playsInline style={{ display: "none" }} />
-        <video ref={pipVideoRef} muted playsInline style={{ display: "none" }} />
+        <video ref={screenVideoRef} autoPlay muted playsInline style={{ display: "none" }} />
+        <video ref={pipVideoRef} autoPlay muted playsInline style={{ display: "none" }} />
         <canvas ref={canvasRef} style={{ display: "none" }} />
 
         {/* PiP overlay (draggable preview) */}
-        {pipEnabled && isStreaming && captureMode === "screen" && pipStreamRef.current && (
+        {pipEnabled && isStreaming && captureMode === "screen" && isPipActive && (
           <div
             style={pipOverlayStyle()}
             onMouseDown={handlePipDragStart}
@@ -946,7 +953,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
           </button>
           <button
             onClick={isRecording ? stopRecording : startRecording}
-            disabled={!isStreaming}
+            disabled={!isStreaming || (captureMode === "screen" && pipEnabled && !isPipActive)}
             style={{
               padding: "6px 12px",
               fontSize: "calc(12px * var(--text-scale))",
