@@ -60,3 +60,5 @@ Newest sessions at the top.
 ## 2026-04-04 | Data persistence + auto-update fix — local HTTP server in prod (same origin as dev), forceDevUpdateConfig for unsigned app; v1.0.3 release
 
 ## 2026-04-04 | Auto-update 404 fix — electron-builder artifactName explicit; new prevention rule EBUILD-1
+
+## 2026-04-04 | Squirrel.Mac bypass — custom ditto installer for unsigned auto-update; 5 audit bugs fixed; v1.0.4 released
