@@ -78,6 +78,7 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
   const [createTitle, setCreateTitle] = useState("");
   const [createPrivacy, setCreatePrivacy] = useState<"public" | "private" | "unlisted">("private");
   const [creating, setCreating] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const activeStream = useStreamStore((s) => s.activeStream);
@@ -324,7 +325,9 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
   // ─── Authenticated state ─────────────────────────────────────────────────
   const activeBc = broadcasts.find(
     (b) => b.lifeCycleStatus === "live" || b.lifeCycleStatus === "testing"
-  );
+  ) ?? null;
+  const selectedBc = selectedId ? broadcasts.find((b) => b.id === selectedId) ?? null : null;
+  const displayedBc = activeBc ?? selectedBc;
   const upcomingBcs = broadcasts.filter(
     (b) => b.lifeCycleStatus !== "live" && b.lifeCycleStatus !== "testing" && b.lifeCycleStatus !== "complete"
   );
@@ -375,33 +378,33 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
         </div>
       )}
 
-      {/* Active broadcast */}
-      {activeBc && (
+      {/* Active / selected broadcast */}
+      {displayedBc && (
         <div style={{
           padding: "12px", backgroundColor: "#fafafa", borderRadius: "8px",
-          border: `2px solid ${statusColor(activeBc.lifeCycleStatus)}`,
+          border: `2px solid ${statusColor(displayedBc.lifeCycleStatus)}`,
           display: "flex", flexDirection: "column", gap: "10px",
         }}>
           {/* Title + status */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: s(14), fontWeight: 600, color: "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {activeBc.title || pick("未命名直播", "Untitled broadcast")}
+              {displayedBc.title || pick("未命名直播", "Untitled broadcast")}
             </span>
             <span style={{
               padding: "3px 10px", fontSize: s(10), fontWeight: 700,
-              backgroundColor: statusColor(activeBc.lifeCycleStatus),
+              backgroundColor: statusColor(displayedBc.lifeCycleStatus),
               color: "#fff", borderRadius: "12px", textTransform: "uppercase",
             }}>
-              {statusLabel(activeBc.lifeCycleStatus)}
+              {statusLabel(displayedBc.lifeCycleStatus)}
             </span>
           </div>
 
           {/* Viewers */}
-          {activeBc.lifeCycleStatus === "live" && (
+          {displayedBc.lifeCycleStatus === "live" && (
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <span style={{ color: "#ff0000", fontSize: s(12) }}>●</span>
               <span style={{ fontSize: s(13), fontWeight: 600, color: "#333" }}>
-                {activeBc.concurrentViewers ?? "0"}
+                {displayedBc.concurrentViewers ?? "0"}
               </span>
               <span style={{ fontSize: s(11), color: "#888" }}>
                 {pick("位觀眾", "watching")}
@@ -445,9 +448,9 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
 
           {/* Broadcast control buttons */}
           <div style={{ display: "flex", gap: "8px" }}>
-            {activeBc.lifeCycleStatus === "ready" && (
+            {displayedBc.lifeCycleStatus === "ready" && (
               <button
-                onClick={() => handleTransition(activeBc.id, "testing")}
+                onClick={() => handleTransition(displayedBc.id, "testing")}
                 disabled={transitioning}
                 style={{
                   flex: 1, padding: "8px", fontSize: s(12), fontWeight: 600,
@@ -459,9 +462,9 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
                 {pick("開始預覽", "Start Preview")}
               </button>
             )}
-            {(activeBc.lifeCycleStatus === "testing" || activeBc.lifeCycleStatus === "ready") && (
+            {(displayedBc.lifeCycleStatus === "testing" || displayedBc.lifeCycleStatus === "ready") && (
               <button
-                onClick={() => handleTransition(activeBc.id, "live")}
+                onClick={() => handleTransition(displayedBc.id, "live")}
                 disabled={transitioning}
                 style={{
                   flex: 1, padding: "8px", fontSize: s(12), fontWeight: 600,
@@ -473,9 +476,9 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
                 {pick("開始直播", "Go Live")}
               </button>
             )}
-            {activeBc.lifeCycleStatus === "live" && (
+            {displayedBc.lifeCycleStatus === "live" && (
               <button
-                onClick={() => handleTransition(activeBc.id, "complete")}
+                onClick={() => handleTransition(displayedBc.id, "complete")}
                 disabled={transitioning}
                 style={{
                   flex: 1, padding: "8px", fontSize: s(12), fontWeight: 600,
@@ -490,7 +493,7 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
           </div>
 
           {/* RTMP streaming controls */}
-          {hasRtmp && activeBc.boundStreamId && (
+          {hasRtmp && displayedBc.boundStreamId && (
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               {/* Stream status indicator */}
               {isRtmpActive && (
@@ -531,7 +534,7 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
                 </button>
               ) : (
                 <button
-                  onClick={() => startRtmpStream(activeBc)}
+                  onClick={() => startRtmpStream(displayedBc)}
                   disabled={!activeStream || rtmpStarting}
                   style={{
                     padding: "8px", fontSize: s(12), fontWeight: 600,
@@ -560,9 +563,12 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
           {upcomingBcs.map((bc) => (
             <div
               key={bc.id}
+              onClick={() => setSelectedId(bc.id)}
               style={{
                 display: "flex", justifyContent: "space-between", alignItems: "center",
-                padding: "8px 10px", backgroundColor: "#f9f9f9", borderRadius: "6px",
+                padding: "8px 10px", borderRadius: "6px", cursor: "pointer",
+                backgroundColor: bc.id === selectedId ? "#e3f2fd" : "#f9f9f9",
+                borderLeft: bc.id === selectedId ? "3px solid #2196f3" : "3px solid transparent",
               }}
             >
               <div style={{ flex: 1, overflow: "hidden" }}>
