@@ -65,12 +65,9 @@ function createWindow() {
     callback(['media', 'camera', 'microphone', 'display-capture'].includes(permission));
   });
 
-  // Enable getDisplayMedia() in renderer — Electron requires this handler
+  // Enable getDisplayMedia() in renderer — use native macOS/system picker
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
-    desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
-      // Provide the first screen source; Electron shows its own picker on macOS
-      callback({ video: sources[0], audio: 'loopback' });
-    });
+    callback({ video: null, audio: 'loopback', useSystemPicker: true });
   });
 
   if (isDev) {
