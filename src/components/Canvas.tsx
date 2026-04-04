@@ -223,7 +223,7 @@ export function Canvas() {
           })}
 
         {/* Surface foreground: connectors, selection handles — above blocks */}
-        <SurfaceForeground viewportRef={viewportRef} />
+        <SurfaceForeground viewportRef={viewportRef} connectorDraft={drawTool.connectorDraft} />
       </div>
 
       {/* Pinned blocks HUD — viewport-fixed, outside canvas transform */}

@@ -5,9 +5,11 @@ import { useViewportStore } from "../stores/useViewportStore";
 import { useSurfaceStore } from "../stores/useSurfaceStore";
 import { screenToBoardPoint } from "../utils/viewport";
 import { pointsToSmoothPath, pointsBounds } from "../utils/svgPath";
+import { nearestConnectionPoint } from "../utils/geometry";
 import type { SurfaceElement } from "../types";
 
 const SHAPE_TOOLS = new Set(["rect", "ellipse", "diamond"]);
+const CONNECTOR_SNAP_DIST = 50; // board units
 
 function makeShapePreview(type: string, x: number, y: number, w: number, h: number): SurfaceElement {
   return {
@@ -28,16 +30,48 @@ export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
   const brushPointsRef = useRef<[number, number][]>([]);
   const [preview, setPreview] = useState<SurfaceElement | null>(null);
 
+  // Connector tool state
+  const connectorFromRef = useRef<{ x: number; y: number; id?: string } | null>(null);
+  const connectorToRef   = useRef<{ x: number; y: number; id?: string } | null>(null);
+  const [connectorDraft, setConnectorDraft] = useState<{
+    fx: number; fy: number; tx: number; ty: number;
+  } | null>(null);
+
   function getBoardPoint(e: React.PointerEvent) {
     const { viewport } = useViewportStore.getState();
     const rect = viewportRef.current!.getBoundingClientRect();
     return screenToBoardPoint(e.clientX, e.clientY, viewport, rect);
   }
 
+  function snapToShape(bx: number, by: number): { x: number; y: number; id?: string } {
+    const shapes = useSurfaceStore.getState().elements.filter(
+      (el) => el.type === "rect" || el.type === "ellipse" || el.type === "diamond"
+    );
+    let best: { x: number; y: number; id?: string } = { x: bx, y: by };
+    let minDist = CONNECTOR_SNAP_DIST;
+    for (const el of shapes) {
+      const cp = nearestConnectionPoint(bx, by, el);
+      if (cp.dist < minDist) { minDist = cp.dist; best = { x: cp.x, y: cp.y, id: el.id }; }
+    }
+    return best;
+  }
+
   function onPointerDown(e: React.PointerEvent) {
     const { activeTool, setActiveTool, setSelectedIds, setEditingTextId } =
       useSessionStore.getState();
     if (!viewportRef.current) return;
+
+    // Connector tool: start drawing from nearest shape connection point
+    if (activeTool === "connector") {
+      const b = getBoardPoint(e);
+      const from = snapToShape(b.x, b.y);
+      connectorFromRef.current = from;
+      connectorToRef.current   = from;
+      setConnectorDraft({ fx: from.x, fy: from.y, tx: from.x, ty: from.y });
+      (e.target as Element).setPointerCapture(e.pointerId);
+      e.stopPropagation();
+      return;
+    }
 
     // Text tool: single click → create element immediately → enter edit mode
     if (activeTool === "text") {
@@ -90,6 +124,16 @@ export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
     const { activeTool } = useSessionStore.getState();
     if (!viewportRef.current) return;
 
+    // Connector: update endpoint, snap to shapes
+    if (activeTool === "connector" && connectorFromRef.current) {
+      const b = getBoardPoint(e);
+      const to = snapToShape(b.x, b.y);
+      connectorToRef.current = to;
+      const from = connectorFromRef.current;
+      setConnectorDraft({ fx: from.x, fy: from.y, tx: to.x, ty: to.y });
+      return;
+    }
+
     // Brush: accumulate points, update live preview
     if (activeTool === "brush" && brushPointsRef.current.length > 0) {
       const b = getBoardPoint(e);
@@ -125,6 +169,37 @@ export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
 
   function onPointerUp() {
     const { activeTool, setActiveTool, setSelectedIds } = useSessionStore.getState();
+
+    // Connector: commit
+    if (activeTool === "connector") {
+      const from = connectorFromRef.current;
+      const to   = connectorToRef.current;
+      connectorFromRef.current = null;
+      connectorToRef.current   = null;
+      setConnectorDraft(null);
+
+      if (!from || !to) return;
+      const dx = Math.abs(to.x - from.x);
+      const dy = Math.abs(to.y - from.y);
+      if (dx < 5 && dy < 5) return; // ignore misclick
+
+      const id = crypto.randomUUID();
+      const el: SurfaceElement = {
+        id, type: "connector",
+        x: Math.min(from.x, to.x), y: Math.min(from.y, to.y),
+        w: Math.abs(to.x - from.x) || 1, h: Math.abs(to.y - from.y) || 1,
+        z: Date.now(),
+        fillColor: "transparent", strokeColor: "#243231",
+        strokeWidth: 2, strokeStyle: "solid", opacity: 1,
+        fromId: from.id, fromPoint: [from.x, from.y],
+        toId: to.id,     toPoint:   [to.x,   to.y],
+        curveType: "curved", arrowEnd: true,
+      };
+      useSurfaceStore.getState().addElement(el);
+      setActiveTool("select");
+      setSelectedIds([id]);
+      return;
+    }
 
     // Brush: commit stroke
     if (activeTool === "brush") {
@@ -171,5 +246,5 @@ export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
     setSelectedIds([id]);
   }
 
-  return { onPointerDown, onPointerMove, onPointerUp, preview };
+  return { onPointerDown, onPointerMove, onPointerUp, preview, connectorDraft };
 }

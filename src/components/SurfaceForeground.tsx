@@ -4,12 +4,14 @@ import { useSurfaceStore } from "../stores/useSurfaceStore";
 import { useSessionStore } from "../stores/useSessionStore";
 import { useViewportStore } from "../stores/useViewportStore";
 import { screenToBoardPoint } from "../utils/viewport";
+import { getConnectionPoints, connectorPath } from "../utils/geometry";
 import type { SurfaceElement } from "../types";
 
 type Corner = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 
 interface Props {
   viewportRef: RefObject<HTMLDivElement | null>;
+  connectorDraft?: { fx: number; fy: number; tx: number; ty: number } | null;
 }
 
 const HANDLE_SIZE = 8;
@@ -51,11 +53,11 @@ function applyResize(
 
 /**
  * SurfaceForeground — top SVG layer of the Edgeless whiteboard.
- * Renders selection handles and connectors above all blocks.
+ * Renders connectors, selection handles, and snap dots above all blocks.
  */
-export function SurfaceForeground({ viewportRef }: Props) {
+export function SurfaceForeground({ viewportRef, connectorDraft }: Props) {
   const { elements, updateElement } = useSurfaceStore();
-  const { selectedIds } = useSessionStore();
+  const { selectedIds, setSelectedIds, activeTool } = useSessionStore();
 
   const resizeRef = useRef<{
     id: string;
@@ -73,6 +75,12 @@ export function SurfaceForeground({ viewportRef }: Props) {
       selectedIds.includes(el.id) &&
       (el.type === "rect" || el.type === "ellipse" || el.type === "diamond")
   );
+
+  const allShapes = elements.filter(
+    (el) => el.type === "rect" || el.type === "ellipse" || el.type === "diamond"
+  );
+
+  const connectors = elements.filter((el) => el.type === "connector");
 
   function onHandlePointerDown(e: React.PointerEvent<SVGRectElement>, el: SurfaceElement, corner: Corner) {
     e.stopPropagation();
@@ -116,11 +124,83 @@ export function SurfaceForeground({ viewportRef }: Props) {
         zIndex: 99999,
       }}
     >
-      <g className="surface-connectors" />
+      <defs>
+        <marker
+          id="connector-arrow"
+          viewBox="0 0 10 10"
+          refX="9"
+          refY="5"
+          markerUnits="strokeWidth"
+          markerWidth="5"
+          markerHeight="4"
+          orient="auto"
+        >
+          <path d="M 0 1 L 9 5 L 0 9 Z" fill="#243231" />
+        </marker>
+      </defs>
+
+      {/* Committed connectors */}
+      <g className="surface-connectors">
+        {connectors.map((el) => {
+          const [fx, fy] = el.fromPoint ?? [el.x, el.y];
+          const [tx, ty] = el.toPoint   ?? [el.x + el.w, el.y + el.h];
+          const isSelected = selectedIds.includes(el.id);
+          return (
+            <path
+              key={el.id}
+              d={connectorPath(fx, fy, tx, ty, el.curveType ?? "curved")}
+              fill="none"
+              stroke={isSelected ? "var(--accent, #4f9cf9)" : el.strokeColor}
+              strokeWidth={el.strokeWidth}
+              opacity={el.opacity}
+              markerEnd={el.arrowEnd ? "url(#connector-arrow)" : undefined}
+              pointerEvents="visibleStroke"
+              style={{ cursor: "pointer" }}
+              onClick={(e) => { e.stopPropagation(); setSelectedIds([el.id]); }}
+            />
+          );
+        })}
+
+        {/* Draft connector while drawing */}
+        {connectorDraft && (
+          <path
+            d={connectorPath(
+              connectorDraft.fx, connectorDraft.fy,
+              connectorDraft.tx, connectorDraft.ty,
+            )}
+            fill="none"
+            stroke="var(--accent, #4f9cf9)"
+            strokeWidth={2}
+            strokeDasharray="6 3"
+            pointerEvents="none"
+          />
+        )}
+      </g>
+
+      {/* Snap dots — visible when connector tool is active */}
+      {activeTool === "connector" && (
+        <g className="surface-snap-dots">
+          {allShapes.map((el) =>
+            getConnectionPoints(el).map((cp) => (
+              <circle
+                key={`${el.id}-${cp.side}`}
+                cx={cp.x}
+                cy={cp.y}
+                r={5}
+                fill="white"
+                stroke="var(--accent, #4f9cf9)"
+                strokeWidth={1.5}
+                pointerEvents="none"
+              />
+            ))
+          )}
+        </g>
+      )}
+
+      {/* Selection handles for shapes */}
       <g className="surface-selection-handles">
         {selectedShapes.map((el) => (
           <g key={el.id}>
-            {/* Bounding box outline */}
             <rect
               x={el.x - 1}
               y={el.y - 1}
@@ -129,11 +209,9 @@ export function SurfaceForeground({ viewportRef }: Props) {
               fill="none"
               stroke="var(--accent, #4f9cf9)"
               strokeWidth={1.5}
-              strokeDasharray="none"
               rx={2}
               style={{ pointerEvents: "none" }}
             />
-            {/* 8 resize handles */}
             {getHandles(el).map(({ corner, cx, cy }) => (
               <rect
                 key={corner}
@@ -154,6 +232,7 @@ export function SurfaceForeground({ viewportRef }: Props) {
           </g>
         ))}
       </g>
+
       <g className="surface-drag-rect" />
     </svg>
   );

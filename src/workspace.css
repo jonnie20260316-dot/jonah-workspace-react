@@ -1031,3 +1031,8 @@ body[data-pan-mode] .board-block {
   cursor: pointer;
   user-select: none;
 }
+
+/* ── Surface connector snap dots ─────────────────────────────────────── */
+.connector-snap-dot {
+  transition: r 0.1s ease;
+}
