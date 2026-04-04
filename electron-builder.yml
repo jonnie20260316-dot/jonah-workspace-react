@@ -16,6 +16,7 @@ files:
   - "!*.md"
 
 mac:
+  artifactName: jonah-workspace-${version}-${arch}-mac.${ext}
   target:
     - target: dmg
       arch:
