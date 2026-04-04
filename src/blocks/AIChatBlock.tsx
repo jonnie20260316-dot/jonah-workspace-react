@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { Block } from "../types";
 import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
@@ -54,7 +54,7 @@ export function AIChatBlock({ block }: AIChatBlockProps) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
       {/* Tab bar */}
       <div
         style={{
@@ -63,7 +63,7 @@ export function AIChatBlock({ block }: AIChatBlockProps) {
           padding: s(8),
           backgroundColor: "#f5f5f5",
           borderRadius: "4px",
-          marginBottom: s(8),
+          flexShrink: 0,
         }}
       >
         {(["claude", "chatgpt"] as AIChatTab[]).map((t) => (

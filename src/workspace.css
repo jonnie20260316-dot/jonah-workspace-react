@@ -84,6 +84,14 @@
   padding: var(--space-3) var(--space-4);
 }
 
+/* AI Chat block — webview must fill body with no padding, no scroll */
+.type-ai-chat .block-body {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 /* === Resize Handles (L-bracket style) === */
 .resize-handle {
   position: absolute;
