@@ -89,16 +89,14 @@ export function AIChatBlock({ block }: AIChatBlockProps) {
         ))}
       </div>
 
-      {/* Webview container */}
-      <div style={{ flex: 1, overflow: "hidden", borderRadius: "4px" }}>
+      {/* Webview container — use flex on container for webview to fill reliably */}
+      <div style={{ flex: 1, overflow: "hidden", borderRadius: "4px", display: "flex" }}>
         <webview
           key={tab}
           src={src}
           partition="persist:aichat"
           style={{
-            width: "100%",
-            height: "100%",
-            display: "block",
+            flex: 1,
             border: "none",
           }}
         />
