@@ -167,12 +167,9 @@ declare global {
       youtubeStreamChunk: (chunk: ArrayBuffer) => Promise<void>;
       youtubeStopStream: () => Promise<void>;
       onYoutubeStreamStatus: (cb: (data: YTStreamStatus) => void) => () => void;
-      // Git sync
-      gitInit: (dirPath: string, remoteUrl: string) => Promise<{ ok: boolean; stderr: string }>;
-      gitCommit: (dirPath: string) => Promise<{ ok: boolean; stderr: string; nothingToCommit: boolean }>;
-      gitPush: (dirPath: string) => Promise<{ ok: boolean; stderr: string }>;
-      gitPull: (dirPath: string) => Promise<{ ok: boolean; stderr: string; hadChanges: boolean }>;
-      gitStatus: (dirPath: string) => Promise<{ ok: boolean; branch: string; remoteUrl: string; lastCommit: string }>;
+      // GitHub REST API sync
+      githubGetFile: (token: string, owner: string, repo: string, filepath: string) => Promise<{ ok: boolean; exists?: boolean; content?: string | null; sha?: string | null; error?: string }>;
+      githubPutFile: (token: string, owner: string, repo: string, filepath: string, content: string, sha?: string) => Promise<{ ok: boolean; error?: string }>;
       requestQuit: () => Promise<void>;
       onAboutToQuit: (cb: () => void) => () => void;
       // Storage backup

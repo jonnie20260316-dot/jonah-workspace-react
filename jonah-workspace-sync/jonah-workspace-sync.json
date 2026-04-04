@@ -1,13 +1,13 @@
 {
   "syncFormatVersion": 1,
-  "pushedAt": "2026-04-04T08:08:36.787Z",
-  "deviceId": "87a9ea4e-988d-4fc4-94fd-866b90d1e10d",
+  "pushedAt": "2026-04-04T08:17:39.326Z",
+  "deviceId": "62c6ef21-2df0-47b2-af99-b50b92afb2c2",
   "pushCount": 1,
   "blockCount": 4,
   "data": {
     "project-board": "{\"queue\":[],\"doing\":[],\"archive\":[]}",
     "device-id": "edd172b7-646a-4360-9325-d185c2ba1baa",
-    "viewport": "{\"x\":700,\"y\":120,\"scale\":1}",
+    "viewport": "{\"scale\":0.5970815935372946,\"x\":442.36301687374646,\"y\":-241.25144891647938}",
     "git-sync-remote": "https://github.com/jonnie20260316-dot/jonah-workspace-sync.git",
     "git-sync-enabled": "true",
     "git-sync-dir": "/Users/jonnie/jonah-workspace-react/jonah-workspace-sync",

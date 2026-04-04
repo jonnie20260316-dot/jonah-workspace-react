@@ -169,106 +169,95 @@ export function applySyncPayload(payload: SyncPayload): void {
 
 export const SYNC_FILENAME = "jonah-workspace-sync.json";
 
-// ─── Git sync (Electron-only) ─────────────────────────────────────────────────
+// ─── GitHub REST API sync (Electron-only) ────────────────────────────────────
 
-/** Git commit + push with error detection. Returns { ok, error?, authError? } */
-export async function gitCommitAndPush(
-  dirPath: string
-): Promise<{ ok: boolean; error?: string; authError?: boolean }> {
+/** Parse "https://github.com/owner/repo.git" or "owner/repo" → { owner, repo } | null */
+export function parseGithubRepo(input: string): { owner: string; repo: string } | null {
+  const urlMatch = input.match(/github\.com[/:]([\w.-]+)\/([\w.-]+)/);
+  if (urlMatch) return { owner: urlMatch[1], repo: urlMatch[2].replace(/\.git$/, "") };
+  const shortMatch = input.match(/^([\w.-]+)\/([\w.-]+)$/);
+  if (shortMatch) return { owner: shortMatch[1], repo: shortMatch[2].replace(/\.git$/, "") };
+  return null;
+}
+
+/**
+ * Push: build payload, PUT to GitHub Contents API.
+ * Gets current SHA first (needed for update vs create).
+ */
+export async function githubPush(
+  token: string,
+  owner: string,
+  repo: string,
+  deviceId: string,
+  pushCount: number
+): Promise<{ ok: boolean; error?: string }> {
   const api = window.electronAPI;
   if (!api) return { ok: false, error: "Not in Electron" };
 
   try {
-    // Commit
-    const commitResult = await api.gitCommit(dirPath);
-    if (!commitResult.ok) {
-      return { ok: false, error: commitResult.stderr };
-    }
-    if (commitResult.nothingToCommit) {
-      return { ok: true };
-    }
+    const getResult = await api.githubGetFile(token, owner, repo, SYNC_FILENAME);
+    if (!getResult.ok) return { ok: false, error: getResult.error };
 
-    // Push
-    const pushResult = await api.gitPush(dirPath);
-    if (!pushResult.ok) {
-      // Detect auth errors
-      const isAuthError =
-        pushResult.stderr.includes("Authentication failed") ||
-        pushResult.stderr.includes("Permission denied") ||
-        pushResult.stderr.includes("remote: Invalid username");
-      return { ok: false, error: pushResult.stderr, authError: isAuthError };
-    }
+    const sha = getResult.exists && getResult.sha ? getResult.sha : undefined;
+    const payload = buildSyncPayload(deviceId, pushCount);
+    const content = JSON.stringify(payload, null, 2);
 
-    return { ok: true };
+    return api.githubPutFile(token, owner, repo, SYNC_FILENAME, content, sha);
   } catch (err) {
     return { ok: false, error: (err as Error).message };
   }
 }
 
-/** Git pull + apply payload. Returns { ok, hadChanges, error? } */
-export async function gitPullAndApply(
-  dirPath: string
+/**
+ * Pull: GET from GitHub Contents API, apply payload to localStorage.
+ */
+export async function githubPull(
+  token: string,
+  owner: string,
+  repo: string
 ): Promise<{ ok: boolean; hadChanges: boolean; error?: string }> {
   const api = window.electronAPI;
   if (!api) return { ok: false, hadChanges: false, error: "Not in Electron" };
 
   try {
-    // Pull
-    const pullResult = await api.gitPull(dirPath);
-    if (!pullResult.ok) {
-      return { ok: false, hadChanges: false, error: pullResult.stderr };
-    }
+    const getResult = await api.githubGetFile(token, owner, repo, SYNC_FILENAME);
+    if (!getResult.ok) return { ok: false, hadChanges: false, error: getResult.error };
+    if (!getResult.exists || !getResult.content) return { ok: true, hadChanges: false };
 
-    if (!pullResult.hadChanges) {
-      return { ok: true, hadChanges: false };
-    }
-
-    // Read the updated sync file
-    const text = await api.readFile(dirPath, SYNC_FILENAME);
-    if (!text) {
-      return { ok: false, hadChanges: false, error: "Could not read sync file after pull" };
-    }
-
-    const payload = JSON.parse(text) as SyncPayload;
+    const payload = JSON.parse(getResult.content) as SyncPayload;
     applySyncPayload(payload);
-
     return { ok: true, hadChanges: true };
   } catch (err) {
     return { ok: false, hadChanges: false, error: (err as Error).message };
   }
 }
 
-// ─── Git debounce scheduling ─────────────────────────────────────────────────
+// ─── Auto-sync debounce scheduling ───────────────────────────────────────────
 
-let gitDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let githubDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let useSyncStoreRef: any = null;
 
-/**
- * Register the useSyncStore so scheduleGitSync can access it.
- * Called from useSyncStore initialization.
- */
 export function setUseSyncStoreRef(store: any): void {
   useSyncStoreRef = store;
 }
 
 /**
- * Schedule a debounced git sync (30s delay).
- * Cancels previous timer if one exists.
- * Imported and called by stores when meaningful changes occur.
+ * Schedule a debounced GitHub sync (30s delay).
+ * Called by block/session stores on meaningful mutations.
+ * Function kept as scheduleGitSync for import compatibility.
  */
 export function scheduleGitSync(): void {
   if (!useSyncStoreRef) return;
 
-  const { gitEnabled, gitDir } = useSyncStoreRef.getState();
-  if (!gitEnabled || !gitDir) return;
+  const { githubEnabled, githubToken, githubRepo } = useSyncStoreRef.getState();
+  if (!githubEnabled || !githubToken || !githubRepo) return;
 
-  if (gitDebounceTimer !== null) {
-    clearTimeout(gitDebounceTimer);
-  }
+  if (githubDebounceTimer !== null) clearTimeout(githubDebounceTimer);
 
-  gitDebounceTimer = setTimeout(() => {
-    gitDebounceTimer = null;
-    const { gitSyncNow } = useSyncStoreRef.getState();
-    gitSyncNow().catch((err: Error) => console.error("[git] auto-sync failed:", err));
+  githubDebounceTimer = setTimeout(() => {
+    githubDebounceTimer = null;
+    useSyncStoreRef.getState().githubSyncNow().catch((err: Error) =>
+      console.error("[github] auto-sync failed:", err)
+    );
   }, 30_000);
 }

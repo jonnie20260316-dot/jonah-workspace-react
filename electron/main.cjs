@@ -569,163 +569,86 @@ ipcMain.handle('youtube:stop-stream', async () => {
   }
 });
 
-// ─── Git sync helpers ─────────────────────────────────────────────────────────
+// ─── GitHub REST API sync (replaces git binary) ───────────────────────────────
 
 /**
- * Execute a git command and return { ok, stdout, stderr }.
- * Never rejects — callers inspect ok flag.
+ * GET a file from GitHub via Contents API.
+ * Returns { ok, exists, content, sha } or { ok: false, error }.
  */
-function runGit(args, cwd) {
+ipcMain.handle('github:get-file', async (_event, token, owner, repo, filepath) => {
   return new Promise((resolve) => {
-    const { exec } = require('child_process');
-    const cmd = 'git ' + args.join(' ');
-    exec(cmd, { cwd, timeout: 30000 }, (error, stdout, stderr) => {
-      const ok = error === null;
-      resolve({ ok, stdout, stderr });
-    });
-  });
-}
-
-/**
- * Initialize or update a git repository with origin remote.
- */
-ipcMain.handle('git:init', async (_event, dirPath, remoteUrl) => {
-  try {
-    // Check if already a repo
-    const checkResult = await runGit(['-C', dirPath, 'rev-parse', '--git-dir'], dirPath);
-    const isRepo = checkResult.ok;
-
-    if (!isRepo) {
-      const initResult = await runGit(['init', dirPath], dirPath);
-      if (!initResult.ok) return { ok: false, stderr: initResult.stderr };
-    }
-
-    // Set local git identity
-    await runGit(['-C', dirPath, 'config', 'user.email', 'jonah-workspace@local'], dirPath);
-    await runGit(['-C', dirPath, 'config', 'user.name', 'Jonah Workspace'], dirPath);
-
-    // Check if remote exists
-    const remoteResult = await runGit(['-C', dirPath, 'remote', 'get-url', 'origin'], dirPath);
-    if (remoteResult.ok && remoteResult.stdout.trim()) {
-      // Remote exists, update it
-      const setUrlResult = await runGit(['-C', dirPath, 'remote', 'set-url', 'origin', remoteUrl], dirPath);
-      if (!setUrlResult.ok) return { ok: false, stderr: setUrlResult.stderr };
-    } else {
-      // No remote, add it
-      const addResult = await runGit(['-C', dirPath, 'remote', 'add', 'origin', remoteUrl], dirPath);
-      if (!addResult.ok) return { ok: false, stderr: addResult.stderr };
-    }
-
-    // Write .gitignore
-    const gitignorePath = path.join(dirPath, '.gitignore');
-    fs.writeFileSync(gitignorePath, '*\n!jonah-workspace-sync.json\n!.gitignore\n');
-
-    // Stage .gitignore
-    const ignoreResult = await runGit(['-C', dirPath, 'add', '.gitignore'], dirPath);
-    if (!ignoreResult.ok) return { ok: false, stderr: ignoreResult.stderr };
-
-    return { ok: true, stderr: '' };
-  } catch (err) {
-    return { ok: false, stderr: err.message };
-  }
-});
-
-/**
- * Commit staged changes (sync JSON file).
- */
-ipcMain.handle('git:commit', async (_event, dirPath) => {
-  try {
-    // Stage the sync file
-    const addResult = await runGit(['-C', dirPath, 'add', 'jonah-workspace-sync.json'], dirPath);
-    if (!addResult.ok) return { ok: false, stderr: addResult.stderr, nothingToCommit: false };
-
-    // Check if anything staged
-    const diffResult = await runGit(['-C', dirPath, 'diff', '--cached', '--quiet'], dirPath);
-    if (!diffResult.ok) {
-      // Nothing staged
-      return { ok: true, stderr: '', nothingToCommit: true };
-    }
-
-    // Commit
-    const timestamp = new Date().toISOString();
-    const commitResult = await runGit(['-C', dirPath, 'commit', '-m', `sync: ${timestamp}`], dirPath);
-    return {
-      ok: commitResult.ok,
-      stderr: commitResult.stderr,
-      nothingToCommit: false,
+    const options = {
+      hostname: 'api.github.com',
+      path: `/repos/${owner}/${repo}/contents/${filepath}`,
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'jonah-workspace-app',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
     };
-  } catch (err) {
-    return { ok: false, stderr: err.message, nothingToCommit: false };
-  }
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          if (res.statusCode === 404) { resolve({ ok: true, exists: false, content: null, sha: null }); return; }
+          if (res.statusCode !== 200) { resolve({ ok: false, error: `HTTP ${res.statusCode}: ${data}` }); return; }
+          const parsed = JSON.parse(data);
+          const content = Buffer.from(parsed.content, 'base64').toString('utf-8');
+          resolve({ ok: true, exists: true, content, sha: parsed.sha });
+        } catch (err) {
+          resolve({ ok: false, error: err.message });
+        }
+      });
+    });
+    req.on('error', (err) => resolve({ ok: false, error: err.message }));
+    req.setTimeout(15000, () => { req.destroy(); resolve({ ok: false, error: 'Request timeout' }); });
+    req.end();
+  });
 });
 
 /**
- * Push commits to remote.
+ * PUT a file to GitHub via Contents API (create or update).
+ * sha required when updating an existing file.
  */
-ipcMain.handle('git:push', async (_event, dirPath) => {
-  try {
-    // Get current branch
-    const branchResult = await runGit(['-C', dirPath, 'rev-parse', '--abbrev-ref', 'HEAD'], dirPath);
-    if (!branchResult.ok) return { ok: false, stderr: branchResult.stderr };
-    const branch = branchResult.stdout.trim();
-
-    // Push with --set-upstream
-    const pushResult = await runGit(['-C', dirPath, 'push', 'origin', branch, '--set-upstream'], dirPath);
-    return { ok: pushResult.ok, stderr: pushResult.stderr };
-  } catch (err) {
-    return { ok: false, stderr: err.message };
-  }
-});
-
-/**
- * Pull from remote (--ff-only to prevent destructive merges).
- */
-ipcMain.handle('git:pull', async (_event, dirPath) => {
-  try {
-    // Fetch
-    const fetchResult = await runGit(['-C', dirPath, 'fetch', 'origin'], dirPath);
-    if (!fetchResult.ok) return { ok: false, stderr: fetchResult.stderr, hadChanges: false };
-
-    // Get SHA before
-    const beforeResult = await runGit(['-C', dirPath, 'rev-parse', 'HEAD'], dirPath);
-    const beforeSha = beforeResult.ok ? beforeResult.stdout.trim() : '';
-
-    // Get current branch
-    const branchResult = await runGit(['-C', dirPath, 'rev-parse', '--abbrev-ref', 'HEAD'], dirPath);
-    const branch = branchResult.ok ? branchResult.stdout.trim() : 'main';
-
-    // Merge --ff-only
-    const mergeResult = await runGit(['-C', dirPath, 'merge', `origin/${branch}`, '--ff-only'], dirPath);
-
-    // Get SHA after
-    const afterResult = await runGit(['-C', dirPath, 'rev-parse', 'HEAD'], dirPath);
-    const afterSha = afterResult.ok ? afterResult.stdout.trim() : '';
-
-    const hadChanges = beforeSha !== afterSha;
-    return { ok: mergeResult.ok, stderr: mergeResult.stderr, hadChanges };
-  } catch (err) {
-    return { ok: false, stderr: err.message, hadChanges: false };
-  }
-});
-
-/**
- * Get git status (branch, remote, last commit).
- */
-ipcMain.handle('git:status', async (_event, dirPath) => {
-  try {
-    const branchResult = await runGit(['-C', dirPath, 'rev-parse', '--abbrev-ref', 'HEAD'], dirPath);
-    const branch = branchResult.ok ? branchResult.stdout.trim() : 'unknown';
-
-    const remoteResult = await runGit(['-C', dirPath, 'remote', 'get-url', 'origin'], dirPath);
-    const remoteUrl = remoteResult.ok ? remoteResult.stdout.trim() : 'none';
-
-    const logResult = await runGit(['-C', dirPath, 'log', '-1', '--format=%H|%ai|%s'], dirPath);
-    const lastCommit = logResult.ok ? logResult.stdout.trim() : 'no commits';
-
-    return { ok: true, branch, remoteUrl, lastCommit };
-  } catch (err) {
-    return { ok: false, branch: 'error', remoteUrl: '', lastCommit: err.message };
-  }
+ipcMain.handle('github:put-file', async (_event, token, owner, repo, filepath, content, sha) => {
+  return new Promise((resolve) => {
+    const body = JSON.stringify({
+      message: `sync: ${new Date().toISOString()}`,
+      content: Buffer.from(content).toString('base64'),
+      ...(sha ? { sha } : {}),
+    });
+    const options = {
+      hostname: 'api.github.com',
+      path: `/repos/${owner}/${repo}/contents/${filepath}`,
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'jonah-workspace-app',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode === 200 || res.statusCode === 201) {
+          resolve({ ok: true });
+        } else {
+          resolve({ ok: false, error: `HTTP ${res.statusCode}: ${data}` });
+        }
+      });
+    });
+    req.on('error', (err) => resolve({ ok: false, error: err.message }));
+    req.setTimeout(15000, () => { req.destroy(); resolve({ ok: false, error: 'Request timeout' }); });
+    req.write(body);
+    req.end();
+  });
 });
 
 /**

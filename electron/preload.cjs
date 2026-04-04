@@ -69,12 +69,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   backupStorage: (jsonStr) => ipcRenderer.invoke('storage:backup', jsonStr),
   restoreStorage: () => ipcRenderer.invoke('storage:restore'),
 
-  // ── Git sync ────────────────────────────────────────────────────────────
-  gitInit: (dirPath, remoteUrl) => ipcRenderer.invoke('git:init', dirPath, remoteUrl),
-  gitCommit: (dirPath) => ipcRenderer.invoke('git:commit', dirPath),
-  gitPush: (dirPath) => ipcRenderer.invoke('git:push', dirPath),
-  gitPull: (dirPath) => ipcRenderer.invoke('git:pull', dirPath),
-  gitStatus: (dirPath) => ipcRenderer.invoke('git:status', dirPath),
+  // ── GitHub REST API sync ────────────────────────────────────────────────
+  githubGetFile: (token, owner, repo, filepath) => ipcRenderer.invoke('github:get-file', token, owner, repo, filepath),
+  githubPutFile: (token, owner, repo, filepath, content, sha) => ipcRenderer.invoke('github:put-file', token, owner, repo, filepath, content, sha),
   requestQuit: () => ipcRenderer.invoke('app:request-quit'),
   onAboutToQuit: (callback) => {
     const handler = () => callback();

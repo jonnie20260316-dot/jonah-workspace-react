@@ -25,9 +25,9 @@ export function FloatingTopBar() {
     await backupToFile();
 
     // Trigger git sync if enabled
-    const { gitEnabled, gitDir } = useSyncStore.getState();
-    if (gitEnabled && gitDir) {
-      useSyncStore.getState().gitSyncNow();
+    const { githubEnabled, githubRepo, githubToken } = useSyncStore.getState();
+    if (githubEnabled && githubRepo && githubToken) {
+      useSyncStore.getState().githubSyncNow();
     }
 
     // Brief checkmark confirmation

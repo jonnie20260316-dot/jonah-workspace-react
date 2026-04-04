@@ -12,8 +12,9 @@ import {
   filterPayloadForSync,
   applySyncPayload,
   SYNC_FILENAME,
-  gitCommitAndPush,
-  gitPullAndApply,
+  githubPush,
+  githubPull,
+  parseGithubRepo,
   setUseSyncStoreRef,
 } from "../utils/sync";
 import { useBlockStore } from "./useBlockStore";
@@ -98,13 +99,13 @@ interface SyncStore {
   reconnectBannerVisible: boolean;
   conflictInfo: ConflictInfo | null;
 
-  // Git sync state
-  gitEnabled: boolean;
-  gitDir: string;
-  gitRemote: string;
-  gitSyncStatus: GitSyncStatus;
-  gitLastSyncAt: string | null;
-  gitError: string | null;
+  // GitHub sync state
+  githubEnabled: boolean;
+  githubRepo: string;
+  githubToken: string;
+  githubSyncStatus: GitSyncStatus;
+  githubLastSyncAt: string | null;
+  githubError: string | null;
 
   initDeviceId: () => void;
   push: (selectedIds?: string[]) => Promise<void>;
@@ -118,14 +119,13 @@ interface SyncStore {
   clearConflict: () => void;
   clearSyncHandle: () => Promise<void>;
 
-  // Git sync actions
-  setGitEnabled: (v: boolean) => void;
-  setGitDir: (dir: string) => void;
-  setGitRemote: (url: string) => void;
-  setGitSyncStatus: (s: GitSyncStatus) => void;
-  gitSetup: (dirPath: string, remoteUrl: string) => Promise<{ ok: boolean; error?: string }>;
-  gitSyncNow: () => Promise<void>;
-  gitSyncOnQuit: () => Promise<void>;
+  // GitHub sync actions
+  setGithubEnabled: (v: boolean) => void;
+  setGithubRepo: (repo: string) => void;
+  setGithubToken: (token: string) => void;
+  githubSetup: (repoUrl: string, token: string) => { ok: boolean; error?: string };
+  githubSyncNow: () => Promise<void>;
+  githubSyncOnQuit: () => Promise<void>;
 }
 
 const DEFAULT_SYNC_META: SyncMeta = {
@@ -169,13 +169,21 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
   reconnectBannerVisible: false,
   conflictInfo: null,
 
-  // Git sync state (lazy-load from storage)
-  gitEnabled: (loadText("git-sync-enabled") ?? "false") === "true",
-  gitDir: loadText("git-sync-dir") ?? "",
-  gitRemote: loadText("git-sync-remote") ?? "",
-  gitSyncStatus: "idle" as GitSyncStatus,
-  gitLastSyncAt: null,
-  gitError: null,
+  // GitHub sync state (lazy-load from storage; migrate old git-sync-remote key if present)
+  githubEnabled: (loadText("github-sync-enabled") ?? "false") === "true",
+  githubRepo: loadText("github-sync-repo") ?? (() => {
+    // Migration: parse owner/repo from old git-sync-remote if new key absent
+    const oldRemote = loadText("git-sync-remote");
+    if (oldRemote) {
+      const m = oldRemote.match(/github\.com[/:]([\w.-]+)\/([\w.-]+)/);
+      if (m) return `${m[1]}/${m[2].replace(/\.git$/, "")}`;
+    }
+    return "";
+  })(),
+  githubToken: loadText("github-sync-token") ?? "",
+  githubSyncStatus: "idle" as GitSyncStatus,
+  githubLastSyncAt: null,
+  githubError: null,
 
   initDeviceId: () => {
     const id = getOrCreateDeviceId();
@@ -193,103 +201,86 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
     set({ syncStatus: "idle" });
   },
 
-  // ─── Git sync actions ───────────────────────────────────────────────────────
-  setGitEnabled: (v) => {
-    saveText("git-sync-enabled", String(v));
-    set({ gitEnabled: v });
+  // ─── GitHub sync actions ────────────────────────────────────────────────────
+  setGithubEnabled: (v) => {
+    saveText("github-sync-enabled", String(v));
+    set({ githubEnabled: v });
   },
 
-  setGitDir: (dir) => {
-    saveText("git-sync-dir", dir);
-    set({ gitDir: dir });
+  setGithubRepo: (repo) => {
+    saveText("github-sync-repo", repo);
+    set({ githubRepo: repo });
   },
 
-  setGitRemote: (url) => {
-    saveText("git-sync-remote", url);
-    set({ gitRemote: url });
+  setGithubToken: (token) => {
+    saveText("github-sync-token", token);
+    set({ githubToken: token });
   },
 
-  setGitSyncStatus: (s) => {
-    set({ gitSyncStatus: s });
+  githubSetup: (repoUrl, token) => {
+    const parsed = parseGithubRepo(repoUrl);
+    if (!parsed) return { ok: false, error: "Cannot parse repo from URL. Use https://github.com/owner/repo or owner/repo format." };
+    const repo = `${parsed.owner}/${parsed.repo}`;
+    saveText("github-sync-repo", repo);
+    saveText("github-sync-token", token);
+    saveText("github-sync-enabled", "true");
+    set({ githubRepo: repo, githubToken: token, githubEnabled: true });
+    return { ok: true };
   },
 
-  gitSetup: async (dirPath, remoteUrl) => {
-    const api = window.electronAPI;
-    if (!api) return { ok: false, error: "Not in Electron" };
+  githubSyncNow: async () => {
+    const { githubEnabled, githubRepo, githubToken, deviceId } = get();
+    if (!githubEnabled || !githubRepo || !githubToken) return;
 
-    try {
-      set({ gitSyncStatus: "syncing" });
-      const result = await api.gitInit(dirPath, remoteUrl);
-      if (result.ok) {
-        set({ gitDir: dirPath, gitRemote: remoteUrl, gitEnabled: true, gitSyncStatus: "synced" });
-        saveText("git-sync-dir", dirPath);
-        saveText("git-sync-remote", remoteUrl);
-        saveText("git-sync-enabled", "true");
-        return { ok: true };
-      } else {
-        set({ gitSyncStatus: "error", gitError: result.stderr });
-        return { ok: false, error: result.stderr };
-      }
-    } catch (err) {
-      const msg = (err as Error).message;
-      set({ gitSyncStatus: "error", gitError: msg });
-      return { ok: false, error: msg };
+    const parsed = parseGithubRepo(githubRepo);
+    if (!parsed) {
+      set({ githubSyncStatus: "error", githubError: "Invalid repo format" });
+      return;
     }
-  },
 
-  gitSyncNow: async () => {
-    const { gitEnabled, gitDir, deviceId } = get();
-    if (!gitEnabled || !gitDir) return;
-
-    set({ gitSyncStatus: "syncing", gitError: null });
+    set({ githubSyncStatus: "syncing", githubError: null });
 
     try {
-      // Pull first
-      const pullResult = await gitPullAndApply(gitDir);
+      // Pull first — apply remote changes if any
+      const pullResult = await githubPull(githubToken, parsed.owner, parsed.repo);
       if (pullResult.ok && pullResult.hadChanges) {
         rehydrateStores();
       }
 
-      // Build and write sync payload before committing
+      // Push current state
       const syncMeta = get().syncMeta;
-      const payload = buildSyncPayload(deviceId || getOrCreateDeviceId(), (syncMeta.pushCount ?? 0) + 1);
-      const writeOk = await window.electronAPI!.writeFile(gitDir, SYNC_FILENAME, JSON.stringify(payload, null, 2));
-      if (!writeOk) {
-        set({ gitSyncStatus: "error", gitError: "Failed to write sync file" });
-        return;
-      }
+      const pushResult = await githubPush(
+        githubToken, parsed.owner, parsed.repo,
+        deviceId || getOrCreateDeviceId(),
+        (syncMeta.pushCount ?? 0) + 1
+      );
 
-      // Then push
-      const pushResult = await gitCommitAndPush(gitDir);
       if (!pushResult.ok) {
-        if (pushResult.authError) {
-          set({ gitSyncStatus: "auth-error", gitError: pushResult.error ?? "Auth failed" });
-        } else {
-          set({ gitSyncStatus: "error", gitError: pushResult.error ?? "Push failed" });
-        }
+        set({ githubSyncStatus: "error", githubError: pushResult.error ?? "Push failed" });
         return;
       }
 
-      set({ gitSyncStatus: "synced", gitLastSyncAt: new Date().toISOString(), gitError: null });
+      set({ githubSyncStatus: "synced", githubLastSyncAt: new Date().toISOString(), githubError: null });
     } catch (err) {
-      const msg = (err as Error).message;
-      set({ gitSyncStatus: "error", gitError: msg });
+      set({ githubSyncStatus: "error", githubError: (err as Error).message });
     }
   },
 
-  gitSyncOnQuit: async () => {
-    const { gitEnabled, gitDir } = get();
-    if (!gitEnabled || !gitDir) return;
+  githubSyncOnQuit: async () => {
+    const { githubEnabled, githubRepo, githubToken, deviceId, syncMeta } = get();
+    if (!githubEnabled || !githubRepo || !githubToken) return;
+
+    const parsed = parseGithubRepo(githubRepo);
+    if (!parsed) return;
 
     try {
-      // Only commit + push on quit, no pull
-      const pushResult = await gitCommitAndPush(gitDir);
-      if (pushResult.ok) {
-        set({ gitLastSyncAt: new Date().toISOString() });
-      }
-    } catch (err) {
-      // Silent failure on quit — don't block the app
-      console.error("[git] quit-time sync failed:", err);
+      await githubPush(
+        githubToken, parsed.owner, parsed.repo,
+        deviceId || getOrCreateDeviceId(),
+        (syncMeta.pushCount ?? 0) + 1
+      );
+    } catch {
+      // Silent on quit — don't block app from closing
     }
   },
 

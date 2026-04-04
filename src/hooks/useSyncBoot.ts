@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useSyncStore, rehydrateStores } from "../stores/useSyncStore";
 import { getSyncHandle } from "../utils/syncIdb";
-import { restoreFromFile } from "../utils/storage";
+import { restoreFromFile, backupToFile } from "../utils/storage";
 import { useBlockStore } from "../stores/useBlockStore";
 
 type FSHandleBoot = FileSystemDirectoryHandle & {
@@ -14,6 +14,15 @@ type FSHandleBoot = FileSystemDirectoryHandle & {
  * Runs once on mount.
  */
 export function useSyncBoot(): void {
+  // Auto-backup every 2 minutes — insurance against sudden quit / power loss
+  useEffect(() => {
+    if (!window.electronAPI?.isElectron) return;
+    const intervalId = setInterval(() => {
+      backupToFile().catch(console.error);
+    }, 2 * 60 * 1000);
+    return () => clearInterval(intervalId);
+  }, []);
+
   useEffect(() => {
     const boot = async () => {
       const store = useSyncStore.getState();
@@ -30,12 +39,12 @@ export function useSyncBoot(): void {
           }
         }
 
-        const { gitEnabled, gitDir } = store;
-        if (gitEnabled && gitDir) {
+        const { githubEnabled, githubRepo, githubToken } = store;
+        if (githubEnabled && githubRepo && githubToken) {
           try {
-            await store.gitSyncNow();
+            await store.githubSyncNow();
           } catch (err) {
-            console.error("[git-boot] sync failed:", err);
+            console.error("[github-boot] sync failed:", err);
           }
         }
         return;

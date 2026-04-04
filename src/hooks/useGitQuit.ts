@@ -13,10 +13,10 @@ export function useGitQuit(): void {
 
     const unsubscribe = window.electronAPI.onAboutToQuit(async () => {
       try {
-        // Write file backup first — insurance if git sync fails
+        // Write file backup first — insurance if GitHub sync fails
         await backupToFile();
-        const { gitSyncOnQuit } = useSyncStore.getState();
-        await gitSyncOnQuit();
+        const { githubSyncOnQuit } = useSyncStore.getState();
+        await githubSyncOnQuit();
       } catch (err) {
         console.error("[git-quit] sync failed:", err);
       } finally {
