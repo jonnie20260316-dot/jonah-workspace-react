@@ -74,7 +74,9 @@ autoUpdater.on('download-progress', (progress) => {
 let downloadedFilePath = null;
 
 autoUpdater.on('update-downloaded', (info) => {
-  downloadedFilePath = info.downloadedFile || null;
+  // Try multiple property names used by electron-updater in different versions
+  downloadedFilePath = info.downloadedFile || info.path || info.filePath || null;
+  console.log('[updater] update downloaded:', { version: info.version, downloadedFile: downloadedFilePath, infoKeys: Object.keys(info) });
   sendUpdaterStatus({ status: 'ready', version: info.version });
 });
 
@@ -206,7 +208,8 @@ ipcMain.handle('updater:download', () => {
 
 ipcMain.handle('updater:install', () => {
   if (!downloadedFilePath || !fs.existsSync(downloadedFilePath)) {
-    autoUpdater.quitAndInstall();
+    console.error('[updater] downloadedFilePath missing or invalid:', downloadedFilePath);
+    sendUpdaterStatus({ status: 'error', message: 'Download file not found — please check for updates again' });
     return;
   }
 
