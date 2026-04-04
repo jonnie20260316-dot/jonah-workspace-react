@@ -5,6 +5,8 @@ Newest sessions at the top.
 
 ---
 
+## 2026-04-04 | YouTube RTMP Stream Fix — Race Condition on Stop — User reported 停止推流 crash (ERR_STREAM_WRITE_AFTER_END); race condition between async IPC handlers (stop closes stdin, chunks still sending); added isStopping flag guard; RTMP-Stop-Safe prevention rule created; 1 file, +5 lines; build ✓ 1794 modules
+
 ## 2026-04-04 | YouTube Studio Block — Selectable Upcoming Broadcasts — User selection state + clickable list items; active broadcast priority (live/testing always displayed); detail panel refactored for selected `ready` broadcasts; 1 file, +24 lines; build ✓ 1794 modules
 
 ## 2026-04-04 | YouTube Studio Broadcast Creation + RTMP Streaming — Inline form for creating broadcasts (title + privacy select); three YouTube API calls in sequence (createBroadcast → createLiveStream → bindBroadcast); FFmpeg RTMP streaming pipeline: MediaRecorder → 1s chunks → Electron IPC → FFmpeg stdin; new useStreamStore Zustand store for sharing MediaStream between VideoCaptureBlock and YouTubeStudioBlock; 5 files changed (+399 lines); build ✓ 1794 modules
