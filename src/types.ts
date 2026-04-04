@@ -120,6 +120,12 @@ export interface YTTokens {
   expiry_date: number;
 }
 
+export type YTStreamStatus =
+  | { status: "starting" }
+  | { status: "streaming" }
+  | { status: "stopped" }
+  | { status: "error"; error: string };
+
 // ─── Electron IPC bridge ──────────────────────────────────────────────────────
 export type UpdateStatus =
   | { status: "idle" }
@@ -128,7 +134,7 @@ export type UpdateStatus =
   | { status: "available"; version: string }
   | { status: "downloading"; percent: number; version?: string }
   | { status: "ready"; version?: string }
-  | { status: "error" };
+  | { status: "error"; message?: string };
 
 declare global {
   interface Window {
@@ -154,6 +160,11 @@ declare global {
       youtubeAuthStart: () => Promise<void>;
       youtubeRefreshToken: (refreshToken: string) => Promise<{ access_token: string; expires_in: number } | null>;
       onYoutubeTokens: (cb: (tokens: YTTokens) => void) => () => void;
+      // YouTube RTMP streaming
+      youtubeStartStream: (rtmpUrl: string) => Promise<boolean>;
+      youtubeStreamChunk: (chunk: ArrayBuffer) => Promise<void>;
+      youtubeStopStream: () => Promise<void>;
+      onYoutubeStreamStatus: (cb: (data: YTStreamStatus) => void) => () => void;
     };
   }
 }

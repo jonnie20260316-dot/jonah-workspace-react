@@ -2,9 +2,24 @@
 
 const { app, BrowserWindow, ipcMain, dialog, session, desktopCapturer } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
+
+// ─── FFmpeg binary path (from ffmpeg-static) ─────────────────────────────────
+let ffmpegPath;
+try {
+  ffmpegPath = require('ffmpeg-static');
+  // In packaged app, ffmpeg-static path may need adjustment
+  if (ffmpegPath && !fs.existsSync(ffmpegPath)) {
+    // Try resolving relative to app resources
+    const altPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked');
+    if (fs.existsSync(altPath)) ffmpegPath = altPath;
+  }
+} catch {
+  console.warn('ffmpeg-static not found — RTMP streaming disabled');
+}
 
 // ─── YouTube OAuth2 credentials (loaded from gitignored file) ────────────────
 let YT_CLIENT_ID = '';
@@ -58,8 +73,9 @@ autoUpdater.on('update-downloaded', (info) => {
   sendUpdaterStatus({ status: 'ready', version: info.version });
 });
 
-autoUpdater.on('error', () => {
-  sendUpdaterStatus({ status: 'error' });
+autoUpdater.on('error', (err) => {
+  console.error('[updater] error:', err?.message || err);
+  sendUpdaterStatus({ status: 'error', message: err?.message || String(err) });
 });
 
 // ─── Window ───────────────────────────────────────────────────────────────────
@@ -302,6 +318,118 @@ ipcMain.handle('youtube:refresh-token', async (_event, refreshToken) => {
   } catch (err) {
     console.error('YouTube token refresh failed:', err);
     return null;
+  }
+});
+
+// ─── IPC: YouTube RTMP streaming via FFmpeg ──────────────────────────────────
+let ffmpegProcess = null;
+
+function sendStreamStatus(payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('youtube:stream-status', payload);
+  }
+}
+
+ipcMain.handle('youtube:start-stream', async (_event, rtmpUrl) => {
+  if (!ffmpegPath) {
+    sendStreamStatus({ status: 'error', error: 'FFmpeg not found' });
+    return false;
+  }
+  if (ffmpegProcess) {
+    // Already streaming — kill old process first
+    try { ffmpegProcess.kill('SIGTERM'); } catch {}
+    ffmpegProcess = null;
+  }
+
+  sendStreamStatus({ status: 'starting' });
+
+  try {
+    const args = [
+      '-re',
+      '-i', 'pipe:0',
+      '-c:v', 'libx264',
+      '-preset', 'veryfast',
+      '-tune', 'zerolatency',
+      '-b:v', '4500k',
+      '-maxrate', '4500k',
+      '-bufsize', '9000k',
+      '-g', '60',
+      '-keyint_min', '60',
+      '-c:a', 'aac',
+      '-b:a', '128k',
+      '-ar', '44100',
+      '-f', 'flv',
+      rtmpUrl,
+    ];
+
+    ffmpegProcess = spawn(ffmpegPath, args, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    ffmpegProcess.stderr.on('data', (data) => {
+      const msg = data.toString();
+      // FFmpeg logs progress to stderr — detect "frame=" as sign of active streaming
+      if (msg.includes('frame=')) {
+        sendStreamStatus({ status: 'streaming' });
+      }
+    });
+
+    ffmpegProcess.on('error', (err) => {
+      console.error('FFmpeg process error:', err);
+      sendStreamStatus({ status: 'error', error: err.message });
+      ffmpegProcess = null;
+    });
+
+    ffmpegProcess.on('close', (code) => {
+      if (code !== 0 && code !== null) {
+        sendStreamStatus({ status: 'error', error: `FFmpeg exited with code ${code}` });
+      } else {
+        sendStreamStatus({ status: 'stopped' });
+      }
+      ffmpegProcess = null;
+    });
+
+    return true;
+  } catch (err) {
+    console.error('Failed to start FFmpeg:', err);
+    sendStreamStatus({ status: 'error', error: err.message });
+    return false;
+  }
+});
+
+ipcMain.handle('youtube:stream-chunk', async (_event, chunk) => {
+  if (!ffmpegProcess || !ffmpegProcess.stdin || ffmpegProcess.stdin.destroyed) return;
+  try {
+    const buf = Buffer.from(chunk);
+    // Handle backpressure: if write returns false, wait for drain
+    if (!ffmpegProcess.stdin.write(buf)) {
+      await new Promise((resolve) => {
+        if (ffmpegProcess && ffmpegProcess.stdin) {
+          ffmpegProcess.stdin.once('drain', resolve);
+        } else {
+          resolve();
+        }
+      });
+    }
+  } catch (err) {
+    console.error('FFmpeg stdin write error:', err);
+  }
+});
+
+ipcMain.handle('youtube:stop-stream', async () => {
+  if (!ffmpegProcess) return;
+  try {
+    // Close stdin to signal EOF — FFmpeg will flush and exit gracefully
+    if (ffmpegProcess.stdin && !ffmpegProcess.stdin.destroyed) {
+      ffmpegProcess.stdin.end();
+    }
+    // Kill after 5s timeout if still running
+    const proc = ffmpegProcess;
+    setTimeout(() => {
+      try { if (proc && !proc.killed) proc.kill('SIGKILL'); } catch {}
+    }, 5000);
+  } catch (err) {
+    console.error('FFmpeg stop error:', err);
   }
 });
 

@@ -387,7 +387,8 @@ function AppUpdater() {
     btnBg = "rgba(42,138,92,0.12)";
     btnColor = "var(--success)";
   } else if (status === "error") {
-    label = pick("無法檢查更新，再試一次", "Couldn't check — try again");
+    const msg = (update as { status: "error"; message?: string }).message;
+    label = msg ? `錯誤: ${msg}` : pick("無法更新，再試一次", "Update failed — try again");
     btnBg = "var(--danger-soft)";
     btnColor = "var(--danger)";
   } else {
