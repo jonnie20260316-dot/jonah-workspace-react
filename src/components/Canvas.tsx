@@ -3,6 +3,7 @@ import { useViewportStore } from "../stores/useViewportStore";
 import { useBlockStore } from "../stores/useBlockStore";
 import { useSessionStore } from "../stores/useSessionStore";
 import { useSurfaceStore } from "../stores/useSurfaceStore";
+import { useHistoryStore } from "../stores/useHistoryStore";
 import { ZOOM_SENSITIVITY } from "../constants";
 import { BlockShell } from "../blocks/BlockShell";
 import { BLOCK_REGISTRY } from "../blocks/BlockRegistry";
@@ -28,6 +29,13 @@ const TOOL_CURSOR: Record<string, string> = {
   connector: "crosshair",
   frame:     "crosshair",
 };
+
+function captureSnapshot() {
+  return {
+    blocks: useBlockStore.getState().blocks,
+    elements: useSurfaceStore.getState().elements,
+  };
+}
 
 export function Canvas() {
   useLang();
@@ -91,6 +99,19 @@ export function Canvas() {
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+        if (isTextInputFocused()) return;
+        e.preventDefault();
+        const current = captureSnapshot();
+        const snap = e.shiftKey
+          ? useHistoryStore.getState().redo(current)
+          : useHistoryStore.getState().undo(current);
+        if (snap) {
+          useBlockStore.getState().setBlocks(snap.blocks);
+          useSurfaceStore.getState().setElements(snap.elements);
+        }
+        return;
+      }
       if (e.code === "Escape") {
         if (isTextInputFocused()) return;
         const { activeFrameId: fid, setActiveFrameId, activeTool: tool, setActiveTool } = useSessionStore.getState();
@@ -120,6 +141,7 @@ export function Canvas() {
       if ((e.metaKey || e.ctrlKey) && e.key === "d") {
         if (isTextInputFocused()) return;
         e.preventDefault();
+        useHistoryStore.getState().push(captureSnapshot());
         const { selectedIds } = useSessionStore.getState();
         const { blocks: allBlocks, addBlock } = useBlockStore.getState();
         const newIds: string[] = [];
@@ -138,6 +160,7 @@ export function Canvas() {
         const { selectedIds } = useSessionStore.getState();
         if (!selectedIds.length) return;
         e.preventDefault();
+        useHistoryStore.getState().push(captureSnapshot());
         const { archiveBlock } = useBlockStore.getState();
         const { elements, removeElement } = useSurfaceStore.getState();
         for (const id of selectedIds) {

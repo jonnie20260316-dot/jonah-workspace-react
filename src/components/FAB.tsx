@@ -2,6 +2,8 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useBlockStore } from "../stores/useBlockStore";
 import { useViewportStore } from "../stores/useViewportStore";
+import { useSurfaceStore } from "../stores/useSurfaceStore";
+import { useHistoryStore } from "../stores/useHistoryStore";
 import { BLOCK_REGISTRY, getAddableBlockTypes } from "../blocks/BlockRegistry";
 import { BLOCK_ICONS } from "../utils/blockIcons";
 import { pick } from "../utils/i18n";
@@ -20,6 +22,11 @@ export function FAB() {
   const handleAddBlock = (type: BlockType) => {
     const config = BLOCK_REGISTRY[type];
     if (!config) return;
+
+    useHistoryStore.getState().push({
+      blocks: useBlockStore.getState().blocks,
+      elements: useSurfaceStore.getState().elements,
+    });
 
     const vp = viewport;
     const vpCenterX = vp.x + (window.innerWidth / 2) / vp.scale;

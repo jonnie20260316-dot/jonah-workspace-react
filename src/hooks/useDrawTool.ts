@@ -2,7 +2,9 @@ import { useRef, useState } from "react";
 import type { RefObject } from "react";
 import { useSessionStore } from "../stores/useSessionStore";
 import { useViewportStore } from "../stores/useViewportStore";
+import { useBlockStore } from "../stores/useBlockStore";
 import { useSurfaceStore } from "../stores/useSurfaceStore";
+import { useHistoryStore } from "../stores/useHistoryStore";
 import { screenToBoardPoint } from "../utils/viewport";
 import { pointsToSmoothPath, pointsBounds } from "../utils/svgPath";
 import { nearestConnectionPoint } from "../utils/geometry";
@@ -77,6 +79,10 @@ export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
 
     // Text tool: single click → create element immediately → enter edit mode
     if (activeTool === "text") {
+      useHistoryStore.getState().push({
+        blocks: useBlockStore.getState().blocks,
+        elements: useSurfaceStore.getState().elements,
+      });
       const b = getBoardPoint(e);
       const id = crypto.randomUUID();
       const el: SurfaceElement = {
@@ -185,6 +191,11 @@ export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
       const dy = Math.abs(to.y - from.y);
       if (dx < 5 && dy < 5) return; // ignore misclick
 
+      useHistoryStore.getState().push({
+        blocks: useBlockStore.getState().blocks,
+        elements: useSurfaceStore.getState().elements,
+      });
+
       const id = crypto.randomUUID();
       const el: SurfaceElement = {
         id, type: "connector",
@@ -210,6 +221,11 @@ export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
       setPreview(null);
 
       if (pts.length < 2) return;
+
+      useHistoryStore.getState().push({
+        blocks: useBlockStore.getState().blocks,
+        elements: useSurfaceStore.getState().elements,
+      });
 
       const { x, y, w, h } = pointsBounds(pts);
       const id = crypto.randomUUID();
@@ -240,6 +256,11 @@ export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
     setPreview(null);
 
     if (!snap || snap.w < 10 || snap.h < 10) return;
+
+    useHistoryStore.getState().push({
+      blocks: useBlockStore.getState().blocks,
+      elements: useSurfaceStore.getState().elements,
+    });
 
     const id = crypto.randomUUID();
     const base: SurfaceElement = { ...snap, id, z: Date.now() };

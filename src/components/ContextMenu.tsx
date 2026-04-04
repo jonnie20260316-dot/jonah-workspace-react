@@ -3,6 +3,7 @@ import { useBlockStore } from "../stores/useBlockStore";
 import { useSessionStore } from "../stores/useSessionStore";
 import { useSurfaceStore } from "../stores/useSurfaceStore";
 import { useViewportStore } from "../stores/useViewportStore";
+import { useHistoryStore } from "../stores/useHistoryStore";
 import { pick } from "../utils/i18n";
 import { useLang } from "../hooks/useLang";
 
@@ -11,6 +12,13 @@ interface Props {
   y: number;
   targetId: string | null;
   onClose: () => void;
+}
+
+function captureSnapshot() {
+  return {
+    blocks: useBlockStore.getState().blocks,
+    elements: useSurfaceStore.getState().elements,
+  };
 }
 
 export function ContextMenu({ x, y, targetId, onClose }: Props) {
@@ -38,6 +46,7 @@ export function ContextMenu({ x, y, targetId, onClose }: Props) {
   const top = Math.min(y, window.innerHeight - menuH - 8);
 
   function duplicate() {
+    useHistoryStore.getState().push(captureSnapshot());
     const { selectedIds } = useSessionStore.getState();
     const ids = targetId && !selectedIds.includes(targetId)
       ? [targetId]
@@ -56,6 +65,7 @@ export function ContextMenu({ x, y, targetId, onClose }: Props) {
   }
 
   function deleteSelected() {
+    useHistoryStore.getState().push(captureSnapshot());
     const { selectedIds } = useSessionStore.getState();
     const ids = targetId && !selectedIds.includes(targetId)
       ? [targetId]

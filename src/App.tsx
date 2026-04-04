@@ -14,6 +14,7 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { FitButton } from "./components/FitButton";
 import { ToolBar } from "./components/ToolBar";
 import { ShapePropertiesPanel } from "./components/ShapePropertiesPanel";
+import { Minimap } from "./components/Minimap";
 
 export default function App() {
   useTimerTick();
@@ -35,6 +36,7 @@ export default function App() {
         <ModalLayer />
         <ToastContainer />
         <FitButton />
+        <Minimap />
         <ToolBar />
         <ShapePropertiesPanel />
       </div>
