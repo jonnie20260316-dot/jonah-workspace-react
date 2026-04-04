@@ -1,15 +1,16 @@
 {
   "syncFormatVersion": 1,
-  "pushedAt": "2026-04-04T07:32:35.554Z",
-  "deviceId": "5e4487c7-7529-4d3b-bb0a-32586b9110b4",
+  "pushedAt": "2026-04-04T08:08:36.787Z",
+  "deviceId": "87a9ea4e-988d-4fc4-94fd-866b90d1e10d",
   "pushCount": 1,
-  "blockCount": 3,
+  "blockCount": 4,
   "data": {
-    "device-id": "5e4487c7-7529-4d3b-bb0a-32586b9110b4",
-    "git-sync-remote": "https://github.com/jonnie20260316-dot/jonah-workspace-sync.git",
+    "project-board": "{\"queue\":[],\"doing\":[],\"archive\":[]}",
+    "device-id": "edd172b7-646a-4360-9325-d185c2ba1baa",
     "viewport": "{\"x\":700,\"y\":120,\"scale\":1}",
+    "git-sync-remote": "https://github.com/jonnie20260316-dot/jonah-workspace-sync.git",
     "git-sync-enabled": "true",
     "git-sync-dir": "/Users/jonnie/jonah-workspace-react/jonah-workspace-sync",
-    "blocks": "[{\"id\":\"intel-1775287926240\",\"type\":\"intel\",\"x\":1145,\"y\":405,\"w\":550,\"h\":330,\"z\":11,\"collapsed\":false,\"archived\":false,\"color\":\"\"},{\"id\":\"timer-1775287946594\",\"type\":\"timer\",\"x\":1632,\"y\":336,\"w\":440,\"h\":572,\"z\":12,\"collapsed\":false,\"archived\":false,\"color\":\"\"},{\"id\":\"prompted-notes-1775287949179\",\"type\":\"prompted-notes\",\"x\":792,\"y\":528,\"w\":660,\"h\":396,\"z\":11,\"collapsed\":false,\"archived\":false,\"color\":\"\"}]"
+    "blocks": "[{\"id\":\"tasks-1775290066669\",\"type\":\"tasks\",\"x\":1145,\"y\":361,\"w\":550,\"h\":418,\"z\":11,\"collapsed\":false,\"archived\":false,\"color\":\"\"},{\"id\":\"threads-intel-1775290078331\",\"type\":\"threads-intel\",\"x\":840,\"y\":576,\"w\":770,\"h\":495,\"z\":11,\"collapsed\":false,\"archived\":false,\"color\":\"\"},{\"id\":\"threads-1775290084088\",\"type\":\"threads\",\"x\":1488,\"y\":528,\"w\":550,\"h\":352,\"z\":12,\"collapsed\":false,\"archived\":false,\"color\":\"\"},{\"id\":\"intention-1775290089176\",\"type\":\"intention\",\"x\":864,\"y\":288,\"w\":550,\"h\":310,\"z\":14,\"collapsed\":false,\"archived\":false,\"color\":\"\"}]"
   }
 }
