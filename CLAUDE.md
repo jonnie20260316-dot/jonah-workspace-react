@@ -73,10 +73,10 @@ GLOBAL_KEY_PREFIXES (dynamic keys matched by prefix):
 
 Session-scoped keys use pattern: `session:{YYYY-MM-DD}:{blockId}:{field}`
 
-## Block Types (17)
+## Block Types (19)
 
 Core: `journal`, `kit`, `tasks`, `projects`, `intention`, `intel`, `timer`
-Extended: `content`, `sticky`, `swipe`, `threads`, `video`, `metrics`, `spotify`, `dashboard`, `threads-intel`, `prompted-notes`, `video-capture`
+Extended: `content`, `sticky`, `swipe`, `threads`, `video`, `metrics`, `spotify`, `dashboard`, `threads-intel`, `prompted-notes`, `video-capture`, `youtube-studio`
 
 Unique blocks (only one allowed): `journal`, `kit`, `intention`
 
@@ -176,9 +176,12 @@ Do not exit silent after architecture, workflow, storage, guardrail, or major UX
 | JW-30 | **`npm run build` is the Build Gate** — In Vite+React projects, root `tsconfig.json` has `"files": []` so `tsc --noEmit` checks NOTHING. Always use `npm run build`. Never mark React work done without it. |
 | JW-31 | **`pick()` at Module Scope is Frozen** — `pick()` reads `_lang` at call time. Module-level constants using `pick()` freeze in the initial language. All bilingual string data must be defined inside render functions or `useMemo`. |
 | JW-32 | **Portal + getBoundingClientRect for Overlays Under Transformed Ancestors** — `FloatingTopBar` uses `transform: translateX(-50%)`. Any dropdown/overlay inside it must use `createPortal(overlay, document.body)` + `position: fixed` + `getBoundingClientRect()` coordinates. Clamp `left` to viewport edges. |
-| JW-33 | **Inline Style Specificity Trap** — `style={{ fontSize: "Xpx" }}` beats any CSS class rule silently. When using `--text-scale`, all inline fontSize must be `fontSize: "calc(Xpx * var(--text-scale))"`. Modals outside `.board-block` keep absolute `px`. |
+| JW-33 | **Inline Style Specificity Trap** — `style={{ fontSize: "Xpx" }}` beats any CSS class rule silently. When using `--text-scale`, all inline fontSize must be `fontSize: "calc(Xpx * var(--text-scale))"`. In CSS files, every `var(--text-scale)` must include a fallback: `var(--text-scale, 1)`. Modals outside `.board-block` keep absolute `px`. |
 | JW-34 | **⚠️ Commit-Before-Delete** — Before `rm -rf`, `git clone` to replace a local dir, or any directory swap: run `git status` and `git log --oneline origin/HEAD..HEAD`. If local-only state exists, push or stash first. "Latest on GitHub" ≠ "latest on disk". |
 | JW-35 | **BlockType + Icon Registry Co-Check** — When adding a `BlockType` enum variant in `src/types.ts`, immediately add a corresponding entry to `BLOCK_ICONS` Record in `src/utils/blockIcons.ts` (with icon import from lucide-react). If you forget, build fails with "Property 'xyz' is missing in type Record<BlockType, LucideIcon>". Checklist: (1) edit BlockType, (2) import icon from lucide-react, (3) add to BLOCK_ICONS, (4) run `npm run build` to verify. |
+| JW-36 | **Sibling-Code Parity Check** — When fixing a calculation, transform, or coordinate math in a hook/utility, grep for all files doing the same category of math. List them all. Verify each applies the same fix or document why it should differ. |
+| JW-37 | **Plan-Before-Build Gate (>3 files)** — Before implementing a feature touching >3 files or >100 lines, write a numbered plan listing files and changes per file. Get user confirmation before coding. If user says "stop and plan," revert uncommitted changes and produce the plan. Bug fixes and single-file changes exempt. |
+| JW-38 | **Hidden Media Elements Must Stay in Layout** — Never use `display: none` on `<video>`, `<audio>`, or `<canvas>` elements that will be read programmatically. Use `opacity: 0; position: absolute; pointer-events: none`. Ensure `autoPlay` and `playsInline` on video elements that must play without user gesture. |
 
 ## Session Protocol — Wrap It Up
 
@@ -229,7 +232,7 @@ git push
 
 Session recaps and lessons-locked files are in `history/`. Check the latest before starting a new round of work.
 
-Current state: **Phase 9B/9C complete + all font/calendar/pan fixes live (2026-04-03)** — Space pan, calendar portal fix (JW-32), font scale settings (0.82–1.25×), Opt+drag block scale, Phase 9C header hierarchy (17px/700 title + accent icon pill), Phase 9B visual polish (30px radius, smart date, 48 bilingual strings, 10% larger blocks). React app at 1791 modules, build ✓. All commits pushed.
+Current state: **OBS-style seamless switching + Pin HUD + YouTube Studio block live (2026-04-04)** — 15 commits today: PiP bug fixes (8 bugs), Electron screen capture with source picker, Opt+drag resize fix, Pin-to-Corner HUD, OBS-style seamless source switching (MediaStream track replacement), YouTube Studio iframe block, beta/stable update channel. React app at 1792 modules, build ✓. All commits pushed.
 
 Electron: bundle includes `node_modules` (electron-updater fix). macOS mic/camera plist entries added.
 

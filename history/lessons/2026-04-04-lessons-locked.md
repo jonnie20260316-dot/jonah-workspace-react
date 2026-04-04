@@ -1,96 +1,83 @@
 # Lessons Locked — 2026-04-04
 
-**Date:** 2026-04-04  
-**Session:** Beta/Stable Channel + Non-Disruptive Update Flow  
-**Severity:** Medium
+**Date:** 2026-04-04
+**Sessions:** PiP bug fixes, Electron screen capture, OBS-style switching, Pin HUD, YouTube Studio block
+**Severity:** Medium-High (multiple bugs, one process correction by user)
 
 ---
 
-## Mistakes Encountered
+## Mistakes Extracted
 
-### 1. BlockType/BLOCK_ICONS Enum Sync
-
-**When:** During build after implementation  
-**Error:** TypeScript build error — `Property 'youtube-studio' is missing in type Record<BlockType, LucideIcon>`  
-**Root cause:** The `BlockType` enum in `src/types.ts` had `"youtube-studio"` added (either by IDE or linter), but the corresponding `BLOCK_ICONS` mapping in `src/utils/blockIcons.ts` was not updated.  
-**Impact:** Build failed (1 TS error). Blocked progress until fixed.  
-**Fix:** Added `"youtube-studio": Play,` to `BLOCK_ICONS`; imported `Play` from lucide-react.
+| # | What | Root Cause | Existing Rule Coverage |
+|---|------|-----------|----------------------|
+| 1 | PiP position stuck — stale closure in rAF loop | Logic gap | **JW-26** (not followed) |
+| 2 | Canvas 0x0 — `display: none` blocks video decoding | Knowledge gap | None |
+| 3 | Missing `autoPlay` on hidden video elements | Logic gap | JW-16 would surface it |
+| 4 | Electron `getDisplayMedia` needs `setDisplayMediaRequestHandler` | Knowledge gap | None (one-time) |
+| 5 | `useSystemPicker: true` not in Electron 41 | Knowledge gap | None (one-time) |
+| 6 | `sources[0]` = app window, not screen | Logic gap | JW-16 would surface it |
+| 7 | Started coding multi-file feature without plan | Process gap | CLAUDE.md guidance exists but wasn't enforced |
+| 8 | Opt+drag resize missing `/scale` (sibling hook not updated) | Logic gap | JW-10 adjacent but doesn't cover calculations |
+| 9 | CSS `var(--text-scale)` without `, 1` fallback | Logic gap | JW-33 covers inline only |
+| 10 | `Youtube` icon doesn't exist in lucide-react | Knowledge gap | **JW-30** caught it at build |
+| 11 | BlockType + BLOCK_ICONS record sync | Process gap | Build gate caught it |
 
 ---
 
 ## Root Cause Analysis
 
-This is a **type-registry sync problem**: when a discriminated union type (`BlockType`) is defined in one file and a record mapping (`BLOCK_ICONS: Record<BlockType, LucideIcon>`) is defined in another, TypeScript catches missing keys at build time, but the developer must remember to update BOTH files.
+**Pattern 1 — Sibling code parity (mistakes #1, #8):** When fixing a calculation in one hook, sibling hooks doing the same math were not checked. `useBlockDrag` had scale division, `useBlockResize` did not.
 
-**Why it happens:**
-- BlockType enum lives in `src/types.ts` (shared across entire app)
-- BLOCK_ICONS lives in `src/utils/blockIcons.ts` (isolated)
-- No co-location; easy to forget the second step
-- IDE refactoring tools don't always catch cross-file type migrations
+**Pattern 2 — Hidden media elements (mistakes #2, #3):** `display: none` removes elements from browser layout pipeline. Video dimensions report 0x0, autoPlay doesn't fire. Two bugs from one root cause.
 
-**What made it worse:**
-- The error only surfaced at build time, not during development (no editor error until `npm run build`)
-- The `youtube-studio` entry was likely added by an IDE auto-complete or linter, not explicitly by the agent
+**Pattern 3 — Scope discipline (mistake #7):** Multi-file feature implementation started without a plan. User had to intervene with "stop and plan it first."
+
+**Pattern 4 — CSS variable safety (mistake #9):** `var(--text-scale)` without `, 1` fallback causes text to vanish when variable isn't set. JW-33 covered inline styles but not CSS files.
 
 ---
 
-## Prevention Rules
+## New Prevention Rules
 
-### Rule: BlockType + Icon Registry Co-Check
+### JW-35: Sibling-Code Parity Check
+**Trigger:** Fixing a calculation, transform, or coordinate math in a hook/utility/handler.
+**Checklist:**
+1. Grep for all files doing the same category of math (e.g., "divide by scale", "multiply by devicePixelRatio")
+2. List them all. Verify each applies the same fix or document why it should differ.
+**Escape hatch:** If the fix is truly unique to one call site (documented why), skip.
 
-**Trigger:** Whenever `BlockType` enum changes (add/remove/rename variant)
+### JW-36: Plan-Before-Build Gate (>3 files)
+**Trigger:** About to implement a feature touching >3 files or >100 lines of new code.
+**Checklist:**
+1. Write a numbered plan listing files to touch and changes per file
+2. Get user confirmation before writing code
+3. If the user says "stop and plan," immediately revert uncommitted changes and produce the plan
+**Escape hatch:** Bug fixes and single-file changes are exempt.
 
-**Checklist before committing:**
-1. Edit `src/types.ts` → BlockType enum
-2. **IMMEDIATELY after**, check `src/utils/blockIcons.ts` → BLOCK_ICONS record
-3. Verify every variant in BlockType has a corresponding key in BLOCK_ICONS
-4. If adding a new block type:
-   - Import the icon from lucide-react (check [lucide.dev](https://lucide.dev) for available icons)
-   - Add to BLOCK_ICONS record with the icon import
-5. Run `npm run build` to verify Record<BlockType, LucideIcon> is fully satisfied
+### JW-37: Hidden Media Elements Must Stay in Layout
+**Trigger:** Creating or hiding a `<video>`, `<audio>`, or `<canvas>` element that will be read programmatically.
+**Checklist:**
+1. Never use `display: none` — use `opacity: 0; position: absolute; pointer-events: none`
+2. Ensure `autoPlay` and `playsInline` are set on video elements that must play without user gesture
+**Escape hatch:** Purely decorative elements never read programmatically can use `display: none`.
 
-**Escape hatch:** If the build fails with "Property 'X' is missing", immediately:
-1. Locate the missing BlockType variant
-2. Find a suitable icon from lucide-react or reuse existing import
-3. Add to BLOCK_ICONS
-4. Re-run `npm run build`
+### JW-33 Amendment
+**Current:** Covers inline `fontSize` only.
+**Addition:** In CSS files, every `var(--text-scale)` must include a fallback: `var(--text-scale, 1)`.
 
 ---
 
 ## Integration Points
 
-### Development Workflow
-
-Add to the checklist in CLAUDE.md (after the "Definition of Done" section):
-
-```
-- [ ] BlockType and BLOCK_ICONS in sync (if you touched BlockType enum, verify BLOCK_ICONS)
-```
-
-### Preemptive Check Script
-
-Consider adding to `package.json` a lint script that checks this:
-
-```bash
-"lint:block-types": "grep -o \"'[a-z-]*':\" src/types.ts | sort | uniq > /tmp/types.txt && grep -o \"'[a-z-]*':\" src/utils/blockIcons.ts | sort | uniq > /tmp/icons.txt && diff /tmp/types.txt /tmp/icons.txt || (echo 'ERROR: BlockType and BLOCK_ICONS out of sync'; exit 1)"
-```
-
-Then add to `npm run lint`:
-
-```bash
-"lint": "eslint . && npm run lint:block-types"
-```
+- **JW-35** → applies when editing `useBlockDrag.ts`, `useBlockResize.ts`, or any coordinate math
+- **JW-36** → applies at the start of any feature work (check file count first)
+- **JW-37** → applies when working on VideoCaptureBlock or any media-related component
+- **JW-33 amendment** → applies during CSS review passes
 
 ---
 
 ## Summary
 
-✅ **Identified:** Type-registry sync problem (BlockType ↔ BLOCK_ICONS)  
-✅ **Root cause:** Cross-file enum migration not co-located  
-✅ **Prevention:** Co-check both files before commit; add lint rule to catch sync issues early  
-✅ **Recovery:** Add icon import + update BLOCK_ICONS record; rebuild  
-
-**Similar issues to watch for:**
-- Block component registration (BlockRegistry.ts must have every BlockType)
-- Translation keys (if adding a new block, ensure all 48+ bilingual strings exist)
-- Default block sizes (if adding a new block type, BlockRegistry must define dimensions)
+- 3 new rules (JW-35, JW-36, JW-37) + 1 amendment (JW-33)
+- 3 of 11 mistakes were caught by existing rules that weren't followed (JW-26, JW-30, JW-16)
+- Most impactful: JW-35 (sibling parity) prevents a repeating pattern across drag/resize/pan hooks
+- User intervention "stop and plan" elevated to JW-36 enforcement

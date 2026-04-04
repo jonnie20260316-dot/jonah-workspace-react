@@ -5,6 +5,8 @@ Newest sessions at the top.
 
 ---
 
+## 2026-04-04 | Session wrap-up — 15 commits across 6 lanes: PiP 8-bug audit, Electron screen capture IPC picker, Opt+drag resize scale fix, PinnedHUD fixed overlay with drag reorder, OBS-style seamless source switching (MediaStream track replacement), YouTubeStudioBlock iframe embed; JW-36/37/38 added; 1792 modules ✓
+
 ## 2026-04-04 | Beta/Stable Channel + Non-Disruptive Updates — Two-channel release system (version-string based); removed auto-download from update-available handler; added user-controlled download/defer IPC flow; updated AppUpdater UI (available → user downloads → ready with defer option); made GitHub repo public; fixed youtube-studio BlockType icon sync error; 5 files modified, build ✓ 1792 modules
 
 ## 2026-04-04 | Space Pan Fix — Block drag/resize yielded to canvas pan when Space held; added `if (document.body.dataset.panMode) return;` guard to useBlockDrag.ts + useBlockResize.ts; added `body[data-pan-mode] .board-block { cursor: grab }` CSS; diagnosed incomplete redo from 2026-04-03; pointer capture coordination resolved; build ✓ 1790 modules
