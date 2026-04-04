@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import type { RefObject } from "react";
 import { useBlockStore } from "../stores/useBlockStore";
 import { useSessionStore } from "../stores/useSessionStore";
+import { useViewportStore } from "../stores/useViewportStore";
 import { GRID } from "../constants";
 import { snapValue, clampBlockBounds } from "../utils/viewport";
 
@@ -71,8 +72,9 @@ export function useBlockResize(
       rafId = requestAnimationFrame(() => {
         if (!resizeState) return;
 
-        const deltaX = e.clientX - resizeState.startX;
-        const deltaY = e.clientY - resizeState.startY;
+        const { scale } = useViewportStore.getState().viewport;
+        const deltaX = (e.clientX - resizeState.startX) / scale;
+        const deltaY = (e.clientY - resizeState.startY) / scale;
 
         let newX = resizeState.baseX;
         let newY = resizeState.baseY;
