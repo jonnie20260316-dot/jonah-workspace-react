@@ -56,3 +56,5 @@ Newest sessions at the top.
 ## 2026-04-02 | React Migration Kickoff — Full planning, URD, pre-flight checklist; zero workspace.html changes
 
 ## 2026-04-04 | Data persistence + auto-update fix — local HTTP server in prod (same origin as dev), forceDevUpdateConfig for unsigned app; v1.0.3 release
+
+## 2026-04-04 | Auto-update 404 fix — electron-builder artifactName explicit; new prevention rule EBUILD-1
