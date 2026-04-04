@@ -37,6 +37,7 @@ export function useBlockDrag(
     let rafId: number | null = null;
 
     const onPointerDown = (e: PointerEvent) => {
+      if (document.body.dataset.panMode) return; // yield to canvas pan (Space held)
       // Read current block position from store at drag start (not from stale closure)
       const block = useBlockStore.getState().blocks.find((b) => b.id === blockId);
       if (!block) return;

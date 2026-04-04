@@ -789,3 +789,6 @@ body[data-pan-mode] [contenteditable] {
   pointer-events: none !important;
   cursor: grab !important;
 }
+body[data-pan-mode] .board-block {
+  cursor: grab !important;
+}

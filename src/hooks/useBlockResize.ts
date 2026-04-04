@@ -41,6 +41,7 @@ export function useBlockResize(
     let rafId: number | null = null;
 
     const onPointerDown = (e: PointerEvent) => {
+      if (document.body.dataset.panMode) return; // yield to canvas pan (Space held)
       // Read current block from store at resize start (not from stale closure)
       const block = useBlockStore.getState().blocks.find((b) => b.id === blockId);
       if (!block) return;
