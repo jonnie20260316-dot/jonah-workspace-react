@@ -238,7 +238,7 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
   },
 
   gitSyncNow: async () => {
-    const { gitEnabled, gitDir } = get();
+    const { gitEnabled, gitDir, deviceId } = get();
     if (!gitEnabled || !gitDir) return;
 
     set({ gitSyncStatus: "syncing", gitError: null });
@@ -248,6 +248,15 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
       const pullResult = await gitPullAndApply(gitDir);
       if (pullResult.ok && pullResult.hadChanges) {
         rehydrateStores();
+      }
+
+      // Build and write sync payload before committing
+      const syncMeta = get().syncMeta;
+      const payload = buildSyncPayload(deviceId || getOrCreateDeviceId(), (syncMeta.pushCount ?? 0) + 1);
+      const writeOk = await window.electronAPI!.writeFile(gitDir, SYNC_FILENAME, JSON.stringify(payload, null, 2));
+      if (!writeOk) {
+        set({ gitSyncStatus: "error", gitError: "Failed to write sync file" });
+        return;
       }
 
       // Then push
