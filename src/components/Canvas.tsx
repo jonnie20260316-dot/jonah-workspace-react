@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, Fragment } from "react";
 import { useViewportStore } from "../stores/useViewportStore";
 import { useBlockStore } from "../stores/useBlockStore";
 import { useSessionStore } from "../stores/useSessionStore";
@@ -8,6 +8,7 @@ import { BLOCK_REGISTRY } from "../blocks/BlockRegistry";
 import { PinnedHUD } from "./PinnedHUD";
 import { SurfaceBackground } from "./SurfaceBackground";
 import { SurfaceForeground } from "./SurfaceForeground";
+import { FrameSwitcher } from "./FrameSwitcher";
 import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
 import { useDrawTool } from "../hooks/useDrawTool";
@@ -31,6 +32,8 @@ export function Canvas() {
   const { viewport, zoomTo } = useViewportStore();
   const { blocks } = useBlockStore();
   const activeTool = useSessionStore((s) => s.activeTool);
+  const activeFrameId = useSessionStore((s) => s.activeFrameId);
+  const [frameSwitcherOpen, setFrameSwitcherOpen] = useState(false);
   const panStateRef = useRef<{
     startX: number;
     startY: number;
@@ -77,6 +80,23 @@ export function Canvas() {
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "Escape") {
+        if (isTextInputFocused()) return;
+        const { activeFrameId: fid, setActiveFrameId, activeTool: tool, setActiveTool } = useSessionStore.getState();
+        if (fid) {
+          setActiveFrameId(null);
+          useViewportStore.getState().fitToContent(useBlockStore.getState().blocks);
+        } else if (tool !== "select") {
+          setActiveTool("select");
+        }
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "j") {
+        if (isTextInputFocused()) return;
+        e.preventDefault();
+        setFrameSwitcherOpen(true);
+        return;
+      }
       if (e.code === "Space") {
         // If focus is in a text input, let space propagate normally
         if (isTextInputFocused()) {
@@ -175,6 +195,7 @@ export function Canvas() {
   };
 
   return (
+    <Fragment>
     <div
       ref={viewportRef}
       style={{
@@ -195,6 +216,7 @@ export function Canvas() {
     >
       <div
         ref={canvasRef}
+        className={activeFrameId ? "frame-focus-mode" : undefined}
         style={{
           position: "absolute",
           width: 20000,
@@ -239,5 +261,7 @@ export function Canvas() {
         </div>
       )}
     </div>
+    <FrameSwitcher open={frameSwitcherOpen} onClose={() => setFrameSwitcherOpen(false)} />
+    </Fragment>
   );
 }

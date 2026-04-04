@@ -45,8 +45,9 @@ interface BlockShellProps {
 
 function BlockShellInner({ block, children }: BlockShellProps) {
   const { updateBlock, archiveBlock, bringToFront } = useBlockStore();
-  const { selectedIds, setSelectedIds, addToSelection } = useSessionStore();
+  const { selectedIds, setSelectedIds, addToSelection, activeFrameId } = useSessionStore();
   const isSelected = selectedIds.includes(block.id);
+  const isInActiveFrame = activeFrameId != null ? block.zoneId === activeFrameId : false;
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   // Block bloom: animate on first mount, then clear class
   const [justCreated, setJustCreated] = useState(true);
@@ -99,7 +100,7 @@ function BlockShellInner({ block, children }: BlockShellProps) {
 
   return (
     <article
-      className={`board-block type-${block.type} ${block.collapsed ? "is-collapsed" : ""} ${colorClass} ${justCreated ? "block-bloom" : ""} ${isSelected ? "block-selected" : ""}`}
+      className={`board-block type-${block.type} ${block.collapsed ? "is-collapsed" : ""} ${colorClass} ${justCreated ? "block-bloom" : ""} ${isSelected ? "block-selected" : ""} ${isInActiveFrame ? "in-active-frame" : ""}`}
       data-id={block.id}
       data-type={block.type}
       style={{

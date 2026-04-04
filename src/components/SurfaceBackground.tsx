@@ -2,6 +2,7 @@ import { useRef, useEffect } from "react";
 import type { MouseEvent } from "react";
 import { useSurfaceStore } from "../stores/useSurfaceStore";
 import { useSessionStore } from "../stores/useSessionStore";
+import { useViewportStore } from "../stores/useViewportStore";
 import { useBlockStore } from "../stores/useBlockStore";
 import { ZONE_PALETTES } from "../constants";
 import type { SurfaceElement } from "../types";
@@ -186,13 +187,14 @@ function TextEl({ el, isSelected, isEditing, onSelect, onEdit, onSave }: {
 }
 
 /** Renders a single Frame (Zone) with its colored background and header bar */
-function FrameEl({ el, isSelected, onSelect, onUpdate, onDelete, blockCount }: {
+function FrameEl({ el, isSelected, onSelect, onUpdate, onDelete, onEnter, blockCount }: {
   el: SurfaceElement;
   isSelected: boolean;
   blockCount: number;
   onSelect: () => void;
   onUpdate: (delta: Partial<SurfaceElement>) => void;
   onDelete: () => void;
+  onEnter?: () => void;
 }) {
   const palette = ZONE_PALETTES.find((p) => p.id === el.frameColor) ?? ZONE_PALETTES[0];
   const collapsed = el.collapsed ?? false;
@@ -242,7 +244,11 @@ function FrameEl({ el, isSelected, onSelect, onUpdate, onDelete, blockCount }: {
         className="frame-header-fo"
         style={{ overflow: "visible" }}
       >
-        <div className="frame-header" onPointerDown={(e) => e.stopPropagation()}>
+        <div
+          className="frame-header"
+          onPointerDown={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => { e.stopPropagation(); onEnter?.(); }}
+        >
           {/* Name input */}
           <input
             className="frame-name-input"
@@ -300,7 +306,8 @@ function FrameEl({ el, isSelected, onSelect, onUpdate, onDelete, blockCount }: {
  */
 export function SurfaceBackground({ previewElement }: Props) {
   const { elements, updateElement, removeElement } = useSurfaceStore();
-  const { selectedIds, setSelectedIds, editingTextId, setEditingTextId } = useSessionStore();
+  const { selectedIds, setSelectedIds, editingTextId, setEditingTextId, setActiveFrameId } = useSessionStore();
+  const animateToFrame = useViewportStore((s) => s.animateToFrame);
   const blocks = useBlockStore((s) => s.blocks);
 
   const frames = elements.filter((el) => el.type === "frame");
@@ -333,6 +340,10 @@ export function SurfaceBackground({ previewElement }: Props) {
               blockCount={count}
               onSelect={() => setSelectedIds([el.id])}
               onUpdate={(delta) => updateElement(el.id, delta)}
+              onEnter={() => {
+                animateToFrame(el);
+                setActiveFrameId(el.id);
+              }}
               onDelete={() => {
                 removeElement(el.id);
                 // clear zoneId from blocks that belonged to this frame

@@ -6,7 +6,7 @@ import {
   screenToBoardPoint,
 } from "../utils/viewport";
 import { MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from "../constants";
-import type { ViewportState, BoardSize, Block } from "../types";
+import type { ViewportState, BoardSize, Block, SurfaceElement } from "../types";
 
 interface ViewportStore {
   viewport: ViewportState;
@@ -26,6 +26,7 @@ interface ViewportStore {
   ) => void;
   pan: (dx: number, dy: number) => void;
   fitToContent: (blocks: Block[]) => void;
+  animateToFrame: (frame: SurfaceElement, onDone?: () => void) => void;
 }
 
 export const useViewportStore = create<ViewportStore>((set, get) => ({
@@ -105,5 +106,43 @@ export const useViewportStore = create<ViewportStore>((set, get) => ({
     const viewport = { x: newX, y: newY, scale: fitScale };
     saveJSON("viewport", viewport);
     set({ viewport });
+  },
+
+  animateToFrame: (frame, onDone) => {
+    const startVp = { ...get().viewport };
+    const padding = 80;
+    const bboxW = frame.w + padding * 2;
+    const bboxH = frame.h + padding * 2;
+    const fitScale = Math.min(
+      window.innerWidth / bboxW,
+      window.innerHeight / bboxH,
+      MAX_ZOOM
+    );
+    const centerBoardX = frame.x - padding + bboxW / 2;
+    const centerBoardY = frame.y - padding + bboxH / 2;
+    const targetX = centerBoardX - window.innerWidth / (2 * fitScale);
+    const targetY = centerBoardY - window.innerHeight / (2 * fitScale);
+    const duration = 400;
+    const startTime = performance.now();
+
+    function easeOut(t: number) { return 1 - Math.pow(1 - t, 3); }
+
+    function tick(now: number) {
+      const t = Math.min((now - startTime) / duration, 1);
+      const e = easeOut(t);
+      const newVp = {
+        scale: startVp.scale + (fitScale - startVp.scale) * e,
+        x: startVp.x + (targetX - startVp.x) * e,
+        y: startVp.y + (targetY - startVp.y) * e,
+      };
+      set({ viewport: newVp });
+      if (t < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        saveJSON("viewport", newVp);
+        onDone?.();
+      }
+    }
+    requestAnimationFrame(tick);
   },
 }));

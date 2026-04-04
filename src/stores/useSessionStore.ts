@@ -31,6 +31,7 @@ interface SessionStore {
   selectedIds: string[];
   activeTool: ActiveTool;
   editingTextId: string | null;
+  activeFrameId: string | null;
   setLang: (l: Lang) => void;
   setSnapMode: (v: boolean) => void;
   setOverlapMode: (v: boolean) => void;
@@ -42,6 +43,7 @@ interface SessionStore {
   clearSelection: () => void;
   setActiveTool: (tool: ActiveTool) => void;
   setEditingTextId: (id: string | null) => void;
+  setActiveFrameId: (id: string | null) => void;
 }
 
 const initialDate = loadText("active-date") || todayString();
@@ -62,6 +64,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   selectedIds: [],
   activeTool: "select",
   editingTextId: null,
+  activeFrameId: null,
 
   setLang: (lang) => {
     saveText("lang", lang);
@@ -103,4 +106,5 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   clearSelection: () => set({ selectedIds: [] }),
   setActiveTool: (tool) => set({ activeTool: tool }),
   setEditingTextId: (id) => set({ editingTextId: id }),
+  setActiveFrameId: (id) => set({ activeFrameId: id }),
 }));

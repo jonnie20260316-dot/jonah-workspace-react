@@ -7,6 +7,8 @@ import { pick } from "../utils/i18n";
 import { useLang } from "../hooks/useLang";
 import { useBlockStore } from "../stores/useBlockStore";
 import { useViewportStore } from "../stores/useViewportStore";
+import { useSessionStore } from "../stores/useSessionStore";
+import { useSurfaceStore } from "../stores/useSurfaceStore";
 import { useSyncStore } from "../stores/useSyncStore";
 import { saveJSON, backupToFile } from "../utils/storage";
 
@@ -14,6 +16,15 @@ export function FloatingTopBar() {
   useLang();
   const { toggleSidebar, toggleGearMenu, sidebarOpen, gearMenuOpen } = useUIStore();
   const [saved, setSaved] = useState(false);
+  const activeFrameId = useSessionStore((s) => s.activeFrameId);
+  const setActiveFrameId = useSessionStore((s) => s.setActiveFrameId);
+  const elements = useSurfaceStore((s) => s.elements);
+  const activeFrame = activeFrameId ? elements.find((el) => el.id === activeFrameId) : null;
+
+  const exitFrame = () => {
+    setActiveFrameId(null);
+    useViewportStore.getState().fitToContent(useBlockStore.getState().blocks);
+  };
 
   const handleSave = async () => {
     const { blocks } = useBlockStore.getState();
@@ -47,6 +58,17 @@ export function FloatingTopBar() {
         >
           <Menu size={18} strokeWidth={1.8} />
         </button>
+        {activeFrameId && (
+          <div className="frame-breadcrumb">
+            <button className="top-bar-btn frame-breadcrumb-home" onClick={exitFrame} title={pick("退出分區", "Exit frame")}>
+              🏠
+            </button>
+            <span className="frame-breadcrumb-sep">›</span>
+            <span className="frame-breadcrumb-name">
+              {activeFrame?.name || pick("未命名分區", "Untitled frame")}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Center */}

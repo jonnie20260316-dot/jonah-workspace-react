@@ -1127,3 +1127,120 @@ body[data-pan-mode] .board-block {
   border-radius: 10px;
   white-space: nowrap;
 }
+
+/* ─── Phase 8: Room Navigation ───────────────────────────────────────────── */
+
+/* Focus mode — dim blocks outside active frame */
+.frame-focus-mode .board-block:not(.in-active-frame) {
+  opacity: 0.12;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.frame-focus-mode .board-block.in-active-frame {
+  transition: opacity 0.25s;
+}
+
+/* Breadcrumb in FloatingTopBar */
+.frame-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.frame-breadcrumb-home {
+  font-size: 14px;
+  line-height: 1;
+}
+.frame-breadcrumb-sep {
+  font-size: 13px;
+  color: rgba(36,50,49,0.35);
+}
+.frame-breadcrumb-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text, #243231);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* FrameSwitcher modal */
+.frame-switcher-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(36,50,49,0.2);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 100px;
+}
+.frame-switcher {
+  background: rgba(255,252,246,0.97);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius: var(--radius-xl);
+  width: 400px;
+  max-height: 480px;
+  box-shadow: var(--shadow-overlay);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.frame-switcher-search {
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  outline: none;
+  border-bottom: 1px solid rgba(36,50,49,0.1);
+  width: 100%;
+  box-sizing: border-box;
+  color: var(--text, #243231);
+}
+.frame-switcher-list {
+  overflow-y: auto;
+  max-height: 380px;
+}
+.frame-switcher-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(36,50,49,0.05);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+.frame-switcher-item:hover {
+  background: rgba(36,50,49,0.05);
+}
+.frame-switcher-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.frame-switcher-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text, #243231);
+}
+.frame-switcher-count {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: rgba(36,50,49,0.08);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+.frame-switcher-empty {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
