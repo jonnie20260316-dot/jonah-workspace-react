@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ── App info ──────────────────────────────────────────────────────────────
   getAppVersion: () => ipcRenderer.invoke('app:version'),
+  getScreenPermissionStatus: () => ipcRenderer.invoke('app:screen-permission-status'),
 
   // ── Updates ───────────────────────────────────────────────────────────────
   /** Ask the main process to check GitHub for a newer version. */

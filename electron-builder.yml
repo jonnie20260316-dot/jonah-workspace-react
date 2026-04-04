@@ -12,6 +12,7 @@ files:
   - package.json
   - node_modules/**
   - youtube-credentials.json
+  - dev-app-update.yml
   - "!src/**"
   - "!*.md"
 

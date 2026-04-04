@@ -42,6 +42,9 @@ export const GLOBAL_KEYS = new Set<string>([
   "git-sync-enabled",
   "git-sync-dir",
   "git-sync-remote",
+  "github-sync-enabled",
+  "github-sync-repo",
+  "github-sync-token",
   "text-scale",
 ]);
 

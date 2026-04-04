@@ -210,12 +210,13 @@ export async function githubPush(
 
 /**
  * Pull: GET from GitHub Contents API, apply payload to localStorage.
+ * Returns the payload so the caller can inspect deviceId and skip unnecessary rehydration.
  */
 export async function githubPull(
   token: string,
   owner: string,
   repo: string
-): Promise<{ ok: boolean; hadChanges: boolean; error?: string }> {
+): Promise<{ ok: boolean; hadChanges: boolean; payload?: SyncPayload; error?: string }> {
   const api = window.electronAPI;
   if (!api) return { ok: false, hadChanges: false, error: "Not in Electron" };
 
@@ -226,7 +227,7 @@ export async function githubPull(
 
     const payload = JSON.parse(getResult.content) as SyncPayload;
     applySyncPayload(payload);
-    return { ok: true, hadChanges: true };
+    return { ok: true, hadChanges: true, payload };
   } catch (err) {
     return { ok: false, hadChanges: false, error: (err as Error).message };
   }

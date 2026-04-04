@@ -63,7 +63,10 @@ Defined in: `src/constants.ts`
 "threads-intel-records",
 "threads-intel-archived", "threads-intel-archive-days",
 "history-compact", "sidebar-category-order",
-"device-id", "sync-meta", "timer-height-migrated-v1"
+"device-id", "sync-meta", "timer-height-migrated-v1",
+"git-sync-enabled", "git-sync-dir", "git-sync-remote",
+"github-sync-enabled", "github-sync-repo", "github-sync-token",
+"text-scale"
 ```
 
 GLOBAL_KEY_PREFIXES (dynamic keys matched by prefix):
@@ -183,6 +186,7 @@ Do not exit silent after architecture, workflow, storage, guardrail, or major UX
 | JW-37 | **Plan-Before-Build Gate (>3 files)** — Before implementing a feature touching >3 files or >100 lines, write a numbered plan listing files and changes per file. Get user confirmation before coding. If user says "stop and plan," revert uncommitted changes and produce the plan. Bug fixes and single-file changes exempt. |
 | JW-38 | **Hidden Media Elements Must Stay in Layout** — Never use `display: none` on `<video>`, `<audio>`, or `<canvas>` elements that will be read programmatically. Use `opacity: 0; position: absolute; pointer-events: none`. Ensure `autoPlay` and `playsInline` on video elements that must play without user gesture. |
 | JW-39 | **Input-Focus Guard Before Global Key Hijacking** — Any `window` keydown handler that calls `preventDefault()` or `blur()` for a canvas shortcut MUST first check `isTextInputFocused()`. If focus is in an `<input>`, `<textarea>`, or `contentEditable` element, return early. Applies to Space, Delete, Backspace, arrows — any key that doubles as a typing character and a canvas action. |
+| JW-40 | **New Storage Keys Must Be in GLOBAL_KEYS Before First Write** — Any localStorage key that must persist across sessions must be added to `GLOBAL_KEYS` in `constants.ts` BEFORE any code writes to it. If not in GLOBAL_KEYS, `storageKey()` routes it to `session:{date}:{key}`, making it unreadable on next boot when `_activeDate` is empty. Test: confirm `storageKey(newKey)` returns the global path at init time. |
 | GIT-EXEC-1 | **⚠️ Never use `exec` for network calls requiring auth** — `child_process.exec('git push ...')` cannot handle HTTPS credential prompts. Push hangs 30s silently then fails. Use `https.request` with explicit `Authorization: Bearer {token}` header instead. 15s timeout. Immediate 401 on bad credentials. |
 
 ## Session Protocol — Wrap It Up

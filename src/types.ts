@@ -152,6 +152,7 @@ declare global {
       selectScreenSource: (id: string) => Promise<void>;
       // App
       getAppVersion: () => Promise<string>;
+      getScreenPermissionStatus: () => Promise<"granted" | "denied" | "restricted" | "not-determined">;
       // Updates
       checkForUpdates: () => Promise<void>;
       downloadUpdate: () => Promise<void>;

@@ -3,6 +3,7 @@ import { useSyncStore, rehydrateStores } from "../stores/useSyncStore";
 import { getSyncHandle } from "../utils/syncIdb";
 import { restoreFromFile, backupToFile } from "../utils/storage";
 import { useBlockStore } from "../stores/useBlockStore";
+import { STORAGE_PREFIX } from "../constants";
 
 type FSHandleBoot = FileSystemDirectoryHandle & {
   queryPermission: (opts: { mode: string }) => Promise<string>;
@@ -25,7 +26,33 @@ export function useSyncBoot(): void {
 
   useEffect(() => {
     const boot = async () => {
+      // Migrate github-sync-* keys stranded in session-scoped paths (JW-8 fix for v1.0.6 regression)
+      // These keys were written without being in GLOBAL_KEYS, so storageKey() routed them to
+      // session:{date}:{key}. On next boot with empty _activeDate they were unreadable.
+      const githubKeysToMigrate = ["github-sync-enabled", "github-sync-repo", "github-sync-token"];
+      for (const key of githubKeysToMigrate) {
+        const globalFullKey = STORAGE_PREFIX + key;
+        if (!localStorage.getItem(globalFullKey)) {
+          // Collect stranded session-scoped versions first, then migrate
+          const toMigrate: { from: string; val: string }[] = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith(STORAGE_PREFIX + "session:") && k.endsWith(":" + key)) {
+              const val = localStorage.getItem(k);
+              if (val) toMigrate.push({ from: k, val });
+            }
+          }
+          if (toMigrate.length > 0) {
+            localStorage.setItem(globalFullKey, toMigrate[0].val);
+            for (const { from } of toMigrate) localStorage.removeItem(from);
+            console.log(`[boot] migrated ${key} from session scope to global`);
+          }
+        }
+      }
+
       const store = useSyncStore.getState();
+      // Re-read github settings after migration (store was initialized before migration ran)
+      store.refreshGithubSettings?.();
       store.initDeviceId();
 
       // Electron path

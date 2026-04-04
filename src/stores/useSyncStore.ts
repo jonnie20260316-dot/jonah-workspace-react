@@ -126,6 +126,7 @@ interface SyncStore {
   githubSetup: (repoUrl: string, token: string) => { ok: boolean; error?: string };
   githubSyncNow: () => Promise<void>;
   githubSyncOnQuit: () => Promise<void>;
+  refreshGithubSettings: () => void;
 }
 
 const DEFAULT_SYNC_META: SyncMeta = {
@@ -135,10 +136,33 @@ const DEFAULT_SYNC_META: SyncMeta = {
   lastPulledRemotePushedAt: null,
 };
 
-/** Rehydrate all Zustand stores from localStorage after a pull */
+/** Rehydrate all Zustand stores from localStorage after a pull.
+ *  Uses granular block merge to avoid unmounting active recording components (JW-28).
+ */
 export function rehydrateStores(): void {
-  const blocks = loadJSON<Block[]>("blocks", []);
-  useBlockStore.setState({ blocks });
+  const newBlocks = loadJSON<Block[]>("blocks", []);
+  const currentBlocks = useBlockStore.getState().blocks;
+
+  // Only replace blocks if IDs or order changed — prevents React unmount/remount
+  // which triggers JW-28 cleanup and kills active recordings.
+  const idsChanged =
+    newBlocks.length !== currentBlocks.length ||
+    newBlocks.some((nb, i) => nb.id !== currentBlocks[i]?.id);
+
+  if (idsChanged) {
+    useBlockStore.setState({ blocks: newBlocks });
+  } else {
+    // Same block IDs in same order — merge only changed props per block
+    let anyChanged = false;
+    const merged = newBlocks.map((nb, i) => {
+      const cb = currentBlocks[i];
+      // Quick JSON comparison — blocks are plain data objects
+      if (JSON.stringify(nb) === JSON.stringify(cb)) return cb;
+      anyChanged = true;
+      return { ...cb, ...nb };
+    });
+    if (anyChanged) useBlockStore.setState({ blocks: merged });
+  }
 
   const vp = loadJSON("viewport", { x: 700, y: 120 });
   useViewportStore.setState({ viewport: normaliseViewport(vp) });
@@ -202,6 +226,16 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
   },
 
   // ─── GitHub sync actions ────────────────────────────────────────────────────
+
+  // Re-read github-sync-* keys from localStorage (call after boot-time migration)
+  refreshGithubSettings: () => {
+    set({
+      githubEnabled: (loadText("github-sync-enabled") ?? "false") === "true",
+      githubRepo: loadText("github-sync-repo") ?? "",
+      githubToken: loadText("github-sync-token") ?? "",
+    });
+  },
+
   setGithubEnabled: (v) => {
     saveText("github-sync-enabled", String(v));
     set({ githubEnabled: v });
@@ -244,7 +278,14 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
       // Pull first — apply remote changes if any
       const pullResult = await githubPull(githubToken, parsed.owner, parsed.repo);
       if (pullResult.ok && pullResult.hadChanges) {
-        rehydrateStores();
+        // Skip rehydration if the remote file was pushed by this device — it's our own
+        // data coming back, localStorage already has the correct state. Rehydrating would
+        // replace the blocks array reference and unmount active recording components (JW-28).
+        const localDeviceId = deviceId || getOrCreateDeviceId();
+        const remoteDeviceId = pullResult.payload?.deviceId;
+        if (remoteDeviceId !== localDeviceId) {
+          rehydrateStores();
+        }
       }
 
       // Push current state

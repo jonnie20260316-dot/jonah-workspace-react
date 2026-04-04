@@ -75,6 +75,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   const [screenSources, setScreenSources] = useState<{ id: string; name: string; thumbnail: string }[]>([]);
   const [showSourcePicker, setShowSourcePicker] = useState(false);
+  const [screenPermDenied, setScreenPermDenied] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -96,6 +97,15 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   const pipPositionRef = useRef(pipPosition);
   const pipDragRef = useRef<{ dragging: boolean; offsetX: number; offsetY: number }>({ dragging: false, offsetX: 0, offsetY: 0 });
   const stageRef = useRef<HTMLDivElement>(null);
+
+  // Check macOS screen recording permission on mount (Electron only).
+  // Permission resets after each update when app is ad-hoc signed — guide user to re-grant.
+  useEffect(() => {
+    if (!window.electronAPI?.getScreenPermissionStatus) return;
+    window.electronAPI.getScreenPermissionStatus().then((status) => {
+      setScreenPermDenied(status === "denied" || status === "restricted");
+    }).catch(() => {});
+  }, []);
 
   // Keep captureModeRef in sync for use inside recorder.onstop closure
   useEffect(() => { captureModeRef.current = captureMode; }, [captureMode]);
@@ -832,6 +842,24 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+      {/* Screen recording permission banner — shown after app update resets TCC permissions */}
+      {screenPermDenied && (
+        <div style={{
+          padding: "8px 12px",
+          background: "#fff3cd",
+          border: "1px solid #ffc107",
+          borderRadius: "6px",
+          fontSize: "12px",
+          lineHeight: 1.5,
+        }}>
+          <strong>{pick("螢幕錄影權限已失效", "Screen recording permission was reset")}</strong>
+          <br />
+          {pick(
+            "更新後需重新授權。請前往：系統設定 → 隱私權與安全性 → 螢幕錄影 → 勾選 Jonah Workspace",
+            "This happens after each update. Go to: System Settings → Privacy & Security → Screen Recording → enable Jonah Workspace"
+          )}
+        </div>
+      )}
       {/* Toolbar */}
       <div
         style={{

@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, session, desktopCapturer } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session, desktopCapturer, systemPreferences } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
 const path = require('path');
@@ -210,8 +210,8 @@ async function createWindow() {
 ipcMain.handle('updater:check', async () => {
   try {
     await autoUpdater.checkForUpdates();
-  } catch {
-    sendUpdaterStatus({ status: 'error' });
+  } catch (err) {
+    sendUpdaterStatus({ status: 'error', message: err?.message || String(err) });
   }
 });
 
@@ -271,6 +271,12 @@ ipcMain.handle('updater:defer', () => {
 });
 
 ipcMain.handle('app:version', () => app.getVersion());
+
+ipcMain.handle('app:screen-permission-status', () => {
+  // Returns 'granted', 'denied', 'restricted', or 'not-determined'
+  // Screen recording permission resets when the app binary changes (CDHash) after an ad-hoc-signed update.
+  return systemPreferences.getMediaAccessStatus('screen');
+});
 
 // ─── IPC: Folder picker ───────────────────────────────────────────────────────
 ipcMain.handle('dialog:open-directory', async (event) => {
