@@ -177,6 +177,26 @@ interface YTStreamItem {
   cdn?: {
     resolution?: string;
     frameRate?: string;
+    ingestionInfo?: {
+      ingestionAddress: string;
+      streamName: string;
+      backupIngestionAddress?: string;
+    };
+  };
+}
+
+export async function getStreamKey(streamId: string): Promise<{
+  rtmpUrl: string;
+  streamKey: string;
+} | null> {
+  const data = await ytFetch<YTListResponse<YTStreamItem>>(
+    `/liveStreams?part=cdn&id=${encodeURIComponent(streamId)}`
+  );
+  const ingestion = data?.items?.[0]?.cdn?.ingestionInfo;
+  if (!ingestion) return null;
+  return {
+    rtmpUrl: ingestion.ingestionAddress,
+    streamKey: ingestion.streamName,
   };
 }
 
@@ -198,4 +218,84 @@ export async function getStreamHealth(streamId: string): Promise<YTStreamHealth 
     resolution: item.cdn?.resolution ?? null,
     frameRate: item.cdn?.frameRate ?? null,
   };
+}
+
+// ─── Broadcast creation ───────────────────────────────────────────────────────
+
+interface YTBroadcastInsertResponse {
+  id: string;
+}
+
+export async function createBroadcast(
+  title: string,
+  privacyStatus: "public" | "private" | "unlisted"
+): Promise<string | null> {
+  const data = await ytFetch<YTBroadcastInsertResponse>(
+    `/liveBroadcasts?part=snippet,status`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        snippet: {
+          title,
+          scheduledStartTime: new Date().toISOString(),
+        },
+        status: {
+          privacyStatus,
+          selfDeclaredMadeForKids: false,
+        },
+      }),
+    }
+  );
+  return data?.id ?? null;
+}
+
+interface YTStreamInsertResponse {
+  id: string;
+  cdn?: {
+    ingestionInfo?: {
+      ingestionAddress: string;
+      streamName: string;
+    };
+  };
+}
+
+export async function createLiveStream(
+  title: string
+): Promise<{ streamId: string; rtmpUrl: string; streamKey: string } | null> {
+  const data = await ytFetch<YTStreamInsertResponse>(
+    `/liveStreams?part=snippet,cdn`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        snippet: { title },
+        cdn: {
+          ingestionType: "rtmp",
+          resolution: "1080p",
+          frameRate: "30fps",
+        },
+      }),
+    }
+  );
+  const ingestion = data?.cdn?.ingestionInfo;
+  if (!data?.id || !ingestion) return null;
+  return {
+    streamId: data.id,
+    rtmpUrl: ingestion.ingestionAddress,
+    streamKey: ingestion.streamName,
+  };
+}
+
+interface YTBindResponse {
+  id: string;
+}
+
+export async function bindBroadcast(
+  broadcastId: string,
+  streamId: string
+): Promise<string | null> {
+  const data = await ytFetch<YTBindResponse>(
+    `/liveBroadcasts/bind?id=${encodeURIComponent(broadcastId)}&streamId=${encodeURIComponent(streamId)}&part=id`,
+    { method: "POST" }
+  );
+  return data?.id ?? null;
 }

@@ -54,4 +54,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('youtube:tokens', handler);
     return () => ipcRenderer.removeListener('youtube:tokens', handler);
   },
+
+  // ── YouTube RTMP streaming ─────────────────────────────────────────────
+  youtubeStartStream: (rtmpUrl) => ipcRenderer.invoke('youtube:start-stream', rtmpUrl),
+  youtubeStreamChunk: (chunk) => ipcRenderer.invoke('youtube:stream-chunk', chunk),
+  youtubeStopStream: () => ipcRenderer.invoke('youtube:stop-stream'),
+  onYoutubeStreamStatus: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('youtube:stream-status', handler);
+    return () => ipcRenderer.removeListener('youtube:stream-status', handler);
+  },
 });

@@ -8,9 +8,14 @@ import {
   listBroadcasts,
   transitionBroadcast,
   getStreamHealth,
+  getStreamKey,
+  createBroadcast,
+  createLiveStream,
+  bindBroadcast,
 } from "../utils/youtubeApi";
+import { useStreamStore } from "../stores/useStreamStore";
 import type { YTBroadcast, YTStreamHealth } from "../utils/youtubeApi";
-import type { Block, YTTokens } from "../types";
+import type { Block, YTTokens, YTStreamStatus } from "../types";
 
 interface YouTubeStudioBlockProps {
   block: Block;
@@ -67,9 +72,18 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transitioning, setTransitioning] = useState(false);
+  const [rtmpStatus, setRtmpStatus] = useState<YTStreamStatus["status"]>("stopped");
+  const [rtmpStarting, setRtmpStarting] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createTitle, setCreateTitle] = useState("");
+  const [createPrivacy, setCreatePrivacy] = useState<"public" | "private" | "unlisted">("private");
+  const [creating, setCreating] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const activeStream = useStreamStore((s) => s.activeStream);
 
   const isElectron = !!window.electronAPI?.youtubeAuthStart;
+  const hasRtmp = !!window.electronAPI?.youtubeStartStream;
 
   // Listen for OAuth tokens from Electron main process
   useEffect(() => {
@@ -78,6 +92,26 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
       saveTokens(tokens);
       setAuthed(true);
       setError(null);
+    });
+    return unsub;
+  }, []);
+
+  // Listen for RTMP stream status from FFmpeg
+  useEffect(() => {
+    if (!window.electronAPI?.onYoutubeStreamStatus) return;
+    const unsub = window.electronAPI.onYoutubeStreamStatus((data: YTStreamStatus) => {
+      setRtmpStatus(data.status);
+      if (data.status === "error" && "error" in data) {
+        setError(data.error);
+      }
+      if (data.status === "stopped" || data.status === "error") {
+        // Stop the MediaRecorder if FFmpeg died
+        if (recorderRef.current && recorderRef.current.state !== "inactive") {
+          recorderRef.current.stop();
+        }
+        recorderRef.current = null;
+        setRtmpStarting(false);
+      }
     });
     return unsub;
   }, []);
@@ -154,6 +188,103 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
     }
   }, [refresh]);
 
+  // ─── Create broadcast ───────────────────────────────────────────────────
+  const handleCreate = useCallback(async () => {
+    if (!createTitle.trim()) return;
+    setCreating(true);
+    setError(null);
+    try {
+      const broadcastId = await createBroadcast(createTitle.trim(), createPrivacy);
+      if (!broadcastId) throw new Error("broadcast creation failed");
+      const streamInfo = await createLiveStream(createTitle.trim());
+      if (!streamInfo) throw new Error("stream creation failed");
+      await bindBroadcast(broadcastId, streamInfo.streamId);
+      setShowCreateForm(false);
+      setCreateTitle("");
+      await refresh();
+    } catch {
+      setError(pick("建立直播失敗", "Failed to create broadcast"));
+    } finally {
+      setCreating(false);
+    }
+  }, [createTitle, createPrivacy, refresh]);
+
+  // ─── RTMP streaming (FFmpeg) ────────────────────────────────────────────
+  const startRtmpStream = useCallback(async (broadcast: YTBroadcast) => {
+    if (!hasRtmp || !broadcast.boundStreamId) return;
+    // Need an active capture source
+    const stream = useStreamStore.getState().activeStream;
+    if (!stream) {
+      setError(pick("請先在錄影區塊開始擷取", "Start a capture source in Video Capture first"));
+      return;
+    }
+
+    setRtmpStarting(true);
+    setError(null);
+
+    try {
+      // Get RTMP URL + stream key from YouTube API
+      const keyInfo = await getStreamKey(broadcast.boundStreamId);
+      if (!keyInfo) {
+        setError(pick("無法取得串流金鑰", "Failed to get stream key"));
+        setRtmpStarting(false);
+        return;
+      }
+
+      const rtmpUrl = `${keyInfo.rtmpUrl}/${keyInfo.streamKey}`;
+
+      // Start FFmpeg process
+      const ok = await window.electronAPI!.youtubeStartStream(rtmpUrl);
+      if (!ok) {
+        setRtmpStarting(false);
+        return;
+      }
+
+      // Create a MediaRecorder to pipe chunks to FFmpeg
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+        ? "video/webm;codecs=vp9,opus"
+        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+        ? "video/webm;codecs=vp8,opus"
+        : "video/webm";
+
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recorderRef.current = recorder;
+
+      recorder.ondataavailable = async (e) => {
+        if (e.data.size > 0 && window.electronAPI?.youtubeStreamChunk) {
+          const buf = await e.data.arrayBuffer();
+          window.electronAPI.youtubeStreamChunk(buf);
+        }
+      };
+
+      recorder.onerror = () => {
+        setError(pick("錄製器錯誤", "Recorder error"));
+        stopRtmpStream();
+      };
+
+      recorder.start(1000); // 1s chunks — matches OBS's push model
+      setRtmpStarting(false);
+    } catch (err) {
+      console.error("RTMP stream start failed:", err);
+      setError(pick("串流啟動失敗", "Stream start failed"));
+      setRtmpStarting(false);
+    }
+  }, [hasRtmp]);
+
+  const stopRtmpStream = useCallback(async () => {
+    // Stop MediaRecorder
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      recorderRef.current.stop();
+    }
+    recorderRef.current = null;
+    // Stop FFmpeg
+    if (window.electronAPI?.youtubeStopStream) {
+      await window.electronAPI.youtubeStopStream();
+    }
+  }, []);
+
+  const isRtmpActive = rtmpStatus === "streaming" || rtmpStatus === "starting";
+
   const s = (base: number) => `calc(${base}px * var(--text-scale, 1))`;
 
   // ─── Unauthenticated state ───────────────────────────────────────────────
@@ -206,6 +337,15 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
           {loading ? pick("載入中…", "Loading…") : pick("已連接", "Connected")}
         </span>
         <div style={{ display: "flex", gap: "6px" }}>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            style={{
+              padding: "4px 8px", fontSize: s(11), backgroundColor: "#ff0000",
+              color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer",
+            }}
+          >
+            + {pick("新建直播", "New")}
+          </button>
           <button
             onClick={refresh}
             disabled={loading}
@@ -303,7 +443,7 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
             </div>
           ) : null}
 
-          {/* Action buttons */}
+          {/* Broadcast control buttons */}
           <div style={{ display: "flex", gap: "8px" }}>
             {activeBc.lifeCycleStatus === "ready" && (
               <button
@@ -348,6 +488,66 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
               </button>
             )}
           </div>
+
+          {/* RTMP streaming controls */}
+          {hasRtmp && activeBc.boundStreamId && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {/* Stream status indicator */}
+              {isRtmpActive && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: "6px",
+                  padding: "6px 10px", backgroundColor: rtmpStatus === "streaming" ? "#e8f5e9" : "#fff3e0",
+                  borderRadius: "4px", fontSize: s(11),
+                }}>
+                  <span style={{ color: rtmpStatus === "streaming" ? "#4caf50" : "#ff9800" }}>
+                    {rtmpStatus === "streaming" ? "●" : "◌"}
+                  </span>
+                  <span style={{ color: "#555" }}>
+                    {rtmpStatus === "streaming"
+                      ? pick("正在推流到 YouTube", "Pushing to YouTube")
+                      : pick("FFmpeg 啟動中…", "FFmpeg starting…")}
+                  </span>
+                </div>
+              )}
+
+              {/* No capture source warning */}
+              {!activeStream && !isRtmpActive && (
+                <div style={{ fontSize: s(10), color: "#999", fontStyle: "italic" }}>
+                  {pick("請先在錄影區塊開始擷取來源", "Start a capture source in Video Capture block first")}
+                </div>
+              )}
+
+              {/* Start / Stop streaming button */}
+              {isRtmpActive ? (
+                <button
+                  onClick={stopRtmpStream}
+                  style={{
+                    padding: "8px", fontSize: s(12), fontWeight: 600,
+                    backgroundColor: "#e53935", color: "#fff", border: "none",
+                    borderRadius: "6px", cursor: "pointer",
+                  }}
+                >
+                  {pick("■ 停止推流", "■ Stop Streaming")}
+                </button>
+              ) : (
+                <button
+                  onClick={() => startRtmpStream(activeBc)}
+                  disabled={!activeStream || rtmpStarting}
+                  style={{
+                    padding: "8px", fontSize: s(12), fontWeight: 600,
+                    backgroundColor: activeStream ? "#e65100" : "#ccc",
+                    color: "#fff", border: "none", borderRadius: "6px",
+                    cursor: activeStream && !rtmpStarting ? "pointer" : "default",
+                    opacity: activeStream && !rtmpStarting ? 1 : 0.5,
+                  }}
+                >
+                  {rtmpStarting
+                    ? pick("啟動中…", "Starting…")
+                    : pick("▶ 開始推流", "▶ Start Streaming")}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -385,17 +585,84 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
         </div>
       )}
 
+      {/* Create broadcast form */}
+      {showCreateForm && (
+        <div style={{
+          padding: "12px", backgroundColor: "#fafafa", borderRadius: "8px",
+          border: "1px solid #e0e0e0", display: "flex", flexDirection: "column", gap: "8px",
+        }}>
+          <div style={{ fontSize: s(12), fontWeight: 600, color: "#333" }}>
+            {pick("新建直播", "New Broadcast")}
+          </div>
+          <input
+            type="text"
+            placeholder={pick("直播標題", "Broadcast title")}
+            value={createTitle}
+            onChange={(e) => setCreateTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }}
+            style={{
+              padding: "7px 10px", fontSize: s(12), border: "1px solid #ddd",
+              borderRadius: "6px", outline: "none", width: "100%", boxSizing: "border-box",
+            }}
+          />
+          <select
+            value={createPrivacy}
+            onChange={(e) => setCreatePrivacy(e.target.value as "public" | "private" | "unlisted")}
+            style={{
+              padding: "7px 10px", fontSize: s(12), border: "1px solid #ddd",
+              borderRadius: "6px", backgroundColor: "#fff", cursor: "pointer",
+            }}
+          >
+            <option value="private">{pick("私人", "Private")}</option>
+            <option value="unlisted">{pick("不公開", "Unlisted")}</option>
+            <option value="public">{pick("公開", "Public")}</option>
+          </select>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <button
+              onClick={handleCreate}
+              disabled={creating || !createTitle.trim()}
+              style={{
+                flex: 1, padding: "8px", fontSize: s(12), fontWeight: 600,
+                backgroundColor: createTitle.trim() && !creating ? "#ff0000" : "#ccc",
+                color: "#fff", border: "none", borderRadius: "6px",
+                cursor: createTitle.trim() && !creating ? "pointer" : "default",
+              }}
+            >
+              {creating ? pick("建立中…", "Creating…") : pick("建立", "Create")}
+            </button>
+            <button
+              onClick={() => { setShowCreateForm(false); setCreateTitle(""); }}
+              disabled={creating}
+              style={{
+                padding: "8px 16px", fontSize: s(12), backgroundColor: "#f0f0f0",
+                border: "none", borderRadius: "6px", cursor: creating ? "default" : "pointer",
+                opacity: creating ? 0.5 : 1,
+              }}
+            >
+              {pick("取消", "Cancel")}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* No broadcasts */}
-      {!activeBc && upcomingBcs.length === 0 && !loading && (
+      {!activeBc && upcomingBcs.length === 0 && !loading && !showCreateForm && (
         <div style={{
           flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
           justifyContent: "center", color: "#bbb", fontSize: s(12), gap: "8px",
         }}>
           <div style={{ fontSize: s(24) }}>📡</div>
           <div>{pick("沒有排程或進行中的直播", "No scheduled or active broadcasts")}</div>
-          <div style={{ fontSize: s(10), color: "#ccc" }}>
-            {pick("在 YouTube Studio 中建立直播後會顯示在這裡", "Create a broadcast in YouTube Studio to see it here")}
-          </div>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            style={{
+              marginTop: "4px", padding: "8px 20px", fontSize: s(12), fontWeight: 600,
+              backgroundColor: "#ff0000", color: "#fff", border: "none",
+              borderRadius: "6px", cursor: "pointer",
+            }}
+          >
+            + {pick("新建直播", "Create Broadcast")}
+          </button>
         </div>
       )}
     </div>

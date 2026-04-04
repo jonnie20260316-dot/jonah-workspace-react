@@ -3,6 +3,7 @@ import { useBlockField } from "../hooks/useBlockField";
 import { loadJSON, saveJSON } from "../utils/storage";
 import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
+import { useStreamStore } from "../stores/useStreamStore";
 import type { Block } from "../types";
 
 interface SavedVideo {
@@ -348,6 +349,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
         videoRef.current.play();
       }
       setIsStreaming(true);
+      useStreamStore.getState().setActiveStream(stream);
 
       // Re-enumerate to get real labels
       enumerateDevicesNow();
@@ -395,6 +397,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     if (videoRef.current) videoRef.current.srcObject = null;
     if (screenVideoRef.current) screenVideoRef.current.srcObject = null;
     setIsStreaming(false);
+    useStreamStore.getState().setActiveStream(null);
     setStreamStats({ fps: "—", res: "—" });
   }, [stopPipCamera]);
 
@@ -469,6 +472,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       }
 
       setIsStreaming(true);
+      useStreamStore.getState().setActiveStream(finalStream);
 
       // Re-enumerate to get real labels
       enumerateDevicesNow();
