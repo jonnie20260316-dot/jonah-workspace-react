@@ -5,6 +5,8 @@ import { ZOOM_SENSITIVITY } from "../constants";
 import { BlockShell } from "../blocks/BlockShell";
 import { BLOCK_REGISTRY } from "../blocks/BlockRegistry";
 import { PinnedHUD } from "./PinnedHUD";
+import { SurfaceBackground } from "./SurfaceBackground";
+import { SurfaceForeground } from "./SurfaceForeground";
 import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
 
@@ -168,6 +170,9 @@ export function Canvas() {
           backgroundSize: "24px 24px",
         }}
       >
+        {/* Surface background: frames, shapes, brushes — below blocks */}
+        <SurfaceBackground />
+
         {/* Render all non-archived, non-pinned blocks */}
         {blocks
           .filter((b) => !b.archived && !b.pinned)
@@ -181,6 +186,9 @@ export function Canvas() {
               </BlockShell>
             );
           })}
+
+        {/* Surface foreground: connectors, selection handles — above blocks */}
+        <SurfaceForeground />
       </div>
 
       {/* Pinned blocks HUD — viewport-fixed, outside canvas transform */}

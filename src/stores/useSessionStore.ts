@@ -5,6 +5,11 @@ import { scheduleGitSync } from "../utils/sync";
 import { DEFAULT_LANG } from "../constants";
 import type { Lang } from "../types";
 
+export type ActiveTool =
+  | "select" | "pan"
+  | "rect" | "ellipse" | "diamond"
+  | "text" | "brush" | "connector" | "frame";
+
 function todayString() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -22,12 +27,19 @@ interface SessionStore {
   snapMode: boolean;
   overlapMode: boolean;
   textScale: number;
+  // Edgeless selection + tool state (not persisted)
+  selectedIds: string[];
+  activeTool: ActiveTool;
   setLang: (l: Lang) => void;
   setSnapMode: (v: boolean) => void;
   setOverlapMode: (v: boolean) => void;
   setTextScale: (v: number) => void;
   setActiveDate: (date: string) => void;
   navigateDate: (offset: number) => void;
+  setSelectedIds: (ids: string[]) => void;
+  addToSelection: (id: string) => void;
+  clearSelection: () => void;
+  setActiveTool: (tool: ActiveTool) => void;
 }
 
 const initialDate = loadText("active-date") || todayString();
@@ -45,6 +57,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   snapMode: loadText("snap", "true") === "true",
   overlapMode: loadText("overlap", "true") === "true",
   textScale: initialTextScale,
+  selectedIds: [],
+  activeTool: "select",
 
   setLang: (lang) => {
     saveText("lang", lang);
@@ -79,4 +93,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const next = offsetDate(get().activeDate, offset);
     get().setActiveDate(next);
   },
+
+  setSelectedIds: (ids) => set({ selectedIds: ids }),
+  addToSelection: (id) =>
+    set((s) => ({ selectedIds: s.selectedIds.includes(id) ? s.selectedIds : [...s.selectedIds, id] })),
+  clearSelection: () => set({ selectedIds: [] }),
+  setActiveTool: (tool) => set({ activeTool: tool }),
 }));
