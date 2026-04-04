@@ -17,6 +17,7 @@ import { DashboardBlock } from "./DashboardBlock";
 import { ThreadsIntelBlock } from "./ThreadsIntelBlock";
 import { PromptedNotesBlock } from "./PromptedNotesBlock";
 import { VideoCaptureBlock } from "./VideoCaptureBlock";
+import { YouTubeStudioBlock } from "./YouTubeStudioBlock";
 import type { Block, BlockType } from "../types";
 
 export interface BlockTypeConfig {
@@ -176,6 +177,14 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     subtitle: "Record & clip",
     zhSubtitle: "錄製剪輯",
     size: { w: 990, h: 682 },
+  },
+  "youtube-studio": {
+    component: YouTubeStudioBlock,
+    title: "YouTube Studio",
+    zhTitle: "YouTube 工作室",
+    subtitle: "Live streaming",
+    zhSubtitle: "直播控制台",
+    size: { w: 900, h: 600 },
   },
 };
 

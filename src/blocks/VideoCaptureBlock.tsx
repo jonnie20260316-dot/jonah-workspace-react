@@ -491,43 +491,117 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   /* ── Screen source picker (Electron only) ── */
   const isElectron = !!(window as unknown as { electronAPI?: { getScreenSources?: () => Promise<unknown> } }).electronAPI?.getScreenSources;
 
-  const handleScreenStreamClick = useCallback(async () => {
-    if (!isElectron) {
-      // Browser: getDisplayMedia shows its own native picker
-      startScreenStream();
-      return;
-    }
-    // Electron: fetch sources and show picker
+  const getElectronAPI = () => (window as unknown as { electronAPI: {
+    getScreenSources: () => Promise<{ id: string; name: string; thumbnail: string }[]>;
+    selectScreenSource: (id: string) => Promise<void>;
+  } }).electronAPI;
+
+  const openSourcePicker = useCallback(async () => {
+    if (!isElectron) return;
     try {
-      const api = (window as unknown as { electronAPI: {
-        getScreenSources: () => Promise<{ id: string; name: string; thumbnail: string }[]>;
-        selectScreenSource: (id: string) => Promise<void>;
-      } }).electronAPI;
-      const sources = await api.getScreenSources();
+      const sources = await getElectronAPI().getScreenSources();
       setScreenSources(sources);
       setShowSourcePicker(true);
     } catch (err) {
       console.error("Failed to get screen sources:", err);
     }
-  }, [isElectron, startScreenStream]);
+  }, [isElectron]);
 
-  const pickSource = useCallback(async (sourceId: string) => {
+  const handleScreenStreamClick = useCallback(async () => {
+    if (!isElectron) {
+      startScreenStream();
+      return;
+    }
+    openSourcePicker();
+  }, [isElectron, startScreenStream, openSourcePicker]);
+
+  /* ── OBS-style seamless source switch (no recording interruption) ── */
+  const switchSource = useCallback(async (opts: {
+    sourceId?: string;
+    mode: "camera" | "screen";
+  }) => {
+    try {
+      let newVideoTrack: MediaStreamTrack;
+
+      if (opts.mode === "screen") {
+        if (opts.sourceId && isElectron) {
+          await getElectronAPI().selectScreenSource(opts.sourceId);
+        }
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false, // keep existing audio — don't remix mid-recording
+        });
+        newVideoTrack = displayStream.getVideoTracks()[0];
+        if (!newVideoTrack) return;
+
+        // Update hidden compositing video (for PiP canvas path)
+        if (screenVideoRef.current) {
+          screenVideoRef.current.srcObject = new MediaStream([newVideoTrack]);
+        }
+
+        // Re-attach ended listener
+        newVideoTrack.addEventListener("ended", () => stopStream());
+
+      } else {
+        // Camera mode
+        const constraints: MediaTrackConstraints = selectedCamId
+          ? { deviceId: { exact: selectedCamId } }
+          : { facingMode: "user" as const };
+        const camStream = await navigator.mediaDevices.getUserMedia({
+          video: constraints,
+          audio: false,
+        });
+        newVideoTrack = camStream.getVideoTracks()[0];
+        if (!newVideoTrack) return;
+      }
+
+      // Replace video track on live stream (MediaRecorder stays attached)
+      if (streamRef.current) {
+        streamRef.current.getVideoTracks().forEach((t) => {
+          streamRef.current!.removeTrack(t);
+          t.stop();
+        });
+        streamRef.current.addTrack(newVideoTrack);
+      }
+
+      // Update visible preview
+      if (videoRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+      }
+
+      // Update mode and stats
+      setCaptureMode(opts.mode);
+      const settings = newVideoTrack.getSettings();
+      setStreamStats({
+        fps: String(settings.frameRate || "—"),
+        res: settings.width && settings.height
+          ? `${settings.width}×${settings.height}`
+          : "—",
+      });
+    } catch (err) {
+      console.error("Source switch failed:", err);
+    }
+  }, [selectedCamId, stopStream, setCaptureMode, isElectron]);
+
+  const pickSource = useCallback(async (sourceId: string, mode: "screen" | "camera" = "screen") => {
     setShowSourcePicker(false);
     setScreenSources([]);
-    try {
-      const api = (window as unknown as { electronAPI: {
-        selectScreenSource: (id: string) => Promise<void>;
-      } }).electronAPI;
-      // Stop existing stream before switching source
-      if (streamRef.current) {
-        stopStream();
+
+    if (isStreaming) {
+      // Seamless — don't stop recording
+      await switchSource({ sourceId, mode });
+    } else {
+      // First time — full start
+      if (isElectron && mode === "screen") {
+        await getElectronAPI().selectScreenSource(sourceId);
       }
-      await api.selectScreenSource(sourceId);
-      startScreenStream();
-    } catch (err) {
-      console.error("Failed to select screen source:", err);
+      if (mode === "screen") {
+        startScreenStream();
+      } else {
+        startStream();
+      }
     }
-  }, [startScreenStream, stopStream]);
+  }, [isStreaming, switchSource, startScreenStream, startStream, isElectron]);
 
   /* ── Step 7: startRecording with composite support ── */
   const startRecording = useCallback(() => {
@@ -680,8 +754,15 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
 
   const modeToggleBtn = (mode: "camera" | "screen", label: string) => (
     <button
-      onClick={() => { if (!isRecording) { stopStream(); setCaptureMode(mode); } }}
-      disabled={isRecording}
+      onClick={() => {
+        if (captureMode === mode) return;
+        if (isStreaming) {
+          // Seamless switch — replace video track without stopping recording
+          switchSource({ mode });
+        } else {
+          setCaptureMode(mode);
+        }
+      }}
       style={{
         padding: "6px 12px",
         fontSize: "calc(12px * var(--text-scale))",
@@ -689,8 +770,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
         color: captureMode === mode ? "#fff" : "#000",
         border: "none",
         borderRadius: "2px",
-        cursor: isRecording ? "not-allowed" : "pointer",
-        opacity: isRecording ? 0.5 : 1,
+        cursor: "pointer",
       }}
     >
       {label}
@@ -835,16 +915,9 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
                 {pick("子母畫面", "PiP")}
               </button>
               {/* Switch source button (Electron, while streaming) */}
-              {isElectron && isStreaming && !isRecording && (
+              {isElectron && isStreaming && (
                 <button
-                  onClick={async () => {
-                    const api = (window as unknown as { electronAPI: {
-                      getScreenSources: () => Promise<{ id: string; name: string; thumbnail: string }[]>;
-                    } }).electronAPI;
-                    const sources = await api.getScreenSources();
-                    setScreenSources(sources);
-                    setShowSourcePicker(true);
-                  }}
+                  onClick={openSourcePicker}
                   style={{
                     padding: "6px 12px",
                     fontSize: "calc(12px * var(--text-scale))",
@@ -1260,21 +1333,61 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-            <span style={{ color: "#fff", fontSize: "calc(14px * var(--text-scale))", fontWeight: 600 }}>
-              {pick("選擇螢幕來源", "Choose Screen Source")}
+            <span style={{ color: "#fff", fontSize: "calc(14px * var(--text-scale, 1))", fontWeight: 600 }}>
+              {pick("選擇來源", "Choose Source")}
             </span>
             <button
               onClick={() => { setShowSourcePicker(false); setScreenSources([]); }}
-              style={{ background: "none", border: "none", color: "#999", fontSize: "calc(18px * var(--text-scale))", cursor: "pointer" }}
+              style={{ background: "none", border: "none", color: "#999", fontSize: "calc(18px * var(--text-scale, 1))", cursor: "pointer" }}
             >
               ✕
             </button>
+          </div>
+
+          {/* Camera sources */}
+          {cameras.length > 0 && (
+            <>
+              <div style={{ color: "#aaa", fontSize: "calc(11px * var(--text-scale, 1))", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                {pick("攝影機", "Camera")}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px", marginBottom: "16px" }}>
+                {cameras.map((cam, i) => (
+                  <button
+                    key={cam.deviceId}
+                    onClick={() => pickSource(cam.deviceId, "camera")}
+                    style={{
+                      background: "none",
+                      border: "2px solid #555",
+                      borderRadius: "8px",
+                      padding: "12px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      transition: "border-color 0.15s",
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#4caf50"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#555"; }}
+                  >
+                    <span style={{ fontSize: "calc(18px * var(--text-scale, 1))" }}>📷</span>
+                    <span style={{ color: "#ccc", fontSize: "calc(11px * var(--text-scale, 1))", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {deviceLabel(cam, i, "cam")}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Screen/window sources */}
+          <div style={{ color: "#aaa", fontSize: "calc(11px * var(--text-scale, 1))", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            {pick("螢幕 / 視窗", "Screen / Window")}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
             {screenSources.map((src) => (
               <button
                 key={src.id}
-                onClick={() => pickSource(src.id)}
+                onClick={() => pickSource(src.id, "screen")}
                 style={{
                   background: "none",
                   border: "2px solid #555",
@@ -1297,7 +1410,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
                 />
                 <span style={{
                   color: "#ccc",
-                  fontSize: "calc(11px * var(--text-scale))",
+                  fontSize: "calc(11px * var(--text-scale, 1))",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",

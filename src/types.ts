@@ -18,7 +18,8 @@ export type BlockType =
   | "dashboard"
   | "threads-intel"
   | "prompted-notes"
-  | "video-capture";
+  | "video-capture"
+  | "youtube-studio";
 
 export interface Block {
   id: string;
