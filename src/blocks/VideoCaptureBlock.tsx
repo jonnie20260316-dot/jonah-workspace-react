@@ -210,6 +210,13 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
 
   /* ── Step 5: PiP camera management ── */
   const startPipCamera = useCallback(async () => {
+    // Clean up any existing PiP resources before starting fresh
+    stopCompositeLoop();
+    if (pipStreamRef.current) {
+      pipStreamRef.current.getTracks().forEach((t) => t.stop());
+      pipStreamRef.current = null;
+    }
+
     try {
       const constraints: MediaStreamConstraints = {
         video: selectedCamId
@@ -247,7 +254,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       console.error("PiP camera failed:", err);
       setPipEnabled(false);
     }
-  }, [selectedCamId, enumerateDevicesNow, startCompositeLoop, setPipEnabled]);
+  }, [selectedCamId, enumerateDevicesNow, startCompositeLoop, stopCompositeLoop, setPipEnabled]);
 
   const stopPipCamera = useCallback(() => {
     setIsPipActive(false);
@@ -263,6 +270,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   useEffect(() => {
     if (pipEnabled && isStreaming && captureMode === "screen") {
       startPipCamera();
+      return () => stopPipCamera(); // cleanup old PiP when deps change (e.g. camera device switch)
     } else {
       stopPipCamera();
     }
@@ -871,10 +879,10 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
           }}
         />
 
-        {/* Hidden elements for canvas compositing */}
-        <video ref={screenVideoRef} autoPlay muted playsInline style={{ display: "none" }} />
-        <video ref={pipVideoRef} autoPlay muted playsInline style={{ display: "none" }} />
-        <canvas ref={canvasRef} style={{ display: "none" }} />
+        {/* Offscreen elements for canvas compositing — avoid display:none which can block video decoding */}
+        <video ref={screenVideoRef} autoPlay muted playsInline style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }} />
+        <video ref={pipVideoRef} autoPlay muted playsInline style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }} />
+        <canvas ref={canvasRef} style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }} />
 
         {/* PiP overlay (draggable preview) */}
         {pipEnabled && isStreaming && captureMode === "screen" && isPipActive && (
