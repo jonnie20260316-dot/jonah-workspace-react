@@ -183,6 +183,7 @@ Do not exit silent after architecture, workflow, storage, guardrail, or major UX
 | JW-37 | **Plan-Before-Build Gate (>3 files)** — Before implementing a feature touching >3 files or >100 lines, write a numbered plan listing files and changes per file. Get user confirmation before coding. If user says "stop and plan," revert uncommitted changes and produce the plan. Bug fixes and single-file changes exempt. |
 | JW-38 | **Hidden Media Elements Must Stay in Layout** — Never use `display: none` on `<video>`, `<audio>`, or `<canvas>` elements that will be read programmatically. Use `opacity: 0; position: absolute; pointer-events: none`. Ensure `autoPlay` and `playsInline` on video elements that must play without user gesture. |
 | JW-39 | **Input-Focus Guard Before Global Key Hijacking** — Any `window` keydown handler that calls `preventDefault()` or `blur()` for a canvas shortcut MUST first check `isTextInputFocused()`. If focus is in an `<input>`, `<textarea>`, or `contentEditable` element, return early. Applies to Space, Delete, Backspace, arrows — any key that doubles as a typing character and a canvas action. |
+| GIT-EXEC-1 | **⚠️ Never use `exec` for network calls requiring auth** — `child_process.exec('git push ...')` cannot handle HTTPS credential prompts. Push hangs 30s silently then fails. Use `https.request` with explicit `Authorization: Bearer {token}` header instead. 15s timeout. Immediate 401 on bad credentials. |
 
 ## Session Protocol — Wrap It Up
 
@@ -233,7 +234,7 @@ git push
 
 Session recaps and lessons-locked files are in `history/`. Check the latest before starting a new round of work.
 
-Current state: **YouTube Studio API integration (2026-04-04 session 3)** — Replaced iframe stub with YouTube Live Streaming API v3 dashboard (OAuth2 via Electron BrowserWindow, token management, broadcast control, stream health). React app at 1793 modules, build ✓.
+Current state: **v1.0.6 — GitHub REST API sync** — Replaced broken git binary sync with direct GitHub Contents API (PAT auth, 15s timeout, deterministic). GearMenu: repo URL + PAT inputs. Auto-migration from old git-sync-remote key. 2-min auto-backup interval. Build ✓ 1795 modules.
 
 Electron: bundle includes `node_modules` (electron-updater fix). macOS mic/camera plist entries added.
 

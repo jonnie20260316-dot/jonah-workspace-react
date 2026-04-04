@@ -5,6 +5,10 @@ Newest sessions at the top.
 
 ---
 
+## 2026-04-04 | GitHub REST API Sync Fix (v1.0.6) — Root-cause fix for git sync never working: replaced `child_process.exec('git push ...')` (cannot authenticate HTTPS interactively, hangs 30s silently) with direct GitHub Contents API calls (GET + PUT with PAT, 15s timeout, immediate error); new GearMenu UI (repo URL + PAT password input, inline errors); auto-migration from old git-sync-remote key; added 2-minute auto-backup interval; quit sync now max 15s instead of 30s; 9 files, -109 net lines; build ✓ 1795 modules; new prevention rule GIT-EXEC-1; v1.0.6 DMG built
+
+---
+
 ## 2026-04-04 | Data Persistence Fixes (v1.0.5) — Complete Fix for 6 Critical Issues — Fixed localStorage flush race condition: removed localServer.close() from before-quit, moved to will-quit, added flushStorageData() to app:request-quit + 5s watchdog; added file backup safety net (backupToFile/restoreFromFile to userData/jonah-workspace-backup.json); auto-restore from backup on boot if localStorage empty; port retry fallback 5173–5180; Save button now triggers backup + git sync + visual checkmark feedback; fixed text-scale storage (added to GLOBAL_KEYS); 9 files changed (+136 lines); layered persistence: immediate localStorage → manual Save → background 30s git debounce → quit flush+git → boot restore+pull; build ✓ 1795 modules
 
 ## 2026-04-04 | Git-Backed Data Sync (Multi-Device Backup with Version Control) — Implemented optional Git sync layered on localStorage: user enables in GearMenu, picks local folder, enters GitHub remote URL; data auto-commits after 30s of changes (debounced); app boot auto-pulls; app quit does final commit; write flow: mutation → localStorage → git commit+push → GitHub; read flow: boot/quit signal → git pull → rehydrate stores; 12 files changed (+658 lines); IPC: git:init/commit/push/pull/status handlers + quit watchdog; Zustand: git state + 5 actions; hooks: useSyncBoot extended + new useGitQuit; GearMenu: Git Sync section with setup wizard + status display; build ✓ 1795 modules
