@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session, desktopCapturer } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
@@ -63,6 +63,14 @@ function createWindow() {
 
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
     callback(['media', 'camera', 'microphone', 'display-capture'].includes(permission));
+  });
+
+  // Enable getDisplayMedia() in renderer — Electron requires this handler
+  session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+    desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
+      // Provide the first screen source; Electron shows its own picker on macOS
+      callback({ video: sources[0], audio: 'loopback' });
+    });
   });
 
   if (isDev) {
