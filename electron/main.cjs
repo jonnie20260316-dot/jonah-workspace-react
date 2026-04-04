@@ -369,6 +369,7 @@ ipcMain.handle('youtube:refresh-token', async (_event, refreshToken) => {
 
 // ─── IPC: YouTube RTMP streaming via FFmpeg ──────────────────────────────────
 let ffmpegProcess = null;
+let isStopping = false;
 
 function sendStreamStatus(payload) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -388,6 +389,7 @@ ipcMain.handle('youtube:start-stream', async (_event, rtmpUrl) => {
   }
 
   sendStreamStatus({ status: 'starting' });
+  isStopping = false;
 
   try {
     const args = [
@@ -444,7 +446,7 @@ ipcMain.handle('youtube:start-stream', async (_event, rtmpUrl) => {
 });
 
 ipcMain.handle('youtube:stream-chunk', async (_event, chunk) => {
-  if (!ffmpegProcess || !ffmpegProcess.stdin || ffmpegProcess.stdin.destroyed) return;
+  if (isStopping || !ffmpegProcess || !ffmpegProcess.stdin || ffmpegProcess.stdin.destroyed) return;
   try {
     const buf = Buffer.from(chunk);
     // Handle backpressure: if write returns false, wait for drain
@@ -464,6 +466,7 @@ ipcMain.handle('youtube:stream-chunk', async (_event, chunk) => {
 
 ipcMain.handle('youtube:stop-stream', async () => {
   if (!ffmpegProcess) return;
+  isStopping = true;
   try {
     // Close stdin to signal EOF — FFmpeg will flush and exit gracefully
     if (ffmpegProcess.stdin && !ffmpegProcess.stdin.destroyed) {
@@ -473,9 +476,11 @@ ipcMain.handle('youtube:stop-stream', async () => {
     const proc = ffmpegProcess;
     setTimeout(() => {
       try { if (proc && !proc.killed) proc.kill('SIGKILL'); } catch {}
+      isStopping = false;
     }, 5000);
   } catch (err) {
     console.error('FFmpeg stop error:', err);
+    isStopping = false;
   }
 });
 
