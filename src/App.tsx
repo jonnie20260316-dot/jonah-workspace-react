@@ -13,6 +13,7 @@ import { useGitQuit } from "./hooks/useGitQuit";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { FitButton } from "./components/FitButton";
 import { ToolBar } from "./components/ToolBar";
+import { ShapePropertiesPanel } from "./components/ShapePropertiesPanel";
 
 export default function App() {
   useTimerTick();
@@ -35,6 +36,7 @@ export default function App() {
         <ToastContainer />
         <FitButton />
         <ToolBar />
+        <ShapePropertiesPanel />
       </div>
     </ErrorBoundary>
   );

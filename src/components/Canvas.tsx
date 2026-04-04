@@ -10,6 +10,7 @@ import { SurfaceBackground } from "./SurfaceBackground";
 import { SurfaceForeground } from "./SurfaceForeground";
 import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
+import { useDrawTool } from "../hooks/useDrawTool";
 
 const TOOL_CURSOR: Record<string, string> = {
   select:    "default",
@@ -38,6 +39,7 @@ export function Canvas() {
   } | null>(null);
   const spacePressedRef = useRef(false);
   const [spaceOverride, setSpaceOverride] = useState<string | null>(null);
+  const drawTool = useDrawTool(viewportRef);
 
   // Resolved cursor: space pan overrides tool cursor
   const cursor = spaceOverride ?? TOOL_CURSOR[activeTool] ?? "default";
@@ -128,32 +130,48 @@ export function Canvas() {
     return () => el.removeEventListener("wheel", onWheel);
   }, [viewport.scale, zoomTo]);
 
-  // Pointer pan (Space + drag)
+  // Pointer pan (Space + drag) and draw tool delegation
   const onPointerDown = (e: React.PointerEvent) => {
-    if (!spacePressedRef.current) return;
-    panStateRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      baseX: viewport.x,
-      baseY: viewport.y,
-    };
-    setSpaceOverride("grabbing");
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    if (spacePressedRef.current) {
+      panStateRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        baseX: viewport.x,
+        baseY: viewport.y,
+      };
+      setSpaceOverride("grabbing");
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      return;
+    }
+    const { activeTool, clearSelection } = useSessionStore.getState();
+    // Drawing tools
+    if (activeTool === "rect" || activeTool === "ellipse" || activeTool === "diamond") {
+      drawTool.onPointerDown(e);
+      return;
+    }
+    // Select tool: click on empty canvas → clear selection
+    if (activeTool === "select" && (e.target as HTMLElement) === e.currentTarget) {
+      clearSelection();
+    }
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!panStateRef.current) return;
-    const { startX, startY, baseX, baseY } = panStateRef.current;
-    const dx = (startX - e.clientX) / viewport.scale;
-    const dy = (startY - e.clientY) / viewport.scale;
-    useViewportStore.setState((s) => ({
-      viewport: { ...s.viewport, x: baseX + dx, y: baseY + dy },
-    }));
+    if (panStateRef.current) {
+      const { startX, startY, baseX, baseY } = panStateRef.current;
+      const dx = (startX - e.clientX) / viewport.scale;
+      const dy = (startY - e.clientY) / viewport.scale;
+      useViewportStore.setState((s) => ({
+        viewport: { ...s.viewport, x: baseX + dx, y: baseY + dy },
+      }));
+      return;
+    }
+    drawTool.onPointerMove(e);
   };
 
   const onPointerUp = () => {
     panStateRef.current = null;
     setSpaceOverride(spacePressedRef.current ? "grab" : null);
+    drawTool.onPointerUp();
   };
 
   return (
@@ -188,7 +206,7 @@ export function Canvas() {
         }}
       >
         {/* Surface background: frames, shapes, brushes — below blocks */}
-        <SurfaceBackground />
+        <SurfaceBackground previewElement={drawTool.preview} />
 
         {/* Render all non-archived, non-pinned blocks */}
         {blocks
@@ -205,7 +223,7 @@ export function Canvas() {
           })}
 
         {/* Surface foreground: connectors, selection handles — above blocks */}
-        <SurfaceForeground />
+        <SurfaceForeground viewportRef={viewportRef} />
       </div>
 
       {/* Pinned blocks HUD — viewport-fixed, outside canvas transform */}
