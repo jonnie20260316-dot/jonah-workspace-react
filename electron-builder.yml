@@ -11,6 +11,7 @@ files:
   - electron/**
   - package.json
   - node_modules/**
+  - youtube-credentials.json
   - "!src/**"
   - "!*.md"
 
