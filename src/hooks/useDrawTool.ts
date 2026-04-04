@@ -6,21 +6,23 @@ import { useSurfaceStore } from "../stores/useSurfaceStore";
 import { screenToBoardPoint } from "../utils/viewport";
 import { pointsToSmoothPath, pointsBounds } from "../utils/svgPath";
 import { nearestConnectionPoint } from "../utils/geometry";
+import { DEFAULT_FRAME_COLOR } from "../constants";
 import type { SurfaceElement } from "../types";
 
-const SHAPE_TOOLS = new Set(["rect", "ellipse", "diamond"]);
+const SHAPE_TOOLS = new Set(["rect", "ellipse", "diamond", "frame"]);
 const CONNECTOR_SNAP_DIST = 50; // board units
 
 function makeShapePreview(type: string, x: number, y: number, w: number, h: number): SurfaceElement {
+  const isFrame = type === "frame";
   return {
     id: "_preview",
     type: type as SurfaceElement["type"],
     x, y, w, h,
     z: 0,
-    fillColor: "rgba(79,156,249,0.15)",
-    strokeColor: "#4f9cf9",
+    fillColor: isFrame ? "rgba(59,130,246,0.06)" : "rgba(79,156,249,0.15)",
+    strokeColor: isFrame ? "#3b82f6" : "#4f9cf9",
     strokeWidth: 2,
-    strokeStyle: "solid",
+    strokeStyle: isFrame ? "dashed" : "solid",
     opacity: 1,
   };
 }
@@ -240,7 +242,10 @@ export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
     if (!snap || snap.w < 10 || snap.h < 10) return;
 
     const id = crypto.randomUUID();
-    const el: SurfaceElement = { ...snap, id, z: Date.now() };
+    const base: SurfaceElement = { ...snap, id, z: Date.now() };
+    const el: SurfaceElement = snap.type === "frame"
+      ? { ...base, name: "", frameColor: DEFAULT_FRAME_COLOR, collapsed: false }
+      : base;
     useSurfaceStore.getState().addElement(el);
     setActiveTool("select");
     setSelectedIds([id]);

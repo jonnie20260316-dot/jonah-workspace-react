@@ -2,6 +2,8 @@ import { useRef, useEffect } from "react";
 import type { MouseEvent } from "react";
 import { useSurfaceStore } from "../stores/useSurfaceStore";
 import { useSessionStore } from "../stores/useSessionStore";
+import { useBlockStore } from "../stores/useBlockStore";
+import { ZONE_PALETTES } from "../constants";
 import type { SurfaceElement } from "../types";
 
 interface Props {
@@ -183,6 +185,114 @@ function TextEl({ el, isSelected, isEditing, onSelect, onEdit, onSave }: {
   );
 }
 
+/** Renders a single Frame (Zone) with its colored background and header bar */
+function FrameEl({ el, isSelected, onSelect, onUpdate, onDelete, blockCount }: {
+  el: SurfaceElement;
+  isSelected: boolean;
+  blockCount: number;
+  onSelect: () => void;
+  onUpdate: (delta: Partial<SurfaceElement>) => void;
+  onDelete: () => void;
+}) {
+  const palette = ZONE_PALETTES.find((p) => p.id === el.frameColor) ?? ZONE_PALETTES[0];
+  const collapsed = el.collapsed ?? false;
+  const displayH = collapsed ? 32 : el.h;
+
+  return (
+    <g>
+      {/* Background rect */}
+      <rect
+        x={el.x}
+        y={el.y}
+        width={el.w}
+        height={displayH}
+        fill={palette.bg}
+        stroke={isSelected ? "var(--accent, #4f9cf9)" : palette.border}
+        strokeWidth={isSelected ? 2 : 1.5}
+        strokeDasharray={collapsed ? undefined : "8 4"}
+        rx={8}
+        pointerEvents="all"
+        style={{ cursor: "pointer" }}
+        onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      />
+
+      {/* Watermark name label — only when not collapsed */}
+      {!collapsed && el.name && (
+        <text
+          x={el.x + el.w / 2}
+          y={el.y + displayH - 16}
+          textAnchor="middle"
+          fontSize={Math.min(el.w / 6, 48)}
+          fontWeight="700"
+          fill={palette.border}
+          opacity={0.07}
+          pointerEvents="none"
+          style={{ userSelect: "none" }}
+        >
+          {el.name}
+        </text>
+      )}
+
+      {/* Header bar (foreignObject) */}
+      <foreignObject
+        x={el.x}
+        y={el.y}
+        width={el.w}
+        height={32}
+        className="frame-header-fo"
+        style={{ overflow: "visible" }}
+      >
+        <div className="frame-header" onPointerDown={(e) => e.stopPropagation()}>
+          {/* Name input */}
+          <input
+            className="frame-name-input"
+            value={el.name ?? ""}
+            placeholder="分區名稱…"
+            onChange={(e) => onUpdate({ name: e.target.value })}
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+
+          {/* Block count badge */}
+          {collapsed && (
+            <span className="frame-block-count">{blockCount}</span>
+          )}
+
+          {/* Color palette */}
+          <div className="frame-palette">
+            {ZONE_PALETTES.map((p) => (
+              <div
+                key={p.id}
+                className={`frame-palette-dot${el.frameColor === p.id ? " active" : ""}`}
+                style={{ background: p.border }}
+                title={p.label}
+                onClick={(e) => { e.stopPropagation(); onUpdate({ frameColor: p.id }); }}
+              />
+            ))}
+          </div>
+
+          {/* Collapse toggle */}
+          <button
+            className="frame-action-btn"
+            title={collapsed ? "展開" : "收合"}
+            onClick={(e) => { e.stopPropagation(); onUpdate({ collapsed: !collapsed }); }}
+          >
+            {collapsed ? "▼" : "▲"}
+          </button>
+
+          {/* Delete */}
+          <button
+            className="frame-action-btn"
+            title="刪除分區"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          >
+            ×
+          </button>
+        </div>
+      </foreignObject>
+    </g>
+  );
+}
+
 /**
  * SurfaceBackground — bottom SVG layer of the Edgeless whiteboard.
  * Renders frames, shapes (rect/ellipse/diamond), brushes, and text below all blocks.
@@ -191,7 +301,9 @@ function TextEl({ el, isSelected, isEditing, onSelect, onEdit, onSave }: {
 export function SurfaceBackground({ previewElement }: Props) {
   const { elements, updateElement, removeElement } = useSurfaceStore();
   const { selectedIds, setSelectedIds, editingTextId, setEditingTextId } = useSessionStore();
+  const blocks = useBlockStore((s) => s.blocks);
 
+  const frames = elements.filter((el) => el.type === "frame");
   const shapes = elements.filter(
     (el) => el.type === "rect" || el.type === "ellipse" || el.type === "diamond"
   );
@@ -210,7 +322,28 @@ export function SurfaceBackground({ previewElement }: Props) {
         zIndex: 0,
       }}
     >
-      <g className="surface-frames" />
+      <g className="surface-frames">
+        {frames.map((el) => {
+          const count = blocks.filter((b) => !b.archived && b.zoneId === el.id).length;
+          return (
+            <FrameEl
+              key={el.id}
+              el={el}
+              isSelected={selectedIds.includes(el.id)}
+              blockCount={count}
+              onSelect={() => setSelectedIds([el.id])}
+              onUpdate={(delta) => updateElement(el.id, delta)}
+              onDelete={() => {
+                removeElement(el.id);
+                // clear zoneId from blocks that belonged to this frame
+                useBlockStore.getState().blocks
+                  .filter((b) => b.zoneId === el.id)
+                  .forEach((b) => useBlockStore.getState().updateBlock(b.id, { zoneId: undefined }));
+              }}
+            />
+          );
+        })}
+      </g>
 
       <g className="surface-shapes">
         {shapes.map((el) => (

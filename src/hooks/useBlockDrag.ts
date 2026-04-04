@@ -3,6 +3,7 @@ import type { RefObject } from "react";
 import { useBlockStore } from "../stores/useBlockStore";
 import { useSessionStore } from "../stores/useSessionStore";
 import { useViewportStore } from "../stores/useViewportStore";
+import { useSurfaceStore } from "../stores/useSurfaceStore";
 import { GRID } from "../constants";
 import { snapValue, clampBlockBounds } from "../utils/viewport";
 
@@ -93,6 +94,21 @@ export function useBlockDrag(
     const onPointerUp = () => {
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
+      }
+      if (dragState) {
+        // Auto-grouping: check if block center landed inside a frame
+        const block = useBlockStore.getState().blocks.find((b) => b.id === blockId);
+        if (block) {
+          const cx = block.x + block.w / 2;
+          const cy = block.y + block.h / 2;
+          const frames = useSurfaceStore.getState().elements.filter(
+            (el) => el.type === "frame" && !(el.collapsed)
+          );
+          const hit = frames.find(
+            (f) => cx >= f.x && cx <= f.x + f.w && cy >= f.y && cy <= f.y + f.h
+          );
+          useBlockStore.getState().updateBlock(blockId, { zoneId: hit?.id ?? undefined });
+        }
       }
       dragState = null;
     };
