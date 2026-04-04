@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { loadJSON, saveJSON } from "../utils/storage";
+import { scheduleGitSync } from "../utils/sync";
 import type { Block } from "../types";
 
 interface BlockStore {
@@ -37,6 +38,7 @@ export const useBlockStore = create<BlockStore>((set) => {
       set((s) => {
         const blocks = [...s.blocks, block];
         saveJSON("blocks", blocks);
+        scheduleGitSync();
         return { blocks };
       }),
 
@@ -46,6 +48,7 @@ export const useBlockStore = create<BlockStore>((set) => {
           b.id === id ? { ...b, ...delta } : b
         );
         saveJSON("blocks", blocks);
+        scheduleGitSync();
         return { blocks };
       }),
 
@@ -53,6 +56,7 @@ export const useBlockStore = create<BlockStore>((set) => {
       set((s) => {
         const blocks = s.blocks.filter((b) => b.id !== id);
         saveJSON("blocks", blocks);
+        scheduleGitSync();
         return { blocks };
       }),
 
@@ -62,6 +66,7 @@ export const useBlockStore = create<BlockStore>((set) => {
           b.id === id ? { ...b, archived: true } : b
         );
         saveJSON("blocks", blocks);
+        scheduleGitSync();
         return { blocks };
       }),
 
@@ -71,6 +76,7 @@ export const useBlockStore = create<BlockStore>((set) => {
           b.id === id ? { ...b, archived: false } : b
         );
         saveJSON("blocks", blocks);
+        scheduleGitSync();
         return { blocks };
       }),
 
@@ -81,6 +87,7 @@ export const useBlockStore = create<BlockStore>((set) => {
           b.id === id ? { ...b, z: newZCounter } : b
         );
         saveJSON("blocks", blocks);
+        scheduleGitSync();
         return { blocks, zCounter: newZCounter };
       }),
   };

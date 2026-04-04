@@ -168,3 +168,107 @@ export function applySyncPayload(payload: SyncPayload): void {
 // ─── Filename ─────────────────────────────────────────────────────────────────
 
 export const SYNC_FILENAME = "jonah-workspace-sync.json";
+
+// ─── Git sync (Electron-only) ─────────────────────────────────────────────────
+
+/** Git commit + push with error detection. Returns { ok, error?, authError? } */
+export async function gitCommitAndPush(
+  dirPath: string
+): Promise<{ ok: boolean; error?: string; authError?: boolean }> {
+  const api = window.electronAPI;
+  if (!api) return { ok: false, error: "Not in Electron" };
+
+  try {
+    // Commit
+    const commitResult = await api.gitCommit(dirPath);
+    if (!commitResult.ok) {
+      return { ok: false, error: commitResult.stderr };
+    }
+    if (commitResult.nothingToCommit) {
+      return { ok: true };
+    }
+
+    // Push
+    const pushResult = await api.gitPush(dirPath);
+    if (!pushResult.ok) {
+      // Detect auth errors
+      const isAuthError =
+        pushResult.stderr.includes("Authentication failed") ||
+        pushResult.stderr.includes("Permission denied") ||
+        pushResult.stderr.includes("remote: Invalid username");
+      return { ok: false, error: pushResult.stderr, authError: isAuthError };
+    }
+
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
+}
+
+/** Git pull + apply payload. Returns { ok, hadChanges, error? } */
+export async function gitPullAndApply(
+  dirPath: string
+): Promise<{ ok: boolean; hadChanges: boolean; error?: string }> {
+  const api = window.electronAPI;
+  if (!api) return { ok: false, hadChanges: false, error: "Not in Electron" };
+
+  try {
+    // Pull
+    const pullResult = await api.gitPull(dirPath);
+    if (!pullResult.ok) {
+      return { ok: false, hadChanges: false, error: pullResult.stderr };
+    }
+
+    if (!pullResult.hadChanges) {
+      return { ok: true, hadChanges: false };
+    }
+
+    // Read the updated sync file
+    const text = await api.readFile(dirPath, SYNC_FILENAME);
+    if (!text) {
+      return { ok: false, hadChanges: false, error: "Could not read sync file after pull" };
+    }
+
+    const payload = JSON.parse(text) as SyncPayload;
+    applySyncPayload(payload);
+
+    return { ok: true, hadChanges: true };
+  } catch (err) {
+    return { ok: false, hadChanges: false, error: (err as Error).message };
+  }
+}
+
+// ─── Git debounce scheduling ─────────────────────────────────────────────────
+
+let gitDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let useSyncStoreRef: any = null;
+
+/**
+ * Register the useSyncStore so scheduleGitSync can access it.
+ * Called from useSyncStore initialization.
+ */
+export function setUseSyncStoreRef(store: any): void {
+  useSyncStoreRef = store;
+}
+
+/**
+ * Schedule a debounced git sync (30s delay).
+ * Cancels previous timer if one exists.
+ * Imported and called by stores when meaningful changes occur.
+ */
+export function scheduleGitSync(): void {
+  if (!useSyncStoreRef) return;
+
+  const { gitEnabled, gitDir } = useSyncStoreRef.getState();
+  if (!gitEnabled || !gitDir) return;
+
+  if (gitDebounceTimer !== null) {
+    clearTimeout(gitDebounceTimer);
+  }
+
+  gitDebounceTimer = setTimeout(() => {
+    gitDebounceTimer = null;
+    const { gitSyncNow } = useSyncStoreRef.getState();
+    gitSyncNow().catch((err: Error) => console.error("[git] auto-sync failed:", err));
+  }, 30_000);
+}

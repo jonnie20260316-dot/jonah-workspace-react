@@ -8,8 +8,8 @@ type FSHandleBoot = FileSystemDirectoryHandle & {
 
 /**
  * Auto-pull on app boot if a sync folder was previously configured.
- * Silent (autoMode: true) — skips dialogs for normal Case A pulls.
- * Runs once on mount. If no folder handle found, does nothing.
+ * Supports both Electron Git sync and browser File System Access API.
+ * Runs once on mount.
  */
 export function useSyncBoot(): void {
   useEffect(() => {
@@ -17,6 +17,20 @@ export function useSyncBoot(): void {
       const store = useSyncStore.getState();
       store.initDeviceId();
 
+      // Electron git sync path
+      if (window.electronAPI?.isElectron) {
+        const { gitEnabled, gitDir } = store;
+        if (gitEnabled && gitDir) {
+          try {
+            await store.gitSyncNow();
+          } catch (err) {
+            console.error("[git-boot] sync failed:", err);
+          }
+        }
+        return;
+      }
+
+      // Browser file system path
       const handle = await getSyncHandle();
       if (!handle) return;
 

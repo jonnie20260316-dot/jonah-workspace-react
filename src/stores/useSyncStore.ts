@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { loadJSON, saveJSON, loadText } from "../utils/storage";
+import { loadJSON, saveJSON, loadText, saveText } from "../utils/storage";
 import { normaliseViewport } from "../utils/viewport";
 import {
   getSyncHandle,
@@ -12,12 +12,15 @@ import {
   filterPayloadForSync,
   applySyncPayload,
   SYNC_FILENAME,
+  gitCommitAndPush,
+  gitPullAndApply,
+  setUseSyncStoreRef,
 } from "../utils/sync";
 import { useBlockStore } from "./useBlockStore";
 import { useViewportStore } from "./useViewportStore";
 import { useProjectStore } from "./useProjectStore";
 import { useSessionStore } from "./useSessionStore";
-import type { SyncMeta, SyncStatus, SyncQueueItem, SyncPayload, ConflictInfo } from "../types";
+import type { SyncMeta, SyncStatus, SyncQueueItem, SyncPayload, ConflictInfo, GitSyncStatus } from "../types";
 import type { Block } from "../types";
 import type { ProjectCard } from "./useProjectStore";
 
@@ -95,6 +98,14 @@ interface SyncStore {
   reconnectBannerVisible: boolean;
   conflictInfo: ConflictInfo | null;
 
+  // Git sync state
+  gitEnabled: boolean;
+  gitDir: string;
+  gitRemote: string;
+  gitSyncStatus: GitSyncStatus;
+  gitLastSyncAt: string | null;
+  gitError: string | null;
+
   initDeviceId: () => void;
   push: (selectedIds?: string[]) => Promise<void>;
   pull: (opts?: {
@@ -106,6 +117,15 @@ interface SyncStore {
   setConflict: (info: ConflictInfo) => void;
   clearConflict: () => void;
   clearSyncHandle: () => Promise<void>;
+
+  // Git sync actions
+  setGitEnabled: (v: boolean) => void;
+  setGitDir: (dir: string) => void;
+  setGitRemote: (url: string) => void;
+  setGitSyncStatus: (s: GitSyncStatus) => void;
+  gitSetup: (dirPath: string, remoteUrl: string) => Promise<{ ok: boolean; error?: string }>;
+  gitSyncNow: () => Promise<void>;
+  gitSyncOnQuit: () => Promise<void>;
 }
 
 const DEFAULT_SYNC_META: SyncMeta = {
@@ -149,6 +169,14 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
   reconnectBannerVisible: false,
   conflictInfo: null,
 
+  // Git sync state (lazy-load from storage)
+  gitEnabled: (loadText("git-sync-enabled") ?? "false") === "true",
+  gitDir: loadText("git-sync-dir") ?? "",
+  gitRemote: loadText("git-sync-remote") ?? "",
+  gitSyncStatus: "idle" as GitSyncStatus,
+  gitLastSyncAt: null,
+  gitError: null,
+
   initDeviceId: () => {
     const id = getOrCreateDeviceId();
     set({ deviceId: id });
@@ -163,6 +191,97 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
   clearSyncHandle: async () => {
     await clearSyncHandleFromIdb();
     set({ syncStatus: "idle" });
+  },
+
+  // ─── Git sync actions ───────────────────────────────────────────────────────
+  setGitEnabled: (v) => {
+    saveText("git-sync-enabled", String(v));
+    set({ gitEnabled: v });
+  },
+
+  setGitDir: (dir) => {
+    saveText("git-sync-dir", dir);
+    set({ gitDir: dir });
+  },
+
+  setGitRemote: (url) => {
+    saveText("git-sync-remote", url);
+    set({ gitRemote: url });
+  },
+
+  setGitSyncStatus: (s) => {
+    set({ gitSyncStatus: s });
+  },
+
+  gitSetup: async (dirPath, remoteUrl) => {
+    const api = window.electronAPI;
+    if (!api) return { ok: false, error: "Not in Electron" };
+
+    try {
+      set({ gitSyncStatus: "syncing" });
+      const result = await api.gitInit(dirPath, remoteUrl);
+      if (result.ok) {
+        set({ gitDir: dirPath, gitRemote: remoteUrl, gitEnabled: true, gitSyncStatus: "synced" });
+        saveText("git-sync-dir", dirPath);
+        saveText("git-sync-remote", remoteUrl);
+        saveText("git-sync-enabled", "true");
+        return { ok: true };
+      } else {
+        set({ gitSyncStatus: "error", gitError: result.stderr });
+        return { ok: false, error: result.stderr };
+      }
+    } catch (err) {
+      const msg = (err as Error).message;
+      set({ gitSyncStatus: "error", gitError: msg });
+      return { ok: false, error: msg };
+    }
+  },
+
+  gitSyncNow: async () => {
+    const { gitEnabled, gitDir } = get();
+    if (!gitEnabled || !gitDir) return;
+
+    set({ gitSyncStatus: "syncing", gitError: null });
+
+    try {
+      // Pull first
+      const pullResult = await gitPullAndApply(gitDir);
+      if (pullResult.ok && pullResult.hadChanges) {
+        rehydrateStores();
+      }
+
+      // Then push
+      const pushResult = await gitCommitAndPush(gitDir);
+      if (!pushResult.ok) {
+        if (pushResult.authError) {
+          set({ gitSyncStatus: "auth-error", gitError: pushResult.error ?? "Auth failed" });
+        } else {
+          set({ gitSyncStatus: "error", gitError: pushResult.error ?? "Push failed" });
+        }
+        return;
+      }
+
+      set({ gitSyncStatus: "synced", gitLastSyncAt: new Date().toISOString(), gitError: null });
+    } catch (err) {
+      const msg = (err as Error).message;
+      set({ gitSyncStatus: "error", gitError: msg });
+    }
+  },
+
+  gitSyncOnQuit: async () => {
+    const { gitEnabled, gitDir } = get();
+    if (!gitEnabled || !gitDir) return;
+
+    try {
+      // Only commit + push on quit, no pull
+      const pushResult = await gitCommitAndPush(gitDir);
+      if (pushResult.ok) {
+        set({ gitLastSyncAt: new Date().toISOString() });
+      }
+    } catch (err) {
+      // Silent failure on quit — don't block the app
+      console.error("[git] quit-time sync failed:", err);
+    }
   },
 
   push: async (selectedIds) => {
@@ -336,3 +455,6 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
     }
   },
 }));
+
+// Register the store reference for scheduleGitSync
+setUseSyncStoreRef(useSyncStore);

@@ -528,6 +528,176 @@ ipcMain.handle('youtube:stop-stream', async () => {
   }
 });
 
+// ─── Git sync helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Execute a git command and return { ok, stdout, stderr }.
+ * Never rejects — callers inspect ok flag.
+ */
+function runGit(args, cwd) {
+  return new Promise((resolve) => {
+    const { exec } = require('child_process');
+    const cmd = 'git ' + args.join(' ');
+    exec(cmd, { cwd, timeout: 30000 }, (error, stdout, stderr) => {
+      const ok = error === null;
+      resolve({ ok, stdout, stderr });
+    });
+  });
+}
+
+/**
+ * Initialize or update a git repository with origin remote.
+ */
+ipcMain.handle('git:init', async (_event, dirPath, remoteUrl) => {
+  try {
+    // Check if already a repo
+    const checkResult = await runGit(['-C', dirPath, 'rev-parse', '--git-dir'], dirPath);
+    const isRepo = checkResult.ok;
+
+    if (!isRepo) {
+      const initResult = await runGit(['init', dirPath], dirPath);
+      if (!initResult.ok) return { ok: false, stderr: initResult.stderr };
+    }
+
+    // Set local git identity
+    await runGit(['-C', dirPath, 'config', 'user.email', 'jonah-workspace@local'], dirPath);
+    await runGit(['-C', dirPath, 'config', 'user.name', 'Jonah Workspace'], dirPath);
+
+    // Check if remote exists
+    const remoteResult = await runGit(['-C', dirPath, 'remote', 'get-url', 'origin'], dirPath);
+    if (remoteResult.ok && remoteResult.stdout.trim()) {
+      // Remote exists, update it
+      const setUrlResult = await runGit(['-C', dirPath, 'remote', 'set-url', 'origin', remoteUrl], dirPath);
+      if (!setUrlResult.ok) return { ok: false, stderr: setUrlResult.stderr };
+    } else {
+      // No remote, add it
+      const addResult = await runGit(['-C', dirPath, 'remote', 'add', 'origin', remoteUrl], dirPath);
+      if (!addResult.ok) return { ok: false, stderr: addResult.stderr };
+    }
+
+    // Write .gitignore
+    const gitignorePath = path.join(dirPath, '.gitignore');
+    fs.writeFileSync(gitignorePath, '*\n!jonah-workspace-sync.json\n!.gitignore\n');
+
+    // Stage .gitignore
+    const ignoreResult = await runGit(['-C', dirPath, 'add', '.gitignore'], dirPath);
+    if (!ignoreResult.ok) return { ok: false, stderr: ignoreResult.stderr };
+
+    return { ok: true, stderr: '' };
+  } catch (err) {
+    return { ok: false, stderr: err.message };
+  }
+});
+
+/**
+ * Commit staged changes (sync JSON file).
+ */
+ipcMain.handle('git:commit', async (_event, dirPath) => {
+  try {
+    // Stage the sync file
+    const addResult = await runGit(['-C', dirPath, 'add', 'jonah-workspace-sync.json'], dirPath);
+    if (!addResult.ok) return { ok: false, stderr: addResult.stderr, nothingToCommit: false };
+
+    // Check if anything staged
+    const diffResult = await runGit(['-C', dirPath, 'diff', '--cached', '--quiet'], dirPath);
+    if (!diffResult.ok) {
+      // Nothing staged
+      return { ok: true, stderr: '', nothingToCommit: true };
+    }
+
+    // Commit
+    const timestamp = new Date().toISOString();
+    const commitResult = await runGit(['-C', dirPath, 'commit', '-m', `sync: ${timestamp}`], dirPath);
+    return {
+      ok: commitResult.ok,
+      stderr: commitResult.stderr,
+      nothingToCommit: false,
+    };
+  } catch (err) {
+    return { ok: false, stderr: err.message, nothingToCommit: false };
+  }
+});
+
+/**
+ * Push commits to remote.
+ */
+ipcMain.handle('git:push', async (_event, dirPath) => {
+  try {
+    // Get current branch
+    const branchResult = await runGit(['-C', dirPath, 'rev-parse', '--abbrev-ref', 'HEAD'], dirPath);
+    if (!branchResult.ok) return { ok: false, stderr: branchResult.stderr };
+    const branch = branchResult.stdout.trim();
+
+    // Push with --set-upstream
+    const pushResult = await runGit(['-C', dirPath, 'push', 'origin', branch, '--set-upstream'], dirPath);
+    return { ok: pushResult.ok, stderr: pushResult.stderr };
+  } catch (err) {
+    return { ok: false, stderr: err.message };
+  }
+});
+
+/**
+ * Pull from remote (--ff-only to prevent destructive merges).
+ */
+ipcMain.handle('git:pull', async (_event, dirPath) => {
+  try {
+    // Fetch
+    const fetchResult = await runGit(['-C', dirPath, 'fetch', 'origin'], dirPath);
+    if (!fetchResult.ok) return { ok: false, stderr: fetchResult.stderr, hadChanges: false };
+
+    // Get SHA before
+    const beforeResult = await runGit(['-C', dirPath, 'rev-parse', 'HEAD'], dirPath);
+    const beforeSha = beforeResult.ok ? beforeResult.stdout.trim() : '';
+
+    // Get current branch
+    const branchResult = await runGit(['-C', dirPath, 'rev-parse', '--abbrev-ref', 'HEAD'], dirPath);
+    const branch = branchResult.ok ? branchResult.stdout.trim() : 'main';
+
+    // Merge --ff-only
+    const mergeResult = await runGit(['-C', dirPath, 'merge', `origin/${branch}`, '--ff-only'], dirPath);
+
+    // Get SHA after
+    const afterResult = await runGit(['-C', dirPath, 'rev-parse', 'HEAD'], dirPath);
+    const afterSha = afterResult.ok ? afterResult.stdout.trim() : '';
+
+    const hadChanges = beforeSha !== afterSha;
+    return { ok: mergeResult.ok, stderr: mergeResult.stderr, hadChanges };
+  } catch (err) {
+    return { ok: false, stderr: err.message, hadChanges: false };
+  }
+});
+
+/**
+ * Get git status (branch, remote, last commit).
+ */
+ipcMain.handle('git:status', async (_event, dirPath) => {
+  try {
+    const branchResult = await runGit(['-C', dirPath, 'rev-parse', '--abbrev-ref', 'HEAD'], dirPath);
+    const branch = branchResult.ok ? branchResult.stdout.trim() : 'unknown';
+
+    const remoteResult = await runGit(['-C', dirPath, 'remote', 'get-url', 'origin'], dirPath);
+    const remoteUrl = remoteResult.ok ? remoteResult.stdout.trim() : 'none';
+
+    const logResult = await runGit(['-C', dirPath, 'log', '-1', '--format=%H|%ai|%s'], dirPath);
+    const lastCommit = logResult.ok ? logResult.stdout.trim() : 'no commits';
+
+    return { ok: true, branch, remoteUrl, lastCommit };
+  } catch (err) {
+    return { ok: false, branch: 'error', remoteUrl: '', lastCommit: err.message };
+  }
+});
+
+/**
+ * Request quit — renderer calls this after finishing git sync on quit.
+ */
+ipcMain.handle('app:request-quit', async (_event) => {
+  if (quitWatchdog) {
+    clearTimeout(quitWatchdog);
+    quitWatchdog = null;
+  }
+  app.quit();
+});
+
 // ─── App lifecycle ────────────────────────────────────────────────────────────
 app.whenReady().then(() => {
   createWindow();
@@ -540,7 +710,25 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-app.on('before-quit', () => {
+let quitRequested = false;
+let quitWatchdog = null;
+
+app.on('before-quit', (event) => {
+  if (quitRequested) return; // Already handled
+  event.preventDefault(); // Pause the quit
+  quitRequested = true;
+
+  // Signal renderer to do git sync before quit
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('app:about-to-quit');
+  }
+
+  // Watchdog: force quit after 5 seconds if renderer doesn't respond
+  quitWatchdog = setTimeout(() => {
+    if (localServer) { try { localServer.close(); } catch {} localServer = null; }
+    app.quit();
+  }, 5000);
+
   if (localServer) { try { localServer.close(); } catch {} localServer = null; }
 
   // Deferred install: run custom installer on quit (bypasses Squirrel.Mac)

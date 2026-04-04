@@ -26,7 +26,7 @@ function storageUsageKB(): number {
 export function GearMenu() {
   const { gearMenuOpen, closeGearMenu } = useUIStore();
   const { lang, snapMode, overlapMode, textScale, setLang, setSnapMode, setOverlapMode, setTextScale } = useSessionStore();
-  const { syncMeta, deviceId, syncStatus, clearConflict } = useSyncStore();
+  const { syncMeta, deviceId, syncStatus, clearConflict, gitEnabled, gitDir, gitRemote, gitSyncStatus, gitLastSyncAt, gitError, setGitEnabled, gitSetup, gitSyncNow } = useSyncStore();
   const panelRef = useRef<HTMLDivElement>(null);
   const conflictResolveRef = useRef<((value: boolean) => void) | null>(null);
   const [syncModal, setSyncModal] = useState<{
@@ -36,6 +36,8 @@ export function GearMenu() {
     resolve?: (ids: string[] | null) => void;
   } | null>(null);
   const [conflictModal, setConflictModal] = useState<ConflictInfo | null>(null);
+  const [gitRemoteInput, setGitRemoteInput] = useState<string>(gitRemote);
+  const [gitSetupLoading, setGitSetupLoading] = useState(false);
 
   // Close on outside click
   useEffect(() => {
@@ -126,6 +128,36 @@ export function GearMenu() {
 
   const handleDisconnect = async () => {
     await useSyncStore.getState().clearSyncHandle();
+  };
+
+  const handleGitSetup = async () => {
+    if (!window.electronAPI?.openDirectory) return;
+    setGitSetupLoading(true);
+    try {
+      const dirPath = await window.electronAPI.openDirectory();
+      if (!dirPath) {
+        setGitSetupLoading(false);
+        return;
+      }
+      const result = await gitSetup(dirPath, gitRemoteInput);
+      if (result.ok) {
+        setGitRemoteInput("");
+      } else {
+        alert(pick("Git 初始化失敗", "Git init failed") + ": " + (result.error ?? "unknown error"));
+      }
+    } catch (err) {
+      alert(pick("錯誤", "Error") + ": " + (err as Error).message);
+    } finally {
+      setGitSetupLoading(false);
+    }
+  };
+
+  const handleGitSyncNow = async () => {
+    try {
+      await gitSyncNow();
+    } catch (err) {
+      console.error("[gear] git sync failed:", err);
+    }
   };
 
   function timeAgoShort(iso: string | null): string {
@@ -225,6 +257,74 @@ export function GearMenu() {
       </Section>
 
       <div style={divider} />
+
+      {/* Git Sync — Electron only */}
+      {window.electronAPI?.isElectron && (
+        <>
+          <Section label={pick("Git 同步", "Git Sync")}>
+            <ToggleRow
+              left={pick("開", "On")}
+              right={pick("關", "Off")}
+              active={gitEnabled ? "left" : "right"}
+              onLeft={() => setGitEnabled(true)}
+              onRight={() => setGitEnabled(false)}
+            />
+            {gitEnabled && (
+              <div style={{ marginTop: 8, fontSize: 11, color: "#888", lineHeight: 1.6 }}>
+                <div style={{ marginBottom: 6 }}>
+                  {pick("資料夾", "Folder")}: <code style={{ fontSize: 10, display: "block", wordBreak: "break-all" }}>{gitDir || "—"}</code>
+                </div>
+                {gitLastSyncAt && (
+                  <div style={{ marginBottom: 6 }}>
+                    {pick("上次同步", "Last synced")}: {timeAgoShort(gitLastSyncAt)}
+                  </div>
+                )}
+                {gitError && (
+                  <div style={{ color: "#e55", marginBottom: 6 }}>
+                    {gitError}
+                  </div>
+                )}
+                {gitSyncStatus === "syncing" && (
+                  <div style={{ color: "#888", marginBottom: 6 }}>
+                    {pick("同步中…", "Syncing…")}
+                  </div>
+                )}
+              </div>
+            )}
+            {!gitEnabled || !gitDir ? (
+              <>
+                <input
+                  type="text"
+                  placeholder={pick("GitHub 遠端 URL", "GitHub remote URL")}
+                  value={gitRemoteInput}
+                  onChange={(e) => setGitRemoteInput(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "6px 8px",
+                    fontSize: 12,
+                    border: "1px solid var(--line)",
+                    borderRadius: "var(--radius-sm)",
+                    marginBottom: 6,
+                    boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  onClick={handleGitSetup}
+                  disabled={gitSetupLoading || !gitRemoteInput.trim()}
+                  style={{ ...actionBtn, opacity: gitSetupLoading || !gitRemoteInput.trim() ? 0.6 : 1 }}
+                >
+                  {gitSetupLoading ? pick("初始化中…", "Initializing…") : pick("設定 Git", "Setup Git")}
+                </button>
+              </>
+            ) : (
+              <button onClick={handleGitSyncNow} style={actionBtn} disabled={gitSyncStatus === "syncing"}>
+                ⟳ {pick("立即同步", "Sync Now")}
+              </button>
+            )}
+          </Section>
+          <div style={divider} />
+        </>
+      )}
 
       {/* Export / Import */}
       <button onClick={handleExport} style={actionBtn}>

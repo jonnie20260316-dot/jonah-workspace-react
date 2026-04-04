@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { loadText, saveText, setActiveDate as storageSetActiveDate } from "../utils/storage";
 import { setLang } from "../utils/i18n";
+import { scheduleGitSync } from "../utils/sync";
 import { DEFAULT_LANG } from "../constants";
 import type { Lang } from "../types";
 
@@ -71,6 +72,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     saveText("active-date", date);
     storageSetActiveDate(date);
     set({ activeDate: date });
+    scheduleGitSync();
   },
 
   navigateDate: (offset) => {

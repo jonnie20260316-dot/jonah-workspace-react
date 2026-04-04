@@ -64,4 +64,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('youtube:stream-status', handler);
     return () => ipcRenderer.removeListener('youtube:stream-status', handler);
   },
+
+  // ── Git sync ────────────────────────────────────────────────────────────
+  gitInit: (dirPath, remoteUrl) => ipcRenderer.invoke('git:init', dirPath, remoteUrl),
+  gitCommit: (dirPath) => ipcRenderer.invoke('git:commit', dirPath),
+  gitPush: (dirPath) => ipcRenderer.invoke('git:push', dirPath),
+  gitPull: (dirPath) => ipcRenderer.invoke('git:pull', dirPath),
+  gitStatus: (dirPath) => ipcRenderer.invoke('git:status', dirPath),
+  requestQuit: () => ipcRenderer.invoke('app:request-quit'),
+  onAboutToQuit: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on('app:about-to-quit', handler);
+    return () => ipcRenderer.removeListener('app:about-to-quit', handler);
+  },
 });

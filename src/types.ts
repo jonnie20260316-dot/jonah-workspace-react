@@ -101,6 +101,8 @@ export interface SyncPayload {
 
 export type SyncStatus = "idle" | "syncing" | "synced" | "conflict" | "error" | "offline";
 
+export type GitSyncStatus = "idle" | "syncing" | "synced" | "error" | "conflict" | "auth-error";
+
 export interface ConflictInfo {
   remote: SyncPayload;
   detectedAt: string;
@@ -165,6 +167,14 @@ declare global {
       youtubeStreamChunk: (chunk: ArrayBuffer) => Promise<void>;
       youtubeStopStream: () => Promise<void>;
       onYoutubeStreamStatus: (cb: (data: YTStreamStatus) => void) => () => void;
+      // Git sync
+      gitInit: (dirPath: string, remoteUrl: string) => Promise<{ ok: boolean; stderr: string }>;
+      gitCommit: (dirPath: string) => Promise<{ ok: boolean; stderr: string; nothingToCommit: boolean }>;
+      gitPush: (dirPath: string) => Promise<{ ok: boolean; stderr: string }>;
+      gitPull: (dirPath: string) => Promise<{ ok: boolean; stderr: string; hadChanges: boolean }>;
+      gitStatus: (dirPath: string) => Promise<{ ok: boolean; branch: string; remoteUrl: string; lastCommit: string }>;
+      requestQuit: () => Promise<void>;
+      onAboutToQuit: (cb: () => void) => () => void;
     };
   }
 }

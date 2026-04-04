@@ -39,6 +39,9 @@ export const GLOBAL_KEYS = new Set<string>([
   "sync-meta",
   "sync-queue",
   "timer-height-migrated-v1",
+  "git-sync-enabled",
+  "git-sync-dir",
+  "git-sync-remote",
 ]);
 
 export const GLOBAL_KEY_PREFIXES: string[] = [

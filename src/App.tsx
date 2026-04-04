@@ -8,10 +8,12 @@ import { RichTextToolbar } from "./components/RichTextToolbar";
 import { ToastContainer } from "./components/Toast";
 import { useTimerTick } from "./hooks/useTimerTick";
 import { useSyncBoot } from "./hooks/useSyncBoot";
+import { useGitQuit } from "./hooks/useGitQuit";
 
 export default function App() {
   useTimerTick();
   useSyncBoot();
+  useGitQuit();
 
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
