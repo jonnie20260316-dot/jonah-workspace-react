@@ -216,21 +216,33 @@ ipcMain.handle('updater:install', () => {
   const appPath = app.getPath('exe').split('.app')[0] + '.app';
   const tmpDir = path.join(app.getPath('temp'), 'jonah-update-' + Date.now());
 
-  const script = [
-    `mkdir -p "${tmpDir}"`,
-    `unzip -q "${downloadedFilePath}" -d "${tmpDir}"`,
-    `NEW_APP=$(find "${tmpDir}" -name "*.app" -maxdepth 1 | head -1)`,
-    `ditto "$NEW_APP" "${appPath}"`,
-    `rm -rf "${tmpDir}"`,
-    `open "${appPath}"`,
-  ].join(' && ');
+  // Let the UI know install is in progress (can take 30-60s for large app)
+  sendUpdaterStatus({ status: 'downloading', percent: 100 });
+
+  const script = `
+    set -e
+    mkdir -p "${tmpDir}"
+    unzip -q "${downloadedFilePath}" -d "${tmpDir}"
+    NEW_APP=$(find "${tmpDir}" -name "*.app" -maxdepth 1 | head -1)
+    if [ -z "$NEW_APP" ]; then
+      rm -rf "${tmpDir}"
+      echo "ERROR: no .app found in zip" >&2
+      exit 1
+    fi
+    ditto "$NEW_APP" "${appPath}"
+    xattr -dr com.apple.quarantine "${appPath}" 2>/dev/null || true
+    rm -rf "${tmpDir}"
+    open "${appPath}"
+  `;
 
   exec(script, (err) => {
     if (err) {
       console.error('[updater] custom install failed:', err.message);
       sendUpdaterStatus({ status: 'error', message: err.message });
     } else {
-      app.exit(0);
+      // Use app.quit() (not exit) so before-quit fires and closes the local
+      // HTTP server before the new instance tries to bind port 5173
+      app.quit();
     }
   });
 });
@@ -536,14 +548,17 @@ app.on('before-quit', () => {
     const { exec } = require('child_process');
     const appPath = app.getPath('exe').split('.app')[0] + '.app';
     const tmpDir = path.join(app.getPath('temp'), 'jonah-update-' + Date.now());
-    const script = [
-      `mkdir -p "${tmpDir}"`,
-      `unzip -q "${downloadedFilePath}" -d "${tmpDir}"`,
-      `NEW_APP=$(find "${tmpDir}" -name "*.app" -maxdepth 1 | head -1)`,
-      `ditto "$NEW_APP" "${appPath}"`,
-      `rm -rf "${tmpDir}"`,
-      `open "${appPath}"`,
-    ].join(' && ');
+    const script = `
+      set -e
+      mkdir -p "${tmpDir}"
+      unzip -q "${downloadedFilePath}" -d "${tmpDir}"
+      NEW_APP=$(find "${tmpDir}" -name "*.app" -maxdepth 1 | head -1)
+      [ -z "$NEW_APP" ] && rm -rf "${tmpDir}" && exit 1
+      ditto "$NEW_APP" "${appPath}"
+      xattr -dr com.apple.quarantine "${appPath}" 2>/dev/null || true
+      rm -rf "${tmpDir}"
+      open "${appPath}"
+    `;
     exec(script); // fire-and-forget: app is already quitting
   }
 });
