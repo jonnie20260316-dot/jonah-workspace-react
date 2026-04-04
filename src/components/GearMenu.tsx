@@ -314,10 +314,15 @@ function ToggleRow({ left, right, active, onLeft, onRight }: {
 function AppUpdater() {
   const [update, setUpdate] = useState<UpdateStatus>({ status: "idle" });
   const [version, setVersion] = useState<string>("");
+  const [deferred, setDeferred] = useState(false);
 
   useEffect(() => {
     window.electronAPI!.getAppVersion().then(setVersion);
-    const unsub = window.electronAPI!.onUpdateStatus(setUpdate);
+    const unsub = window.electronAPI!.onUpdateStatus((s) => {
+      setUpdate(s);
+      // Reset deferred flag whenever a new update cycle starts
+      if (s.status === "idle" || s.status === "checking") setDeferred(false);
+    });
     return unsub;
   }, []);
 
@@ -335,26 +340,46 @@ function AppUpdater() {
     if (status === "idle" || status === "up-to-date" || status === "error") {
       setUpdate({ status: "checking" });
       window.electronAPI!.checkForUpdates();
+    } else if (status === "available") {
+      window.electronAPI!.downloadUpdate();
     } else if (status === "ready") {
       window.electronAPI!.installUpdate();
     }
   };
 
-  // ── Button label ──────────────────────────────────────────────────────────
+  const handleDefer = () => {
+    window.electronAPI!.deferUpdate();
+    setDeferred(true);
+  };
+
+  // ── Button label & style ──────────────────────────────────────────────────
   let label: string;
   let btnBg = "rgba(36,50,49,0.08)";
   let btnColor = "var(--text-secondary)";
   let btnDisabled = false;
 
+  const newVer =
+    (update as { version?: string }).version ?? "";
+
   if (status === "checking") {
     label = pick("檢查中…", "Checking…");
     btnDisabled = true;
+  } else if (status === "available") {
+    label = pick(
+      `發現新版本 ${newVer} — 立即下載`,
+      `Update ${newVer} available — Download`
+    );
+    btnBg = "rgba(0,122,255,0.10)";
+    btnColor = "#007aff";
   } else if (status === "downloading") {
     const pct = (update as { status: "downloading"; percent: number }).percent;
     label = pick(`下載中… ${pct}%`, `Downloading… ${pct}%`);
     btnDisabled = true;
   } else if (status === "ready") {
-    label = pick("重啟並安裝更新", "Restart & install update");
+    label = pick(
+      `立即重啟安裝 ${newVer}`,
+      `Restart & install ${newVer}`
+    );
     btnBg = "var(--accent)";
     btnColor = "var(--text-inverted)";
   } else if (status === "up-to-date") {
@@ -384,6 +409,7 @@ function AppUpdater() {
         </div>
       )}
 
+      {/* Primary action button */}
       <button
         onClick={handleClick}
         disabled={btnDisabled}
@@ -397,11 +423,37 @@ function AppUpdater() {
           marginBottom: 4,
           opacity: btnDisabled ? 0.7 : 1,
           transition: "background 0.15s, color 0.15s",
-          fontWeight: status === "ready" ? 600 : 400,
+          fontWeight: status === "ready" || status === "available" ? 600 : 400,
         }}
       >
         {label}
       </button>
+
+      {/* Defer button — only shown when ready and not yet deferred */}
+      {status === "ready" && !deferred && (
+        <button
+          onClick={handleDefer}
+          style={{
+            display: "block", width: "100%",
+            background: "none", color: "var(--text-secondary)",
+            border: "1px solid var(--line)",
+            borderRadius: "var(--radius-sm)",
+            padding: "6px 10px", textAlign: "left",
+            fontSize: 12, cursor: "pointer",
+            marginBottom: 4,
+            transition: "background 0.15s",
+          }}
+        >
+          {pick("下次關閉時安裝", "Install on next quit")}
+        </button>
+      )}
+
+      {/* Deferred confirmation */}
+      {status === "ready" && deferred && (
+        <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginBottom: 4 }}>
+          {pick("✓ 關閉時將自動安裝", "✓ Will install on quit")}
+        </div>
+      )}
 
       {/* Version line */}
       {version && (

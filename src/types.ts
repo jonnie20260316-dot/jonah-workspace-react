@@ -117,6 +117,7 @@ export type UpdateStatus =
   | { status: "idle" }
   | { status: "checking" }
   | { status: "up-to-date" }
+  | { status: "available"; version: string }
   | { status: "downloading"; percent: number; version?: string }
   | { status: "ready"; version?: string }
   | { status: "error" };
@@ -137,7 +138,9 @@ declare global {
       getAppVersion: () => Promise<string>;
       // Updates
       checkForUpdates: () => Promise<void>;
+      downloadUpdate: () => Promise<void>;
       installUpdate: () => void;
+      deferUpdate: () => Promise<void>;
       onUpdateStatus: (cb: (data: UpdateStatus) => void) => () => void;
     };
   }

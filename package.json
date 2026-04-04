@@ -16,7 +16,9 @@
     "electron:build": "npm run build && electron-builder",
     "electron:build:mac": "npm run build && electron-builder --mac",
     "electron:build:win": "npm run build && electron-builder --win",
-    "release": "npm run build && electron-builder --publish always"
+    "release": "npm run build && electron-builder --publish always",
+    "release:beta": "npm run build && electron-builder --publish always",
+    "release:stable": "npm run build && electron-builder --publish always"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",

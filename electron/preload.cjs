@@ -22,14 +22,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** Ask the main process to check GitHub for a newer version. */
   checkForUpdates: () => ipcRenderer.invoke('updater:check'),
 
-  /** Quit and install the downloaded update. */
+  /** Start downloading the update (call after user sees 'available' state). */
+  downloadUpdate: () => ipcRenderer.invoke('updater:download'),
+
+  /** Quit and install the downloaded update immediately. */
   installUpdate: () => ipcRenderer.invoke('updater:install'),
+
+  /**
+   * Defer install to next quit (sets autoInstallOnAppQuit = true in main).
+   * The UI can then dismiss the ready state without forcing a restart.
+   */
+  deferUpdate: () => ipcRenderer.invoke('updater:defer'),
 
   /**
    * Subscribe to update status events from main.
    * Returns an unsubscribe function — call it in useEffect cleanup.
    *
-   * Payload: { status: 'checking'|'up-to-date'|'downloading'|'ready'|'error', percent?: number, version?: string }
+   * Payload: UpdateStatus (see src/types.ts)
    */
   onUpdateStatus: (callback) => {
     const handler = (_event, data) => callback(data);

@@ -24,9 +24,8 @@ autoUpdater.on('checking-for-update', () => {
 });
 
 autoUpdater.on('update-available', (info) => {
-  // Auto-start download — user already clicked "Check for updates"
-  sendUpdaterStatus({ status: 'downloading', percent: 0, version: info.version });
-  autoUpdater.downloadUpdate();
+  // Notify renderer so user can choose to download
+  sendUpdaterStatus({ status: 'available', version: info.version });
 });
 
 autoUpdater.on('update-not-available', () => {
@@ -117,8 +116,17 @@ ipcMain.handle('updater:check', async () => {
   }
 });
 
+ipcMain.handle('updater:download', () => {
+  sendUpdaterStatus({ status: 'downloading', percent: 0 });
+  autoUpdater.downloadUpdate();
+});
+
 ipcMain.handle('updater:install', () => {
   autoUpdater.quitAndInstall();
+});
+
+ipcMain.handle('updater:defer', () => {
+  autoUpdater.autoInstallOnAppQuit = true;
 });
 
 ipcMain.handle('app:version', () => app.getVersion());
