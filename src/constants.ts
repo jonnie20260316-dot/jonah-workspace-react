@@ -58,4 +58,5 @@ export const GLOBAL_KEY_PREFIXES: string[] = [
   "content-draft-history:",
   "video-capture-settings:",
   "vc-saved-videos:",
+  "ai-chat-tab:",
 ];

@@ -140,6 +140,7 @@ async function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      webviewTag: true,
     },
   });
 
@@ -160,6 +161,26 @@ async function createWindow() {
       callback({ video: chosen, audio: 'loopback' });
     });
   });
+
+  // Strip X-Frame-Options and CSP frame-ancestors headers for AI chat sites (claude.ai, chatgpt.com)
+  // This allows them to be embedded in webview tags, which otherwise block due to frame-ancestors directives
+  function stripEmbedBlockingHeaders(sess) {
+    const AI_ORIGINS = ['*://claude.ai/*', '*://chatgpt.com/*', '*://*.claude.ai/*', '*://*.chatgpt.com/*'];
+    sess.webRequest.onHeadersReceived({ urls: AI_ORIGINS }, (details, callback) => {
+      const headers = { ...details.responseHeaders };
+      for (const key of Object.keys(headers)) {
+        const lower = key.toLowerCase();
+        if (lower === 'x-frame-options' || lower === 'content-security-policy') {
+          delete headers[key];
+        }
+      }
+      callback({ responseHeaders: headers });
+    });
+  }
+
+  // Register header stripping for both default and persist:aichat sessions
+  stripEmbedBlockingHeaders(session.defaultSession);
+  stripEmbedBlockingHeaders(session.fromPartition('persist:aichat'));
 
   // IPC: Screen source picker support
   ipcMain.handle('screen:get-sources', async () => {

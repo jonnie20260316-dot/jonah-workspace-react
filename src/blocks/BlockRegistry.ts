@@ -18,6 +18,7 @@ import { ThreadsIntelBlock } from "./ThreadsIntelBlock";
 import { PromptedNotesBlock } from "./PromptedNotesBlock";
 import { VideoCaptureBlock } from "./VideoCaptureBlock";
 import { YouTubeStudioBlock } from "./YouTubeStudioBlock";
+import { AIChatBlock } from "./AIChatBlock";
 import type { Block, BlockType } from "../types";
 
 export interface BlockTypeConfig {
@@ -185,6 +186,14 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     subtitle: "Live streaming",
     zhSubtitle: "直播控制台",
     size: { w: 900, h: 600 },
+  },
+  "ai-chat": {
+    component: AIChatBlock,
+    title: "AI Chat",
+    zhTitle: "AI 對話",
+    subtitle: "Claude & ChatGPT",
+    zhSubtitle: "Claude 與 ChatGPT",
+    size: { w: 880, h: 660 },
   },
 };
 
