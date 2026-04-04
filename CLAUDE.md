@@ -178,6 +178,7 @@ Do not exit silent after architecture, workflow, storage, guardrail, or major UX
 | JW-32 | **Portal + getBoundingClientRect for Overlays Under Transformed Ancestors** — `FloatingTopBar` uses `transform: translateX(-50%)`. Any dropdown/overlay inside it must use `createPortal(overlay, document.body)` + `position: fixed` + `getBoundingClientRect()` coordinates. Clamp `left` to viewport edges. |
 | JW-33 | **Inline Style Specificity Trap** — `style={{ fontSize: "Xpx" }}` beats any CSS class rule silently. When using `--text-scale`, all inline fontSize must be `fontSize: "calc(Xpx * var(--text-scale))"`. Modals outside `.board-block` keep absolute `px`. |
 | JW-34 | **⚠️ Commit-Before-Delete** — Before `rm -rf`, `git clone` to replace a local dir, or any directory swap: run `git status` and `git log --oneline origin/HEAD..HEAD`. If local-only state exists, push or stash first. "Latest on GitHub" ≠ "latest on disk". |
+| JW-35 | **BlockType + Icon Registry Co-Check** — When adding a `BlockType` enum variant in `src/types.ts`, immediately add a corresponding entry to `BLOCK_ICONS` Record in `src/utils/blockIcons.ts` (with icon import from lucide-react). If you forget, build fails with "Property 'xyz' is missing in type Record<BlockType, LucideIcon>". Checklist: (1) edit BlockType, (2) import icon from lucide-react, (3) add to BLOCK_ICONS, (4) run `npm run build` to verify. |
 
 ## Session Protocol — Wrap It Up
 
