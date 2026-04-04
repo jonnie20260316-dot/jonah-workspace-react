@@ -518,12 +518,16 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       const api = (window as unknown as { electronAPI: {
         selectScreenSource: (id: string) => Promise<void>;
       } }).electronAPI;
+      // Stop existing stream before switching source
+      if (streamRef.current) {
+        stopStream();
+      }
       await api.selectScreenSource(sourceId);
       startScreenStream();
     } catch (err) {
       console.error("Failed to select screen source:", err);
     }
-  }, [startScreenStream]);
+  }, [startScreenStream, stopStream]);
 
   /* ── Step 7: startRecording with composite support ── */
   const startRecording = useCallback(() => {
@@ -830,6 +834,30 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
               >
                 {pick("子母畫面", "PiP")}
               </button>
+              {/* Switch source button (Electron, while streaming) */}
+              {isElectron && isStreaming && !isRecording && (
+                <button
+                  onClick={async () => {
+                    const api = (window as unknown as { electronAPI: {
+                      getScreenSources: () => Promise<{ id: string; name: string; thumbnail: string }[]>;
+                    } }).electronAPI;
+                    const sources = await api.getScreenSources();
+                    setScreenSources(sources);
+                    setShowSourcePicker(true);
+                  }}
+                  style={{
+                    padding: "6px 12px",
+                    fontSize: "calc(12px * var(--text-scale))",
+                    backgroundColor: "#555",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "2px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {pick("切換來源", "Switch Source")}
+                </button>
+              )}
               {isStreaming && (
                 <span style={{ fontSize: "calc(10px * var(--text-scale))", color: "#999", marginLeft: "4px" }}>
                   {pick("停止串流以更改音訊", "Stop stream to change audio")}
