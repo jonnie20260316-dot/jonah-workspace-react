@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, memo } from "react";
 import type { ReactNode } from "react";
 import { ChevronUp, ChevronDown, ArchiveX, Palette, GripVertical, Pin, PinOff } from "lucide-react";
 import { useBlockStore } from "../stores/useBlockStore";
@@ -42,7 +42,7 @@ interface BlockShellProps {
   children: ReactNode;
 }
 
-export function BlockShell({ block, children }: BlockShellProps) {
+function BlockShellInner({ block, children }: BlockShellProps) {
   const { updateBlock, archiveBlock, bringToFront } = useBlockStore();
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   // Block bloom: animate on first mount, then clear class
@@ -213,3 +213,5 @@ export function BlockShell({ block, children }: BlockShellProps) {
     </article>
   );
 }
+
+export const BlockShell = memo(BlockShellInner);

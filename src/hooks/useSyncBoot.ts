@@ -4,6 +4,7 @@ import { getSyncHandle } from "../utils/syncIdb";
 import { restoreFromFile, backupToFile } from "../utils/storage";
 import { useBlockStore } from "../stores/useBlockStore";
 import { STORAGE_PREFIX } from "../constants";
+import { runMigrations } from "../utils/migrations";
 
 type FSHandleBoot = FileSystemDirectoryHandle & {
   queryPermission: (opts: { mode: string }) => Promise<string>;
@@ -63,6 +64,7 @@ export function useSyncBoot(): void {
           const restored = await restoreFromFile();
           if (restored) {
             rehydrateStores();
+            runMigrations();
           }
         }
 

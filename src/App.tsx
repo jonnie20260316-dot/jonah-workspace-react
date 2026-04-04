@@ -6,6 +6,7 @@ import { Sidebar } from "./components/Sidebar";
 import { GearMenu } from "./components/GearMenu";
 import { RichTextToolbar } from "./components/RichTextToolbar";
 import { ToastContainer } from "./components/Toast";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useTimerTick } from "./hooks/useTimerTick";
 import { useSyncBoot } from "./hooks/useSyncBoot";
 import { useGitQuit } from "./hooks/useGitQuit";
@@ -16,15 +17,19 @@ export default function App() {
   useGitQuit();
 
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
-      <FloatingTopBar />
-      <Sidebar />
-      <GearMenu />
-      <Canvas />
-      <RichTextToolbar />
-      <FAB />
-      <ModalLayer />
-      <ToastContainer />
-    </div>
+    <ErrorBoundary>
+      <div style={{ width: "100vw", height: "100vh" }}>
+        <FloatingTopBar />
+        <Sidebar />
+        <GearMenu />
+        <ErrorBoundary>
+          <Canvas />
+        </ErrorBoundary>
+        <RichTextToolbar />
+        <FAB />
+        <ModalLayer />
+        <ToastContainer />
+      </div>
+    </ErrorBoundary>
   );
 }

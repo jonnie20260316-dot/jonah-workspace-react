@@ -27,8 +27,14 @@ export function loadJSON<T>(key: string, fallback: T): T {
   }
 }
 
-export function saveJSON(key: string, value: unknown): void {
-  localStorage.setItem(storageKey(key), JSON.stringify(value));
+export function saveJSON(key: string, value: unknown): boolean {
+  try {
+    localStorage.setItem(storageKey(key), JSON.stringify(value));
+    return true;
+  } catch (e) {
+    console.error("[storage] 寫入失敗:", key, e);
+    return false;
+  }
 }
 
 export function loadText(key: string, fallback = ""): string {
