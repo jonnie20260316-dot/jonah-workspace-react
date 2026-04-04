@@ -44,7 +44,7 @@ const isDev = !app.isPackaged;
 // ─── Updater: push status to renderer ────────────────────────────────────────
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = false;
-autoUpdater.forceDevUpdateConfig = true; // skip macOS code-signature check for ad-hoc signed apps
+autoUpdater.forceDevUpdateConfig = true; // allow updater to run in unpackaged/dev context
 
 let mainWindow = null;
 
@@ -71,7 +71,10 @@ autoUpdater.on('download-progress', (progress) => {
   sendUpdaterStatus({ status: 'downloading', percent: Math.round(progress.percent) });
 });
 
+let downloadedFilePath = null;
+
 autoUpdater.on('update-downloaded', (info) => {
+  downloadedFilePath = info.downloadedFile || null;
   sendUpdaterStatus({ status: 'ready', version: info.version });
 });
 
@@ -202,11 +205,40 @@ ipcMain.handle('updater:download', () => {
 });
 
 ipcMain.handle('updater:install', () => {
-  autoUpdater.quitAndInstall();
+  if (!downloadedFilePath || !fs.existsSync(downloadedFilePath)) {
+    autoUpdater.quitAndInstall();
+    return;
+  }
+
+  // Bypass Squirrel.Mac (which rejects ad-hoc signatures) by installing directly
+  // via unzip + ditto, then relaunching.
+  const { exec } = require('child_process');
+  const appPath = app.getPath('exe').split('.app')[0] + '.app';
+  const tmpDir = path.join(app.getPath('temp'), 'jonah-update-' + Date.now());
+
+  const script = [
+    `mkdir -p "${tmpDir}"`,
+    `unzip -q "${downloadedFilePath}" -d "${tmpDir}"`,
+    `NEW_APP=$(find "${tmpDir}" -name "*.app" -maxdepth 1 | head -1)`,
+    `ditto "$NEW_APP" "${appPath}"`,
+    `rm -rf "${tmpDir}"`,
+    `open "${appPath}"`,
+  ].join(' && ');
+
+  exec(script, (err) => {
+    if (err) {
+      console.error('[updater] custom install failed:', err.message);
+      sendUpdaterStatus({ status: 'error', message: err.message });
+    } else {
+      app.exit(0);
+    }
+  });
 });
 
+let deferInstall = false;
+
 ipcMain.handle('updater:defer', () => {
-  autoUpdater.autoInstallOnAppQuit = true;
+  deferInstall = true;
 });
 
 ipcMain.handle('app:version', () => app.getVersion());
@@ -498,4 +530,20 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   if (localServer) { try { localServer.close(); } catch {} localServer = null; }
+
+  // Deferred install: run custom installer on quit (bypasses Squirrel.Mac)
+  if (deferInstall && downloadedFilePath && fs.existsSync(downloadedFilePath)) {
+    const { exec } = require('child_process');
+    const appPath = app.getPath('exe').split('.app')[0] + '.app';
+    const tmpDir = path.join(app.getPath('temp'), 'jonah-update-' + Date.now());
+    const script = [
+      `mkdir -p "${tmpDir}"`,
+      `unzip -q "${downloadedFilePath}" -d "${tmpDir}"`,
+      `NEW_APP=$(find "${tmpDir}" -name "*.app" -maxdepth 1 | head -1)`,
+      `ditto "$NEW_APP" "${appPath}"`,
+      `rm -rf "${tmpDir}"`,
+      `open "${appPath}"`,
+    ].join(' && ');
+    exec(script); // fire-and-forget: app is already quitting
+  }
 });
