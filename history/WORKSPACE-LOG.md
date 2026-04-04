@@ -5,6 +5,8 @@ Newest sessions at the top.
 
 ---
 
+## 2026-04-04 | Git-Backed Data Sync (Multi-Device Backup with Version Control) — Implemented optional Git sync layered on localStorage: user enables in GearMenu, picks local folder, enters GitHub remote URL; data auto-commits after 30s of changes (debounced); app boot auto-pulls; app quit does final commit; write flow: mutation → localStorage → git commit+push → GitHub; read flow: boot/quit signal → git pull → rehydrate stores; 12 files changed (+658 lines); IPC: git:init/commit/push/pull/status handlers + quit watchdog; Zustand: git state + 5 actions; hooks: useSyncBoot extended + new useGitQuit; GearMenu: Git Sync section with setup wizard + status display; build ✓ 1795 modules
+
 ## 2026-04-04 | Video Source Switch Fix — Frozen Preview + Black Screen — User reported: clicking source toggle froze preview and turned screen black; root cause: switchSource() reassigned srcObject on video elements but never called .play() (browser pauses when srcObject changes); fixed: added .play() after every srcObject assignment, cleared screenVideoRef on camera switch, updated useStreamStore to sync YouTube block; new prevention rules VIDEO-SRCOBJECT-1 + STORE-SYNC-1; 1 file, +8 lines; build ✓ 1794 modules
 
 ## 2026-04-04 | YouTube RTMP Stream Fix — Race Condition on Stop — User reported 停止推流 crash (ERR_STREAM_WRITE_AFTER_END); race condition between async IPC handlers (stop closes stdin, chunks still sending); added isStopping flag guard; RTMP-Stop-Safe prevention rule created; 1 file, +5 lines; build ✓ 1794 modules
