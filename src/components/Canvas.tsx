@@ -144,8 +144,8 @@ export function Canvas() {
       return;
     }
     const { activeTool, clearSelection } = useSessionStore.getState();
-    // Drawing tools
-    if (activeTool === "rect" || activeTool === "ellipse" || activeTool === "diamond") {
+    // Any drawing tool → delegate (text, brush, rect, ellipse, diamond, connector, frame)
+    if (activeTool !== "select" && activeTool !== "pan") {
       drawTool.onPointerDown(e);
       return;
     }

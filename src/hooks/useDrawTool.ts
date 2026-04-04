@@ -4,11 +4,12 @@ import { useSessionStore } from "../stores/useSessionStore";
 import { useViewportStore } from "../stores/useViewportStore";
 import { useSurfaceStore } from "../stores/useSurfaceStore";
 import { screenToBoardPoint } from "../utils/viewport";
+import { pointsToSmoothPath, pointsBounds } from "../utils/svgPath";
 import type { SurfaceElement } from "../types";
 
-const DRAW_TOOLS = new Set(["rect", "ellipse", "diamond"]);
+const SHAPE_TOOLS = new Set(["rect", "ellipse", "diamond"]);
 
-function makePreview(type: string, x: number, y: number, w: number, h: number): SurfaceElement {
+function makeShapePreview(type: string, x: number, y: number, w: number, h: number): SurfaceElement {
   return {
     id: "_preview",
     type: type as SurfaceElement["type"],
@@ -24,42 +25,138 @@ function makePreview(type: string, x: number, y: number, w: number, h: number): 
 
 export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
   const drawRef = useRef<{ startX: number; startY: number } | null>(null);
+  const brushPointsRef = useRef<[number, number][]>([]);
   const [preview, setPreview] = useState<SurfaceElement | null>(null);
 
-  function onPointerDown(e: React.PointerEvent) {
-    const { activeTool } = useSessionStore.getState();
-    if (!DRAW_TOOLS.has(activeTool) || !viewportRef.current) return;
-
+  function getBoardPoint(e: React.PointerEvent) {
     const { viewport } = useViewportStore.getState();
-    const rect = viewportRef.current.getBoundingClientRect();
-    const b = screenToBoardPoint(e.clientX, e.clientY, viewport, rect);
+    const rect = viewportRef.current!.getBoundingClientRect();
+    return screenToBoardPoint(e.clientX, e.clientY, viewport, rect);
+  }
 
+  function onPointerDown(e: React.PointerEvent) {
+    const { activeTool, setActiveTool, setSelectedIds, setEditingTextId } =
+      useSessionStore.getState();
+    if (!viewportRef.current) return;
+
+    // Text tool: single click → create element immediately → enter edit mode
+    if (activeTool === "text") {
+      const b = getBoardPoint(e);
+      const id = crypto.randomUUID();
+      const el: SurfaceElement = {
+        id,
+        type: "text",
+        x: b.x,
+        y: b.y,
+        w: 200,
+        h: 40,
+        z: Date.now(),
+        fillColor: "transparent",
+        strokeColor: "transparent",
+        strokeWidth: 0,
+        strokeStyle: "solid",
+        opacity: 1,
+        text: "",
+        fontSize: 18,
+        fontWeight: "normal",
+        textAlign: "left",
+      };
+      useSurfaceStore.getState().addElement(el);
+      setSelectedIds([id]);
+      setEditingTextId(id);
+      setActiveTool("select");
+      e.stopPropagation();
+      return;
+    }
+
+    // Brush tool: start collecting points
+    if (activeTool === "brush") {
+      const b = getBoardPoint(e);
+      brushPointsRef.current = [[b.x, b.y]];
+      (e.target as Element).setPointerCapture(e.pointerId);
+      e.stopPropagation();
+      return;
+    }
+
+    // Shape tools: record drag start
+    if (!SHAPE_TOOLS.has(activeTool)) return;
+    const b = getBoardPoint(e);
     drawRef.current = { startX: b.x, startY: b.y };
     (e.target as Element).setPointerCapture(e.pointerId);
     e.stopPropagation();
   }
 
   function onPointerMove(e: React.PointerEvent) {
-    if (!drawRef.current || !viewportRef.current) return;
     const { activeTool } = useSessionStore.getState();
-    if (!DRAW_TOOLS.has(activeTool)) return;
+    if (!viewportRef.current) return;
 
-    const { viewport } = useViewportStore.getState();
-    const rect = viewportRef.current.getBoundingClientRect();
-    const b = screenToBoardPoint(e.clientX, e.clientY, viewport, rect);
+    // Brush: accumulate points, update live preview
+    if (activeTool === "brush" && brushPointsRef.current.length > 0) {
+      const b = getBoardPoint(e);
+      brushPointsRef.current.push([b.x, b.y]);
+      const pts = brushPointsRef.current;
+      const { x, y, w, h } = pointsBounds(pts);
+      setPreview({
+        id: "_preview",
+        type: "brush",
+        x, y, w, h,
+        z: 0,
+        fillColor: "transparent",
+        strokeColor: "#243231",
+        strokeWidth: 3,
+        strokeStyle: "solid",
+        opacity: 1,
+        pathData: pointsToSmoothPath(pts),
+      });
+      return;
+    }
 
+    // Shapes: update bounding-box preview
+    if (!drawRef.current) return;
+    if (!SHAPE_TOOLS.has(activeTool)) return;
+
+    const b = getBoardPoint(e);
     const x = Math.min(drawRef.current.startX, b.x);
     const y = Math.min(drawRef.current.startY, b.y);
     const w = Math.abs(b.x - drawRef.current.startX);
     const h = Math.abs(b.y - drawRef.current.startY);
-
-    setPreview(makePreview(activeTool, x, y, Math.max(w, 1), Math.max(h, 1)));
+    setPreview(makeShapePreview(activeTool, x, y, Math.max(w, 1), Math.max(h, 1)));
   }
 
   function onPointerUp() {
-    if (!drawRef.current) return;
     const { activeTool, setActiveTool, setSelectedIds } = useSessionStore.getState();
-    if (!DRAW_TOOLS.has(activeTool)) { drawRef.current = null; return; }
+
+    // Brush: commit stroke
+    if (activeTool === "brush") {
+      const pts = brushPointsRef.current;
+      brushPointsRef.current = [];
+      setPreview(null);
+
+      if (pts.length < 2) return;
+
+      const { x, y, w, h } = pointsBounds(pts);
+      const id = crypto.randomUUID();
+      const el: SurfaceElement = {
+        id,
+        type: "brush",
+        x, y, w, h,
+        z: Date.now(),
+        fillColor: "transparent",
+        strokeColor: "#243231",
+        strokeWidth: 3,
+        strokeStyle: "solid",
+        opacity: 1,
+        pathData: pointsToSmoothPath(pts),
+      };
+      useSurfaceStore.getState().addElement(el);
+      setActiveTool("select");
+      setSelectedIds([id]);
+      return;
+    }
+
+    // Shapes: commit element
+    if (!drawRef.current) return;
+    if (!SHAPE_TOOLS.has(activeTool)) { drawRef.current = null; return; }
 
     const snap = preview;
     drawRef.current = null;

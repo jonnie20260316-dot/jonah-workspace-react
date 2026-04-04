@@ -30,6 +30,7 @@ interface SessionStore {
   // Edgeless selection + tool state (not persisted)
   selectedIds: string[];
   activeTool: ActiveTool;
+  editingTextId: string | null;
   setLang: (l: Lang) => void;
   setSnapMode: (v: boolean) => void;
   setOverlapMode: (v: boolean) => void;
@@ -40,6 +41,7 @@ interface SessionStore {
   addToSelection: (id: string) => void;
   clearSelection: () => void;
   setActiveTool: (tool: ActiveTool) => void;
+  setEditingTextId: (id: string | null) => void;
 }
 
 const initialDate = loadText("active-date") || todayString();
@@ -59,6 +61,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   textScale: initialTextScale,
   selectedIds: [],
   activeTool: "select",
+  editingTextId: null,
 
   setLang: (lang) => {
     saveText("lang", lang);
@@ -99,4 +102,5 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set((s) => ({ selectedIds: s.selectedIds.includes(id) ? s.selectedIds : [...s.selectedIds, id] })),
   clearSelection: () => set({ selectedIds: [] }),
   setActiveTool: (tool) => set({ activeTool: tool }),
+  setEditingTextId: (id) => set({ editingTextId: id }),
 }));

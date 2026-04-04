@@ -1007,3 +1007,27 @@ body[data-pan-mode] .board-block {
   accent-color: var(--accent, #4f9cf9);
   cursor: pointer;
 }
+
+/* ── Surface text element ─────────────────────────────────────── */
+.surface-text-div {
+  font-family: inherit;
+  line-height: 1.4;
+  color: var(--fg, #243231);
+  padding: 4px 6px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-width: 60px;
+  min-height: 28px;
+  box-sizing: border-box;
+}
+.surface-text-div[contenteditable="true"] {
+  outline: 2px solid var(--accent, #4f9cf9);
+  background: rgba(255, 255, 255, 0.92);
+  cursor: text;
+  user-select: text;
+}
+.surface-text-div:not([contenteditable="true"]) {
+  cursor: pointer;
+  user-select: none;
+}
