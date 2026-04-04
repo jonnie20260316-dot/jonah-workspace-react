@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { RefObject } from "react";
 import { useSurfaceStore } from "../stores/useSurfaceStore";
 import { useSessionStore } from "../stores/useSessionStore";
@@ -16,6 +16,7 @@ interface Props {
 }
 
 const HANDLE_SIZE = 8;
+const CONNECTOR_HIT_WIDTH = 18;
 
 const CURSOR_MAP: Record<Corner, string> = {
   nw: "nw-resize", n: "n-resize", ne: "ne-resize", e: "e-resize",
@@ -70,6 +71,41 @@ export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect 
     origW: number;
     origH: number;
   } | null>(null);
+  const dragRef = useRef<{
+    id: string;
+    startBX: number;
+    startBY: number;
+    origX: number;
+    origY: number;
+    origW: number;
+    origH: number;
+    origFromPoint: [number, number];
+    origToPoint: [number, number];
+  } | null>(null);
+
+  function startConnectorDrag(e: React.PointerEvent<SVGPathElement>, el: SurfaceElement) {
+    e.stopPropagation();
+    if (activeTool !== "select") return;
+    if (!viewportRef.current) return;
+    const { viewport } = useViewportStore.getState();
+    const rect = viewportRef.current.getBoundingClientRect();
+    const b = screenToBoardPoint(e.clientX, e.clientY, viewport, rect);
+    const from = (el.fromPoint ?? [el.x, el.y]) as [number, number];
+    const to = (el.toPoint ?? [el.x + el.w, el.y + el.h]) as [number, number];
+    dragRef.current = {
+      id: el.id,
+      startBX: b.x,
+      startBY: b.y,
+      origX: el.x,
+      origY: el.y,
+      origW: el.w,
+      origH: el.h,
+      origFromPoint: from,
+      origToPoint: to,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setSelectedIds([el.id]);
+  }
 
   const selectedShapes = elements.filter(
     (el) =>
@@ -85,6 +121,7 @@ export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect 
 
   function onHandlePointerDown(e: React.PointerEvent<SVGRectElement>, el: SurfaceElement, corner: Corner) {
     e.stopPropagation();
+    if (useSessionStore.getState().activeTool !== "select") return;
     if (!viewportRef.current) return;
     const { viewport } = useViewportStore.getState();
     const rect = viewportRef.current.getBoundingClientRect();
@@ -112,6 +149,41 @@ export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect 
   function onHandlePointerUp() {
     resizeRef.current = null;
   }
+
+  useEffect(() => {
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragRef.current || !viewportRef.current) return;
+      const { viewport } = useViewportStore.getState();
+      const rect = viewportRef.current.getBoundingClientRect();
+      const b = screenToBoardPoint(e.clientX, e.clientY, viewport, rect);
+      const { id, startBX, startBY, origX, origY, origW, origH, origFromPoint, origToPoint } = dragRef.current;
+      const dx = b.x - startBX;
+      const dy = b.y - startBY;
+      updateElement(id, {
+        x: origX + dx,
+        y: origY + dy,
+        w: origW,
+        h: origH,
+        fromPoint: [origFromPoint[0] + dx, origFromPoint[1] + dy],
+        toPoint: [origToPoint[0] + dx, origToPoint[1] + dy],
+        fromId: undefined,
+        toId: undefined,
+      });
+    };
+
+    const onPointerUp = () => {
+      dragRef.current = null;
+      resizeRef.current = null;
+    };
+
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", onPointerUp);
+
+    return () => {
+      document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerup", onPointerUp);
+    };
+  }, [updateElement, viewportRef]);
 
   return (
     <svg
@@ -147,18 +219,26 @@ export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect 
           const [tx, ty] = el.toPoint   ?? [el.x + el.w, el.y + el.h];
           const isSelected = selectedIds.includes(el.id);
           return (
-            <path
-              key={el.id}
-              d={connectorPath(fx, fy, tx, ty, el.curveType ?? "curved")}
-              fill="none"
-              stroke={isSelected ? "var(--accent, #4f9cf9)" : el.strokeColor}
-              strokeWidth={el.strokeWidth}
-              opacity={el.opacity}
-              markerEnd={el.arrowEnd ? "url(#connector-arrow)" : undefined}
-              pointerEvents="visibleStroke"
-              style={{ cursor: "pointer" }}
-              onClick={(e) => { e.stopPropagation(); setSelectedIds([el.id]); }}
-            />
+            <g key={el.id}>
+              <path
+                d={connectorPath(fx, fy, tx, ty, el.curveType ?? "curved")}
+                fill="none"
+                stroke="transparent"
+                strokeWidth={Math.max(CONNECTOR_HIT_WIDTH, el.strokeWidth + 14)}
+                pointerEvents="stroke"
+                style={{ cursor: activeTool === "select" ? "move" : "pointer" }}
+                onPointerDown={(e) => startConnectorDrag(e, el)}
+              />
+              <path
+                d={connectorPath(fx, fy, tx, ty, el.curveType ?? "curved")}
+                fill="none"
+                stroke={isSelected ? "var(--accent, #4f9cf9)" : el.strokeColor}
+                strokeWidth={el.strokeWidth}
+                opacity={el.opacity}
+                markerEnd={el.arrowEnd ? "url(#connector-arrow)" : undefined}
+                pointerEvents="none"
+              />
+            </g>
           );
         })}
 

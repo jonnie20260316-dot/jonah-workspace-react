@@ -354,7 +354,7 @@ export function Canvas() {
         }}
       >
         {/* Surface background: frames, shapes, brushes — below blocks */}
-        <SurfaceBackground previewElement={drawTool.preview} />
+        <SurfaceBackground viewportRef={viewportRef} previewElement={drawTool.preview} />
 
         {/* Render all non-archived, non-pinned blocks */}
         {blocks

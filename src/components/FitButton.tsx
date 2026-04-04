@@ -3,7 +3,7 @@ import { useViewportStore } from "../stores/useViewportStore";
 import { pick } from "../utils/i18n";
 
 /**
- * Fit-to-content button — fixed bottom-right corner.
+ * Fit-to-content button — fixed bottom-left corner.
  * Zooms the viewport to show all visible blocks. Keyboard: Cmd+0.
  */
 export function FitButton() {

@@ -12,6 +12,8 @@ import { DEFAULT_FRAME_COLOR } from "../constants";
 import type { SurfaceElement } from "../types";
 
 const SHAPE_TOOLS = new Set(["rect", "ellipse", "diamond", "frame"]);
+const MIN_FRAME_W = 180;
+const MIN_FRAME_H = 120;
 const CONNECTOR_SNAP_DIST = 50; // board units
 
 function makeShapePreview(type: string, x: number, y: number, w: number, h: number): SurfaceElement {
@@ -267,7 +269,14 @@ export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
     const id = crypto.randomUUID();
     const base: SurfaceElement = { ...snap, id, z: Date.now() };
     const el: SurfaceElement = snap.type === "frame"
-      ? { ...base, name: "", frameColor: DEFAULT_FRAME_COLOR, collapsed: false }
+      ? {
+          ...base,
+          w: Math.max(base.w, MIN_FRAME_W),
+          h: Math.max(base.h, MIN_FRAME_H),
+          name: "",
+          frameColor: DEFAULT_FRAME_COLOR,
+          collapsed: false,
+        }
       : base;
     useSurfaceStore.getState().addElement(el);
     setActiveTool("select");

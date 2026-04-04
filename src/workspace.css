@@ -28,8 +28,8 @@
 .fit-button {
   position: fixed;
   bottom: 24px;
-  right: 24px;
-  z-index: 180;
+  left: 24px;
+  z-index: 170;
   width: 36px;
   height: 36px;
   border-radius: 8px;
@@ -1056,6 +1056,13 @@ body[data-pan-mode] .board-block {
   user-select: none;
   box-sizing: border-box;
   width: 100%;
+  cursor: move;
+}
+
+.frame-header input,
+.frame-header button,
+.frame-header .frame-palette-dot {
+  cursor: default;
 }
 
 .frame-name-input {
@@ -1117,6 +1124,10 @@ body[data-pan-mode] .board-block {
 .frame-action-btn:hover {
   background: rgba(36,50,49,0.08);
   color: rgba(36,50,49,0.8);
+}
+
+.frame-resize-handles {
+  pointer-events: all;
 }
 
 .frame-block-count {

@@ -1,15 +1,24 @@
 import { useRef, useEffect } from "react";
-import type { MouseEvent } from "react";
+import type { MouseEvent, RefObject } from "react";
 import { useSurfaceStore } from "../stores/useSurfaceStore";
 import { useSessionStore } from "../stores/useSessionStore";
 import { useViewportStore } from "../stores/useViewportStore";
 import { useBlockStore } from "../stores/useBlockStore";
+import { screenToBoardPoint } from "../utils/viewport";
 import { ZONE_PALETTES } from "../constants";
 import type { SurfaceElement } from "../types";
 
 interface Props {
+  viewportRef: RefObject<HTMLDivElement | null>;
   previewElement?: SurfaceElement | null;
 }
+
+type FrameCorner = "nw" | "ne" | "sw" | "se";
+
+const FRAME_HANDLE_SIZE = 8;
+const FRAME_MIN_W = 180;
+const FRAME_MIN_H = 120;
+const FRAME_HEADER_HEIGHT = 32;
 
 function diamondPoints(x: number, y: number, w: number, h: number): string {
   const cx = x + w / 2;
@@ -187,11 +196,13 @@ function TextEl({ el, isSelected, isEditing, onSelect, onEdit, onSave }: {
 }
 
 /** Renders a single Frame (Zone) with its colored background and header bar */
-function FrameEl({ el, isSelected, onSelect, onUpdate, onDelete, onEnter, blockCount }: {
+function FrameEl({ el, isSelected, onSelect, onMoveStart, onResizeStart, onUpdate, onDelete, onEnter, blockCount }: {
   el: SurfaceElement;
   isSelected: boolean;
   blockCount: number;
   onSelect: () => void;
+  onMoveStart: (e: React.PointerEvent<SVGRectElement | HTMLDivElement>, el: SurfaceElement) => void;
+  onResizeStart: (e: React.PointerEvent<SVGRectElement>, el: SurfaceElement, corner: FrameCorner) => void;
   onUpdate: (delta: Partial<SurfaceElement>) => void;
   onDelete: () => void;
   onEnter?: () => void;
@@ -199,6 +210,10 @@ function FrameEl({ el, isSelected, onSelect, onUpdate, onDelete, onEnter, blockC
   const palette = ZONE_PALETTES.find((p) => p.id === el.frameColor) ?? ZONE_PALETTES[0];
   const collapsed = el.collapsed ?? false;
   const displayH = collapsed ? 32 : el.h;
+  const headerDragTarget = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return false;
+    return !target.closest("input,button,.frame-palette-dot");
+  };
 
   return (
     <g>
@@ -214,8 +229,12 @@ function FrameEl({ el, isSelected, onSelect, onUpdate, onDelete, onEnter, blockC
         strokeDasharray={collapsed ? undefined : "8 4"}
         rx={8}
         pointerEvents="all"
-        style={{ cursor: "pointer" }}
+        style={{ cursor: "move" }}
         onClick={(e) => { e.stopPropagation(); onSelect(); }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          onMoveStart(e, el);
+        }}
       />
 
       {/* Watermark name label — only when not collapsed */}
@@ -240,13 +259,17 @@ function FrameEl({ el, isSelected, onSelect, onUpdate, onDelete, onEnter, blockC
         x={el.x}
         y={el.y}
         width={el.w}
-        height={32}
+        height={FRAME_HEADER_HEIGHT}
         className="frame-header-fo"
         style={{ overflow: "visible" }}
       >
         <div
           className="frame-header"
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            if (!headerDragTarget(e.target)) return;
+            onMoveStart(e, el);
+          }}
           onClick={(e) => { e.stopPropagation(); onSelect(); }}
           onDoubleClick={(e) => { e.stopPropagation(); onEnter?.(); }}
         >
@@ -272,6 +295,7 @@ function FrameEl({ el, isSelected, onSelect, onUpdate, onDelete, onEnter, blockC
                 className={`frame-palette-dot${el.frameColor === p.id ? " active" : ""}`}
                 style={{ background: p.border }}
                 title={p.label}
+                onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => { e.stopPropagation(); onUpdate({ frameColor: p.id }); }}
               />
             ))}
@@ -281,6 +305,7 @@ function FrameEl({ el, isSelected, onSelect, onUpdate, onDelete, onEnter, blockC
           <button
             className="frame-action-btn"
             title={collapsed ? "展開" : "收合"}
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onUpdate({ collapsed: !collapsed }); }}
           >
             {collapsed ? "▼" : "▲"}
@@ -290,12 +315,42 @@ function FrameEl({ el, isSelected, onSelect, onUpdate, onDelete, onEnter, blockC
           <button
             className="frame-action-btn"
             title="刪除分區"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
           >
             ×
           </button>
         </div>
       </foreignObject>
+
+      {isSelected && (
+        <g className="frame-resize-handles">
+          {[
+            { corner: "nw" as FrameCorner, x: el.x, y: el.y, cursor: "nwse-resize" },
+            { corner: "ne" as FrameCorner, x: el.x + el.w, y: el.y, cursor: "nesw-resize" },
+            { corner: "sw" as FrameCorner, x: el.x, y: el.y + displayH, cursor: "nesw-resize" },
+            { corner: "se" as FrameCorner, x: el.x + el.w, y: el.y + displayH, cursor: "nwse-resize" },
+          ].map((handle) => (
+            <rect
+              key={handle.corner}
+              x={handle.x - FRAME_HANDLE_SIZE / 2}
+              y={handle.y - FRAME_HANDLE_SIZE / 2}
+              width={FRAME_HANDLE_SIZE}
+              height={FRAME_HANDLE_SIZE}
+              rx={2}
+              fill="white"
+              stroke="var(--accent, #4f9cf9)"
+              strokeWidth={1.5}
+              pointerEvents="all"
+              style={{ cursor: handle.cursor }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                onResizeStart(e, el, handle.corner);
+              }}
+            />
+          ))}
+        </g>
+      )}
     </g>
   );
 }
@@ -305,11 +360,22 @@ function FrameEl({ el, isSelected, onSelect, onUpdate, onDelete, onEnter, blockC
  * Renders frames, shapes (rect/ellipse/diamond), brushes, and text below all blocks.
  * pointer-events: none globally; individual elements are clickable via pointerEvents="all".
  */
-export function SurfaceBackground({ previewElement }: Props) {
+export function SurfaceBackground({ viewportRef, previewElement }: Props) {
   const { elements, updateElement, removeElement } = useSurfaceStore();
   const { selectedIds, setSelectedIds, editingTextId, setEditingTextId, setActiveFrameId } = useSessionStore();
   const animateToFrame = useViewportStore((s) => s.animateToFrame);
   const blocks = useBlockStore((s) => s.blocks);
+  const frameInteractionRef = useRef<{
+    mode: "move" | "resize";
+    id: string;
+    corner?: FrameCorner;
+    startBX: number;
+    startBY: number;
+    origX: number;
+    origY: number;
+    origW: number;
+    origH: number;
+  } | null>(null);
 
   const frames = elements.filter((el) => el.type === "frame");
   const shapes = elements.filter(
@@ -317,6 +383,113 @@ export function SurfaceBackground({ previewElement }: Props) {
   );
   const brushes = elements.filter((el) => el.type === "brush");
   const texts = elements.filter((el) => el.type === "text");
+
+  function startFrameMove(e: React.PointerEvent<SVGRectElement | HTMLDivElement>, el: SurfaceElement) {
+    e.stopPropagation();
+    if (useSessionStore.getState().activeTool !== "select") return;
+    if (!viewportRef.current) return;
+    const { viewport } = useViewportStore.getState();
+    const rect = viewportRef.current.getBoundingClientRect();
+    const b = screenToBoardPoint(e.clientX, e.clientY, viewport, rect);
+    frameInteractionRef.current = {
+      mode: "move",
+      id: el.id,
+      startBX: b.x,
+      startBY: b.y,
+      origX: el.x,
+      origY: el.y,
+      origW: el.w,
+      origH: el.h,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setSelectedIds([el.id]);
+  }
+
+  function startFrameResize(
+    e: React.PointerEvent<SVGRectElement>,
+    el: SurfaceElement,
+    corner: FrameCorner
+  ) {
+    e.stopPropagation();
+    if (useSessionStore.getState().activeTool !== "select") return;
+    if (!viewportRef.current) return;
+    const { viewport } = useViewportStore.getState();
+    const rect = viewportRef.current.getBoundingClientRect();
+    const b = screenToBoardPoint(e.clientX, e.clientY, viewport, rect);
+    frameInteractionRef.current = {
+      mode: "resize",
+      id: el.id,
+      corner,
+      startBX: b.x,
+      startBY: b.y,
+      origX: el.x,
+      origY: el.y,
+      origW: el.w,
+      origH: el.h,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setSelectedIds([el.id]);
+  }
+
+  useEffect(() => {
+    const onPointerMove = (e: PointerEvent) => {
+      if (!frameInteractionRef.current || !viewportRef.current) return;
+      const { viewport } = useViewportStore.getState();
+      const rect = viewportRef.current.getBoundingClientRect();
+      const b = screenToBoardPoint(e.clientX, e.clientY, viewport, rect);
+      const { mode, id, corner, startBX, startBY, origX, origY, origW, origH } = frameInteractionRef.current;
+      const dx = b.x - startBX;
+      const dy = b.y - startBY;
+
+      if (mode === "move") {
+        updateElement(id, { x: origX + dx, y: origY + dy });
+        return;
+      }
+
+      if (!corner) return;
+      let nextX = origX;
+      let nextY = origY;
+      let nextW = origW;
+      let nextH = origH;
+
+      if (corner.includes("w")) {
+        nextX += dx;
+        nextW -= dx;
+      }
+      if (corner.includes("e")) {
+        nextW += dx;
+      }
+      if (corner.includes("n")) {
+        nextY += dy;
+        nextH -= dy;
+      }
+      if (corner.includes("s")) {
+        nextH += dy;
+      }
+
+      nextW = Math.max(FRAME_MIN_W, nextW);
+      nextH = Math.max(FRAME_MIN_H, nextH);
+
+      updateElement(id, {
+        x: nextX,
+        y: nextY,
+        w: nextW,
+        h: nextH,
+      });
+    };
+
+    const onPointerUp = () => {
+      frameInteractionRef.current = null;
+    };
+
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", onPointerUp);
+
+    return () => {
+      document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerup", onPointerUp);
+    };
+  }, [updateElement, viewportRef]);
 
   return (
     <svg
@@ -340,6 +513,8 @@ export function SurfaceBackground({ previewElement }: Props) {
               isSelected={selectedIds.includes(el.id)}
               blockCount={count}
               onSelect={() => setSelectedIds([el.id])}
+              onMoveStart={startFrameMove}
+              onResizeStart={startFrameResize}
               onUpdate={(delta) => updateElement(el.id, delta)}
               onEnter={() => {
                 animateToFrame(el);
