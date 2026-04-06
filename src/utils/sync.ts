@@ -19,7 +19,7 @@ export const SYNC_CATEGORIES: SyncCategory[] = [
     id: "canvas",
     zhLabel: "畫布排版",
     enLabel: "Canvas Layout",
-    globalKeys: ["blocks", "viewport", "board-size"],
+    globalKeys: ["blocks", "viewport", "board-size", "surface-elements"],
     globalKeyPrefixes: [],
   },
   {

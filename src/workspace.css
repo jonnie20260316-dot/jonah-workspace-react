@@ -1377,3 +1377,11 @@ body[data-pan-mode] .board-block {
   from { opacity: 0; transform: scale(0.96) translateY(4px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
+
+/* ─── FAB Menu: Unique Block Labels ──────────────────────────────────────── */
+.limit-badge {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  opacity: 0.7;
+  font-weight: 500;
+}

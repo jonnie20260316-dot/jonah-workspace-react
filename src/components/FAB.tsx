@@ -8,6 +8,7 @@ import { BLOCK_REGISTRY, getAddableBlockTypes } from "../blocks/BlockRegistry";
 import { BLOCK_ICONS } from "../utils/blockIcons";
 import { pick } from "../utils/i18n";
 import { useLang } from "../hooks/useLang";
+import { useToast } from "../hooks/useToast";
 import type { BlockType } from "../types";
 
 export function FAB() {
@@ -121,13 +122,26 @@ export function FAB() {
             animation: "fabPickerIn 280ms var(--ease-spring) forwards",
           }}
         >
-          {addableTypes.map((type) => {
-            const config = BLOCK_REGISTRY[type];
+          {Object.entries(BLOCK_REGISTRY).map(([typeStr, config]) => {
+            const type = typeStr as BlockType;
+            const isAddable = addableTypes.includes(type);
+            const isUnique = config.unique ?? false;
             const Icon = BLOCK_ICONS[type];
+
             return (
               <button
                 key={type}
-                onClick={() => handleAddBlock(type)}
+                onClick={() => {
+                  if (!isAddable && isUnique) {
+                    useToast.getState().show(
+                      pick("這個區塊最多只能新增一次", "This block can only be added once"),
+                      "info"
+                    );
+                    return;
+                  }
+                  handleAddBlock(type);
+                }}
+                disabled={!isAddable && isUnique}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -137,13 +151,16 @@ export function FAB() {
                   padding: "0 16px",
                   border: "none",
                   background: "none",
-                  cursor: "pointer",
+                  cursor: isAddable || !isUnique ? "pointer" : "not-allowed",
                   textAlign: "left",
                   color: "var(--ink)",
                   transition: "background var(--dur-instant)",
+                  opacity: isAddable ? 1 : 0.5,
                 }}
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(36,50,49,0.05)";
+                  if (isAddable || !isUnique) {
+                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(36,50,49,0.05)";
+                  }
                 }}
                 onMouseLeave={(e) => {
                   (e.currentTarget as HTMLButtonElement).style.background = "none";
@@ -153,9 +170,16 @@ export function FAB() {
                   <Icon size={16} strokeWidth={1.8} />
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: 13, fontWeight: 500 }}>
-                    {pick(config.zhTitle, config.title)}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ display: "block", fontSize: 13, fontWeight: 500 }}>
+                      {pick(config.zhTitle, config.title)}
+                    </span>
+                    {isUnique && (
+                      <span style={{ fontSize: 10, color: "var(--text-tertiary)", opacity: 0.7 }}>
+                        {pick("(限一個)", "(Once only)")}
+                      </span>
+                    )}
+                  </div>
                   <span style={{ display: "block", fontSize: 11, color: "var(--text-tertiary)", marginTop: 1 }}>
                     {pick(config.zhSubtitle, config.subtitle)}
                   </span>
