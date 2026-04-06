@@ -9,7 +9,7 @@ interface MetricsBlockProps {
 
 export function MetricsBlock({ block }: MetricsBlockProps) {
   useLang();
-  const [notes, setNotes] = useBlockField(block.id, "notes", "");
+  const [notes, setNotes] = useBlockField(block.id, "notes", "", { global: true });
 
   const metrics = [
     { label: pick("記錄連續", "Streak"), value: "07" },

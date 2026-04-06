@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, session, desktopCapturer, systemPreferences } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session, desktopCapturer, systemPreferences, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
 const path = require('path');
@@ -72,6 +72,53 @@ autoUpdater.on('download-progress', (progress) => {
 });
 
 let downloadedFilePath = null;
+const forceCustomMacInstaller = process.platform === 'darwin' && (
+  !app.isPackaged || process.env.JONAH_FORCE_CUSTOM_MAC_INSTALLER === '1'
+);
+
+function runCustomMacInstaller() {
+  if (!downloadedFilePath || !fs.existsSync(downloadedFilePath)) {
+    console.error('[updater] downloadedFilePath missing or invalid:', downloadedFilePath);
+    sendUpdaterStatus({ status: 'error', message: 'Download file not found — please check for updates again' });
+    return;
+  }
+
+  // Bypass Squirrel.Mac (which rejects ad-hoc signatures) by installing directly
+  // via unzip + ditto, then relaunching. Kept as a fallback for transitional/dev builds.
+  const { exec } = require('child_process');
+  const appPath = app.getPath('exe').split('.app')[0] + '.app';
+  const tmpDir = path.join(app.getPath('temp'), 'jonah-update-' + Date.now());
+
+  // Let the UI know install is in progress (can take 30-60s for large app)
+  sendUpdaterStatus({ status: 'downloading', percent: 100 });
+
+  const script = `
+    set -e
+    mkdir -p "${tmpDir}"
+    unzip -q "${downloadedFilePath}" -d "${tmpDir}"
+    NEW_APP=$(find "${tmpDir}" -name "*.app" -maxdepth 1 | head -1)
+    if [ -z "$NEW_APP" ]; then
+      rm -rf "${tmpDir}"
+      echo "ERROR: no .app found in zip" >&2
+      exit 1
+    fi
+    ditto "$NEW_APP" "${appPath}"
+    xattr -dr com.apple.quarantine "${appPath}" 2>/dev/null || true
+    rm -rf "${tmpDir}"
+    open "${appPath}"
+  `;
+
+  exec(script, (err) => {
+    if (err) {
+      console.error('[updater] custom install failed:', err.message);
+      sendUpdaterStatus({ status: 'error', message: err.message });
+    } else {
+      // Use app.quit() (not exit) so before-quit fires and closes the local
+      // HTTP server before the new instance tries to bind port 5173
+      app.quit();
+    }
+  });
+}
 
 autoUpdater.on('update-downloaded', (info) => {
   // Try multiple property names used by electron-updater in different versions
@@ -242,47 +289,12 @@ ipcMain.handle('updater:download', () => {
 });
 
 ipcMain.handle('updater:install', () => {
-  if (!downloadedFilePath || !fs.existsSync(downloadedFilePath)) {
-    console.error('[updater] downloadedFilePath missing or invalid:', downloadedFilePath);
-    sendUpdaterStatus({ status: 'error', message: 'Download file not found — please check for updates again' });
+  if (forceCustomMacInstaller) {
+    runCustomMacInstaller();
     return;
   }
 
-  // Bypass Squirrel.Mac (which rejects ad-hoc signatures) by installing directly
-  // via unzip + ditto, then relaunching.
-  const { exec } = require('child_process');
-  const appPath = app.getPath('exe').split('.app')[0] + '.app';
-  const tmpDir = path.join(app.getPath('temp'), 'jonah-update-' + Date.now());
-
-  // Let the UI know install is in progress (can take 30-60s for large app)
-  sendUpdaterStatus({ status: 'downloading', percent: 100 });
-
-  const script = `
-    set -e
-    mkdir -p "${tmpDir}"
-    unzip -q "${downloadedFilePath}" -d "${tmpDir}"
-    NEW_APP=$(find "${tmpDir}" -name "*.app" -maxdepth 1 | head -1)
-    if [ -z "$NEW_APP" ]; then
-      rm -rf "${tmpDir}"
-      echo "ERROR: no .app found in zip" >&2
-      exit 1
-    fi
-    ditto "$NEW_APP" "${appPath}"
-    xattr -dr com.apple.quarantine "${appPath}" 2>/dev/null || true
-    rm -rf "${tmpDir}"
-    open "${appPath}"
-  `;
-
-  exec(script, (err) => {
-    if (err) {
-      console.error('[updater] custom install failed:', err.message);
-      sendUpdaterStatus({ status: 'error', message: err.message });
-    } else {
-      // Use app.quit() (not exit) so before-quit fires and closes the local
-      // HTTP server before the new instance tries to bind port 5173
-      app.quit();
-    }
-  });
+  autoUpdater.quitAndInstall(false, true);
 });
 
 let deferInstall = false;
@@ -297,6 +309,24 @@ ipcMain.handle('app:screen-permission-status', () => {
   // Returns 'granted', 'denied', 'restricted', or 'not-determined'
   // Screen recording permission resets when the app binary changes (CDHash) after an ad-hoc-signed update.
   return systemPreferences.getMediaAccessStatus('screen');
+});
+
+ipcMain.handle('app:open-screen-recording-settings', async () => {
+  if (process.platform !== 'darwin') return false;
+  const candidates = [
+    'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture',
+    'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenRecording',
+    'x-apple.systempreferences:com.apple.preference.security',
+  ];
+
+  for (const url of candidates) {
+    try {
+      const ok = await shell.openExternal(url);
+      if (ok) return true;
+    } catch {}
+  }
+
+  return false;
 });
 
 // ─── IPC: Folder picker ───────────────────────────────────────────────────────
@@ -728,21 +758,11 @@ app.on('before-quit', (event) => {
 
   // Deferred install: run custom installer on quit (bypasses Squirrel.Mac)
   if (deferInstall && downloadedFilePath && fs.existsSync(downloadedFilePath)) {
-    const { exec } = require('child_process');
-    const appPath = app.getPath('exe').split('.app')[0] + '.app';
-    const tmpDir = path.join(app.getPath('temp'), 'jonah-update-' + Date.now());
-    const script = `
-      set -e
-      mkdir -p "${tmpDir}"
-      unzip -q "${downloadedFilePath}" -d "${tmpDir}"
-      NEW_APP=$(find "${tmpDir}" -name "*.app" -maxdepth 1 | head -1)
-      [ -z "$NEW_APP" ] && rm -rf "${tmpDir}" && exit 1
-      ditto "$NEW_APP" "${appPath}"
-      xattr -dr com.apple.quarantine "${appPath}" 2>/dev/null || true
-      rm -rf "${tmpDir}"
-      open "${appPath}"
-    `;
-    exec(script); // fire-and-forget: app is already quitting
+    if (forceCustomMacInstaller) {
+      runCustomMacInstaller(); // fire-and-forget: app is already quitting
+    } else {
+      autoUpdater.quitAndInstall(false, true);
+    }
   }
 });
 

@@ -46,6 +46,19 @@ export function saveText(key: string, value: string): void {
 }
 
 /**
+ * Read a block field directly for a specific date without touching _activeDate.
+ * Used by DatePeekModal to display past-day content without navigating there.
+ */
+export function loadFieldForDate(
+  date: string,
+  blockId: string,
+  fieldKey: string
+): string {
+  const fullKey = STORAGE_PREFIX + "session:" + date + ":" + blockId + ":" + fieldKey;
+  return localStorage.getItem(fullKey) ?? "";
+}
+
+/**
  * Serialize all global keys from localStorage to a JSON string and send to
  * Electron's file-system backup. Call before quit or on manual save.
  * No-op in browser (no electronAPI).

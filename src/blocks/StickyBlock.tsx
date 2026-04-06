@@ -10,7 +10,7 @@ interface StickyBlockProps {
  * Single field: body
  */
 export function StickyBlock({ block }: StickyBlockProps) {
-  const [body, setBody] = useBlockField(block.id, "body", "");
+  const [body, setBody] = useBlockField(block.id, "body", "", { global: true });
 
   const handleChange = (e: React.FormEvent<HTMLDivElement>) => {
     setBody(e.currentTarget.innerHTML);

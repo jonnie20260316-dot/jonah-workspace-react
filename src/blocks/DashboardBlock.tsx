@@ -10,8 +10,8 @@ interface DashboardBlockProps {
  * Fields: view, command
  */
 export function DashboardBlock({ block }: DashboardBlockProps) {
-  const [view, setView] = useBlockField(block.id, "view", "queue");
-  const [command, setCommand] = useBlockField(block.id, "command", "");
+  const [view, setView] = useBlockField(block.id, "view", "queue", { global: true });
+  const [command, setCommand] = useBlockField(block.id, "command", "", { global: true });
 
   const views = [
     {

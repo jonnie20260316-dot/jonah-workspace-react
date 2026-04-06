@@ -5,16 +5,23 @@ import { loadJSON, loadText, saveJSON, saveText } from "../utils/storage";
  * Hook for managing a single block field with localStorage persistence.
  * Reads from storage on mount, writes back on change.
  * Handles both string (loadText/saveText) and JSON (loadJSON/saveJSON) automatically.
+ *
+ * options.global = true → stores under "block-global:{blockId}:{fieldKey}" which
+ * is matched by the GLOBAL_KEY_PREFIXES entry and is never date-scoped.
+ * Use for persistent blocks (sticky, intel, etc.). Daily blocks (journal, kit,
+ * intention, tasks) omit this option so content stays date-scoped.
  */
 export function useBlockField<T>(
   blockId: string,
   fieldKey: string,
-  fallback: T
+  fallback: T,
+  options?: { global?: boolean }
 ): [T, (value: T) => void] {
-  const storageKey = `${blockId}:${fieldKey}`;
+  const storageKey = options?.global
+    ? `block-global:${blockId}:${fieldKey}`
+    : `${blockId}:${fieldKey}`;
 
   const [value, setValue] = useState<T>(() => {
-    // Detect type from fallback and use appropriate loader
     if (typeof fallback === "string") {
       return loadText(storageKey, fallback as string) as T;
     }
@@ -23,7 +30,6 @@ export function useBlockField<T>(
 
   const update = useCallback(
     (newValue: T) => {
-      // Save to localStorage based on type
       if (typeof newValue === "string") {
         saveText(storageKey, newValue);
       } else {

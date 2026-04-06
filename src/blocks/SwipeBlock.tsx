@@ -12,37 +12,42 @@ interface SwipeBlockProps {
  * Fields: hook-mode, topic, audience, tone, goal, platform, constraints, brief, result-raw, outcome-post-url, outcome-verdict, outcome-metrics, outcome-payload, body
  */
 export function SwipeBlock({ block }: SwipeBlockProps) {
-  const [mode, setMode] = useBlockField(block.id, "hook-mode", "run");
-  const [topic, setTopic] = useBlockField(block.id, "topic", "");
-  const [audience, setAudience] = useBlockField(block.id, "audience", "");
-  const [tone, setTone] = useBlockField(block.id, "tone", "");
-  const [goal, setGoal] = useBlockField(block.id, "goal", "");
-  const [brief, setBrief] = useBlockField(block.id, "brief", "");
-  const [resultRaw, setResultRaw] = useBlockField(block.id, "result-raw", "");
+  const [mode, setMode] = useBlockField(block.id, "hook-mode", "run", { global: true });
+  const [topic, setTopic] = useBlockField(block.id, "topic", "", { global: true });
+  const [audience, setAudience] = useBlockField(block.id, "audience", "", { global: true });
+  const [tone, setTone] = useBlockField(block.id, "tone", "", { global: true });
+  const [goal, setGoal] = useBlockField(block.id, "goal", "", { global: true });
+  const [brief, setBrief] = useBlockField(block.id, "brief", "", { global: true });
+  const [resultRaw, setResultRaw] = useBlockField(block.id, "result-raw", "", { global: true });
   const [postUrl, setPostUrl] = useBlockField(
     block.id,
     "outcome-post-url",
-    ""
+    "",
+    { global: true }
   );
   const [verdict, setVerdict] = useBlockField(
     block.id,
     "outcome-verdict",
-    ""
+    "",
+    { global: true }
   );
   const [metrics, setMetrics] = useBlockField(
     block.id,
     "outcome-metrics",
-    ""
+    "",
+    { global: true }
   );
   const [payload, setPayload] = useBlockField(
     block.id,
     "outcome-payload",
-    ""
+    "",
+    { global: true }
   );
   const [referenceNotes, setReferenceNotes] = useBlockField(
     block.id,
     "body",
-    ""
+    "",
+    { global: true }
   );
 
   return (

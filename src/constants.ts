@@ -79,4 +79,5 @@ export const GLOBAL_KEY_PREFIXES: string[] = [
   "video-capture-settings:",
   "vc-saved-videos:",
   "ai-chat-tab:",
+  "block-global:",
 ];

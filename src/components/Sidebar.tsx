@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { X, LayoutGrid, Rows3 } from "lucide-react";
 import { useUIStore } from "../stores/useUIStore";
 import { useBlockStore } from "../stores/useBlockStore";
@@ -7,9 +7,32 @@ import { useViewportStore } from "../stores/useViewportStore";
 import { BLOCK_ICONS } from "../utils/blockIcons";
 import { pick } from "../utils/i18n";
 import { useLang } from "../hooks/useLang";
-import { loadJSON, saveJSON } from "../utils/storage";
+import { loadJSON, saveJSON, loadFieldForDate } from "../utils/storage";
 import { BLOCK_REGISTRY } from "../blocks/BlockRegistry";
+import { DatePeekModal } from "./DatePeekModal";
 import type { BlockType } from "../types";
+
+const DAY_NAMES_ZH = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+const DAY_NAMES_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function formatDateLabel(dateStr: string, lang: "zh" | "en"): string {
+  const d = new Date(dateStr + "T00:00:00");
+  if (lang === "zh") {
+    return `${d.getMonth() + 1}月${d.getDate()}日 (${DAY_NAMES_ZH[d.getDay()]})`;
+  }
+  return `${DAY_NAMES_EN[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+function getPastDates(count: number): string[] {
+  const dates: string[] = [];
+  const today = new Date();
+  for (let i = 1; i <= count; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+  return dates;
+}
 
 const DEFAULT_CATEGORY_ORDER: BlockType[] = [
   "journal", "kit", "intention", "tasks", "projects", "timer",
@@ -24,15 +47,24 @@ function loadCategoryOrder(): BlockType[] {
 }
 
 export function Sidebar() {
-  useLang();
+  const lang = useLang();
   const { sidebarOpen, closeSidebar } = useUIStore();
   const { blocks } = useBlockStore();
-  const { activeDate } = useSessionStore();
+  const { activeDate, setActiveDate } = useSessionStore();
   const [search, setSearch] = useState("");
   const [compact, setCompact] = useState(false);
   const [categories, setCategories] = useState<BlockType[]>(loadCategoryOrder);
+  const [peekDate, setPeekDate] = useState<string | null>(null);
   const dragItemRef = useRef<number | null>(null);
   const dragOverRef = useRef<number | null>(null);
+
+  const journalBlock = useMemo(() => blocks.find((b) => b.type === "journal"), [blocks]);
+  const pastDates = useMemo(() => getPastDates(30), []);
+
+  const hasContent = (date: string) => {
+    if (!journalBlock) return false;
+    return loadFieldForDate(date, journalBlock.id, "body").trim() !== "";
+  };
 
   const filtered = blocks.filter((b) => {
     if (b.archived) return false;
@@ -227,8 +259,75 @@ export function Sidebar() {
               {pick("沒有區塊", "No blocks")}
             </div>
           )}
+
+          {/* Date history section */}
+          <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+            <div style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: "var(--text-tertiary)",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              marginBottom: 6,
+              paddingLeft: 2,
+            }}>
+              {pick("日期紀錄", "Date History")}
+            </div>
+            {pastDates.map((date) => {
+              const hasEntry = hasContent(date);
+              const isActive = date === activeDate;
+              return (
+                <button
+                  key={date}
+                  onClick={() => setPeekDate(date)}
+                  className="date-history-row"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    background: isActive ? "rgba(36,50,49,0.07)" : "none",
+                    border: "none",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    padding: "4px 6px",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: 11,
+                    color: isActive ? "var(--ink)" : "var(--text-secondary)",
+                    transition: "background var(--dur-instant)",
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(36,50,49,0.05)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = isActive ? "rgba(36,50,49,0.07)" : "none"; }}
+                >
+                  <span>{formatDateLabel(date, lang)}</span>
+                  {hasEntry && (
+                    <span style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "var(--accent)",
+                      flexShrink: 0,
+                    }} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
+
+      {/* Date Peek Modal */}
+      {peekDate && (
+        <DatePeekModal
+          date={peekDate}
+          onClose={() => setPeekDate(null)}
+          onNavigate={() => {
+            setActiveDate(peekDate);
+            setPeekDate(null);
+            closeSidebar();
+          }}
+        />
+      )}
     </>
   );
 }

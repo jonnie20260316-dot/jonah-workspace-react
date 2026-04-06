@@ -202,6 +202,7 @@ declare global {
       // App
       getAppVersion: () => Promise<string>;
       getScreenPermissionStatus: () => Promise<"granted" | "denied" | "restricted" | "not-determined">;
+      openScreenRecordingSettings: () => Promise<boolean>;
       // Updates
       checkForUpdates: () => Promise<void>;
       downloadUpdate: () => Promise<void>;

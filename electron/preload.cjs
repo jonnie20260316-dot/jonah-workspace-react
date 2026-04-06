@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── App info ──────────────────────────────────────────────────────────────
   getAppVersion: () => ipcRenderer.invoke('app:version'),
   getScreenPermissionStatus: () => ipcRenderer.invoke('app:screen-permission-status'),
+  openScreenRecordingSettings: () => ipcRenderer.invoke('app:open-screen-recording-settings'),
 
   // ── Updates ───────────────────────────────────────────────────────────────
   /** Ask the main process to check GitHub for a newer version. */

@@ -10,8 +10,8 @@ interface VideoBlockProps {
  * Fields: purpose, path
  */
 export function VideoBlock({ block }: VideoBlockProps) {
-  const [purpose, setPurpose] = useBlockField(block.id, "purpose", "");
-  const [path, setPath] = useBlockField(block.id, "path", "");
+  const [purpose, setPurpose] = useBlockField(block.id, "purpose", "", { global: true });
+  const [path, setPath] = useBlockField(block.id, "path", "", { global: true });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>

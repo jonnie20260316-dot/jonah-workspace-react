@@ -14,13 +14,14 @@ interface IntelBlockProps {
  */
 export function IntelBlock({ block }: IntelBlockProps) {
   useLang();
-  const [intel, setIntel] = useBlockField(block.id, "intel", "");
-  const [trend, setTrend] = useBlockField(block.id, "trend", "");
-  const [hook, setHook] = useBlockField(block.id, "hook", "");
+  const [intel, setIntel] = useBlockField(block.id, "intel", "", { global: true });
+  const [trend, setTrend] = useBlockField(block.id, "trend", "", { global: true });
+  const [hook, setHook] = useBlockField(block.id, "hook", "", { global: true });
   const [source, setSource] = useBlockField(
     block.id,
     "source",
-    "Loaded defaults"
+    "Loaded defaults",
+    { global: true }
   );
 
   const intelFileRef = useRef<HTMLInputElement>(null);

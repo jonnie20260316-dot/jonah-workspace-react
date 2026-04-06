@@ -13,8 +13,8 @@ interface ThreadsBlockProps {
  */
 export function ThreadsBlock({ block }: ThreadsBlockProps) {
   useLang();
-  const [body, setBody] = useBlockField(block.id, "body", "");
-  const [note, setNote] = useBlockField(block.id, "note", "");
+  const [body, setBody] = useBlockField(block.id, "body", "", { global: true });
+  const [note, setNote] = useBlockField(block.id, "note", "", { global: true });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>

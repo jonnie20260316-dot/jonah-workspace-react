@@ -18,6 +18,11 @@ files:
 
 mac:
   artifactName: jonah-workspace-${version}-${arch}-mac.${ext}
+  identity: "${env.ELECTRON_MAC_IDENTITY}"
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
   target:
     - target: dmg
       arch:
@@ -34,6 +39,7 @@ mac:
     NSMicrophoneUsageDescription: "Jonah Workspace needs microphone access for voice recording."
     NSCameraUsageDescription: "Jonah Workspace needs camera access for video capture."
     NSScreenCaptureUsageDescription: "Jonah Workspace needs screen recording access for screen capture."
+  notarize: true
 
 win:
   target:
