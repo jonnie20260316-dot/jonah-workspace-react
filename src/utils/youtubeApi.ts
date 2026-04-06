@@ -154,15 +154,48 @@ export async function listBroadcasts(): Promise<YTBroadcast[]> {
   return results;
 }
 
+interface YTApiError {
+  error?: {
+    message?: string;
+    errors?: { reason?: string }[];
+  };
+}
+
 export async function transitionBroadcast(
   id: string,
   broadcastStatus: "testing" | "live" | "complete"
-): Promise<boolean> {
-  const data = await ytFetch<{ id: string }>(
-    `/liveBroadcasts/transition?broadcastStatus=${broadcastStatus}&id=${encodeURIComponent(id)}&part=status`,
-    { method: "POST" }
+): Promise<{ ok: boolean; error?: string }> {
+  const token = await getValidAccessToken();
+  if (!token) return { ok: false, error: "Not authenticated" };
+
+  const res = await fetch(
+    `${YT_API}/liveBroadcasts/transition?broadcastStatus=${broadcastStatus}&id=${encodeURIComponent(id)}&part=status`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
   );
-  return data !== null;
+
+  if (res.ok) return { ok: true };
+
+  try {
+    const body = (await res.json()) as YTApiError;
+    const reason = body?.error?.errors?.[0]?.reason;
+    const msg = body?.error?.message ?? `HTTP ${res.status}`;
+    console.error("YouTube transition failed:", msg, reason);
+    if (reason === "invalidTransition") {
+      return {
+        ok: false,
+        error: "需先開始推流至 YouTube，串流就緒後才能切換狀態 / Start streaming first — wait for YouTube to confirm stream is ready",
+      };
+    }
+    return { ok: false, error: msg };
+  } catch {
+    return { ok: false, error: `HTTP ${res.status}` };
+  }
 }
 
 interface YTStreamItem {

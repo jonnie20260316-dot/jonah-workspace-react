@@ -64,6 +64,12 @@ function healthColor(status: string): string {
   }
 }
 
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "—" : d.toLocaleString();
+}
+
 export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
   useLang();
   const [authed, setAuthed] = useState(() => getStoredTokens() !== null);
@@ -175,12 +181,12 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
     }
     setTransitioning(true);
     try {
-      const ok = await transitionBroadcast(id, status);
-      if (ok) {
+      const result = await transitionBroadcast(id, status);
+      if (result.ok) {
         // Refresh immediately to show new status
         await refresh();
       } else {
-        setError(pick("操作失敗", "Operation failed"));
+        setError(result.error ?? pick("操作失敗", "Operation failed"));
       }
     } catch {
       setError(pick("操作失敗", "Operation failed"));
@@ -492,6 +498,16 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
             )}
           </div>
 
+          {/* Workflow hint for ready broadcasts */}
+          {displayedBc.lifeCycleStatus === "ready" && (
+            <div style={{ fontSize: s(10), color: "#aaa", fontStyle: "italic", lineHeight: "1.5" }}>
+              {pick(
+                "▶ 先點「開始推流」→ 等待串流就緒 → 再點「開始預覽」或「開始直播」",
+                "▶ Start Streaming first → wait for stream to be ready → then Start Preview or Go Live"
+              )}
+            </div>
+          )}
+
           {/* RTMP streaming controls */}
           {hasRtmp && displayedBc.boundStreamId && (
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -576,7 +592,7 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
                   {bc.title || pick("未命名", "Untitled")}
                 </div>
                 <div style={{ fontSize: s(10), color: "#999" }}>
-                  {new Date(bc.scheduledStartTime).toLocaleString()}
+                  {formatDate(bc.scheduledStartTime)}
                 </div>
               </div>
               <span style={{
