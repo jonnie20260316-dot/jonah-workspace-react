@@ -148,6 +148,7 @@ export function DatePeekModal({ date, onClose, onNavigate }: DatePeekModalProps)
         {/* Panel */}
         <div
           ref={panelRef}
+          className="date-peek-modal"
           style={{
             width: "min(440px, 100%)",
             maxHeight: "min(72vh, 680px)",
