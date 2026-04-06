@@ -5,6 +5,8 @@ Newest sessions at the top.
 
 ---
 
+## 2026-04-07 | v1.0.10 — Cross-Device Sync Fix (Drawing Tool) + FAB UX + YouTube Studio Errors — (1) Drawing tool shapes/connectors/text/frames now sync across devices via surface-elements sync category fix; (2) FAB menu shows "(限一個)" labels on unique blocks (journal/kit/intention) with toast prevention on duplicates; (3) YouTube Studio transitionBroadcast now surfaces real API errors + formatDate() fixes "Invalid Date" in broadcasts list. 2 commits, 5 files, +82 net lines. Build ✓ 1813 modules.
+
 ## 2026-04-06 | v1.0.9 — Daily/Global block split + Date Peek Modal + live date refresh on useBlockField — Journal/KIT/Intention/Tasks now refresh instantly on date switch; global blocks unaffected; 4-tab peek modal in sidebar. Build ✓ 1813 modules.
 
 ## 2026-04-06 | Screen Recording Free Workaround + Release Cleanup — Added focus/visibility permission re-checks to VideoCaptureBlock, a direct "Open System Settings" action via new Electron IPC, and clearer bilingual guidance for macOS Screen Recording permission. Added `DatePeekModal` to restore a missing sidebar component and clear the build gate. Also cleaned up release metadata (`author` in package.json), documented macOS release setup in README, and kept the custom installer as a dev/transitional fallback rather than the shipped path. Build ✓ 1813 modules. Lessons locked: EB-RELEASE-SCHEMA-1, BUILD-IMPORT-1, SCREEN-PERMISSION-1. See history/recaps/2026-04-06-system-changes-recap.md and history/lessons/2026-04-06-lessons-locked.md
