@@ -5,6 +5,8 @@ Newest sessions at the top.
 
 ---
 
+## 2026-04-07 (later) | YouTube Studio — Broadcast Edit Visibility + Delete — (1) updateBroadcastPrivacy() API: PUT /liveBroadcasts with full snippet (title, description, scheduledStartTime) to avoid blanking fields; (2) deleteBroadcast() API: DELETE /liveBroadcasts by ID (404 on live/testing broadcasts per YouTube lifecycle rules); (3) UI: edit (✏️) + delete (🗑️) buttons per broadcast row, inline edit panel with privacy dropdown + Save/Cancel, all errors surface same as transition flow, all strings bilingual pick(zh/en). 1 commit (f2bd22b), 2 files, +204 net lines. Build ✓ 1817 modules. No regressions.
+
 ## 2026-04-07 | v1.0.10 — Cross-Device Sync Fix (Drawing Tool) + FAB UX + YouTube Studio Errors — (1) Drawing tool shapes/connectors/text/frames now sync across devices via surface-elements sync category fix; (2) FAB menu shows "(限一個)" labels on unique blocks (journal/kit/intention) with toast prevention on duplicates; (3) YouTube Studio transitionBroadcast now surfaces real API errors + formatDate() fixes "Invalid Date" in broadcasts list. 2 commits, 5 files, +82 net lines. Build ✓ 1813 modules.
 
 ## 2026-04-06 | v1.0.9 — Daily/Global block split + Date Peek Modal + live date refresh on useBlockField — Journal/KIT/Intention/Tasks now refresh instantly on date switch; global blocks unaffected; 4-tab peek modal in sidebar. Build ✓ 1813 modules.
