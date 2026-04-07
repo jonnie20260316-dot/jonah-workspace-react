@@ -12,6 +12,8 @@ import {
   createBroadcast,
   createLiveStream,
   bindBroadcast,
+  updateBroadcastPrivacy,
+  deleteBroadcast,
 } from "../utils/youtubeApi";
 import { useStreamStore } from "../stores/useStreamStore";
 import type { YTBroadcast, YTStreamHealth } from "../utils/youtubeApi";
@@ -85,6 +87,10 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
   const [createPrivacy, setCreatePrivacy] = useState<"public" | "private" | "unlisted">("private");
   const [creating, setCreating] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editPrivacy, setEditPrivacy] = useState<"public" | "private" | "unlisted">("private");
+  const [editSaving, setEditSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const activeStream = useStreamStore((s) => s.activeStream);
@@ -215,6 +221,36 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
       setCreating(false);
     }
   }, [createTitle, createPrivacy, refresh]);
+
+  // ─── Edit privacy ────────────────────────────────────────────────────────
+  const handleUpdatePrivacy = useCallback(async (bc: YTBroadcast) => {
+    setEditSaving(true);
+    const result = await updateBroadcastPrivacy(bc, editPrivacy);
+    setEditSaving(false);
+    if (result.ok) {
+      setEditingId(null);
+      await refresh();
+    } else {
+      setError(result.error ?? pick("更新失敗", "Update failed"));
+    }
+  }, [editPrivacy, refresh]);
+
+  // ─── Delete broadcast ────────────────────────────────────────────────────
+  const handleDelete = useCallback(async (id: string) => {
+    setDeletingId(id);
+    try {
+      const result = await deleteBroadcast(id);
+      if (result.ok) {
+        if (selectedId === id) setSelectedId(null);
+        if (editingId === id) setEditingId(null);
+        await refresh();
+      } else {
+        setError(result.error ?? pick("刪除失敗", "Delete failed"));
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  }, [selectedId, editingId, refresh]);
 
   // ─── RTMP streaming (FFmpeg) ────────────────────────────────────────────
   const startRtmpStream = useCallback(async (broadcast: YTBroadcast) => {
@@ -577,31 +613,114 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
             {pick("排程直播", "Upcoming")}
           </div>
           {upcomingBcs.map((bc) => (
-            <div
-              key={bc.id}
-              onClick={() => setSelectedId(bc.id)}
-              style={{
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                padding: "8px 10px", borderRadius: "6px", cursor: "pointer",
-                backgroundColor: bc.id === selectedId ? "#e3f2fd" : "#f9f9f9",
-                borderLeft: bc.id === selectedId ? "3px solid #2196f3" : "3px solid transparent",
-              }}
-            >
-              <div style={{ flex: 1, overflow: "hidden" }}>
-                <div style={{ fontSize: s(12), fontWeight: 500, color: "#333", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {bc.title || pick("未命名", "Untitled")}
+            <div key={bc.id} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <div
+                onClick={() => setSelectedId(bc.id)}
+                style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  padding: "8px 10px", borderRadius: "6px", cursor: "pointer",
+                  backgroundColor: bc.id === selectedId ? "#e3f2fd" : "#f9f9f9",
+                  borderLeft: bc.id === selectedId ? "3px solid #2196f3" : "3px solid transparent",
+                  gap: "6px",
+                }}
+              >
+                <div style={{ flex: 1, overflow: "hidden" }}>
+                  <div style={{ fontSize: s(12), fontWeight: 500, color: "#333", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {bc.title || pick("未命名", "Untitled")}
+                  </div>
+                  <div style={{ fontSize: s(10), color: "#999" }}>
+                    {formatDate(bc.scheduledStartTime)}
+                  </div>
                 </div>
-                <div style={{ fontSize: s(10), color: "#999" }}>
-                  {formatDate(bc.scheduledStartTime)}
-                </div>
+                <span style={{
+                  padding: "2px 8px", fontSize: s(9), fontWeight: 600,
+                  backgroundColor: statusColor(bc.lifeCycleStatus),
+                  color: "#fff", borderRadius: "10px", flexShrink: 0,
+                }}>
+                  {statusLabel(bc.lifeCycleStatus)}
+                </span>
+                {/* Edit button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingId(editingId === bc.id ? null : bc.id);
+                    setEditPrivacy(bc.privacyStatus as "public" | "private" | "unlisted");
+                  }}
+                  title={pick("編輯可見度", "Edit visibility")}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    padding: "2px 4px", fontSize: s(13), lineHeight: 1,
+                    color: editingId === bc.id ? "#2196f3" : "#aaa",
+                    flexShrink: 0,
+                  }}
+                >
+                  ✏️
+                </button>
+                {/* Delete button */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDelete(bc.id); }}
+                  disabled={deletingId === bc.id}
+                  title={pick("刪除直播", "Delete broadcast")}
+                  style={{
+                    background: "none", border: "none", cursor: deletingId === bc.id ? "default" : "pointer",
+                    padding: "2px 4px", fontSize: s(13), lineHeight: 1,
+                    color: "#f44336", opacity: deletingId === bc.id ? 0.4 : 1,
+                    flexShrink: 0,
+                  }}
+                >
+                  {deletingId === bc.id ? "…" : "🗑️"}
+                </button>
               </div>
-              <span style={{
-                padding: "2px 8px", fontSize: s(9), fontWeight: 600,
-                backgroundColor: statusColor(bc.lifeCycleStatus),
-                color: "#fff", borderRadius: "10px",
-              }}>
-                {statusLabel(bc.lifeCycleStatus)}
-              </span>
+
+              {/* Inline edit panel */}
+              {editingId === bc.id && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: "6px",
+                  padding: "8px 10px", backgroundColor: "#f0f4ff",
+                  borderRadius: "6px", border: "1px solid #c5d8f8",
+                }}>
+                  <span style={{ fontSize: s(11), color: "#555", flexShrink: 0 }}>
+                    {pick("可見度", "Visibility")}
+                  </span>
+                  <select
+                    value={editPrivacy}
+                    onChange={(e) => setEditPrivacy(e.target.value as "public" | "private" | "unlisted")}
+                    style={{
+                      flex: 1, padding: "4px 8px", fontSize: s(11),
+                      border: "1px solid #c5d8f8", borderRadius: "5px",
+                      backgroundColor: "#fff", cursor: "pointer",
+                    }}
+                  >
+                    <option value="private">{pick("私人", "Private")}</option>
+                    <option value="unlisted">{pick("不公開", "Unlisted")}</option>
+                    <option value="public">{pick("公開", "Public")}</option>
+                  </select>
+                  <button
+                    onClick={() => handleUpdatePrivacy(bc)}
+                    disabled={editSaving}
+                    style={{
+                      padding: "4px 12px", fontSize: s(11), fontWeight: 600,
+                      backgroundColor: editSaving ? "#ccc" : "#2196f3",
+                      color: "#fff", border: "none", borderRadius: "5px",
+                      cursor: editSaving ? "default" : "pointer", flexShrink: 0,
+                    }}
+                  >
+                    {editSaving ? pick("儲存中…", "Saving…") : pick("儲存", "Save")}
+                  </button>
+                  <button
+                    onClick={() => setEditingId(null)}
+                    disabled={editSaving}
+                    style={{
+                      padding: "4px 10px", fontSize: s(11),
+                      backgroundColor: "#e8e8e8", border: "none",
+                      borderRadius: "5px", cursor: editSaving ? "default" : "pointer",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {pick("取消", "Cancel")}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -332,3 +332,65 @@ export async function bindBroadcast(
   );
   return data?.id ?? null;
 }
+
+// ─── Broadcast update / delete ────────────────────────────────────────────────
+
+export async function updateBroadcastPrivacy(
+  broadcast: YTBroadcast,
+  privacyStatus: "public" | "private" | "unlisted"
+): Promise<{ ok: boolean; error?: string }> {
+  const token = await getValidAccessToken();
+  if (!token) return { ok: false, error: "Not authenticated" };
+
+  const res = await fetch(`${YT_API}/liveBroadcasts?part=snippet,status`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      id: broadcast.id,
+      snippet: {
+        title: broadcast.title,
+        description: broadcast.description,
+        scheduledStartTime: broadcast.scheduledStartTime,
+      },
+      status: { privacyStatus },
+    }),
+  });
+
+  if (res.ok) return { ok: true };
+
+  try {
+    const body = (await res.json()) as YTApiError;
+    const msg = body?.error?.message ?? `HTTP ${res.status}`;
+    return { ok: false, error: msg };
+  } catch {
+    return { ok: false, error: `HTTP ${res.status}` };
+  }
+}
+
+export async function deleteBroadcast(
+  broadcastId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const token = await getValidAccessToken();
+  if (!token) return { ok: false, error: "Not authenticated" };
+
+  const res = await fetch(
+    `${YT_API}/liveBroadcasts?id=${encodeURIComponent(broadcastId)}`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  if (res.ok) return { ok: true };
+
+  try {
+    const body = (await res.json()) as YTApiError;
+    const msg = body?.error?.message ?? `HTTP ${res.status}`;
+    return { ok: false, error: msg };
+  } catch {
+    return { ok: false, error: `HTTP ${res.status}` };
+  }
+}
