@@ -56,7 +56,7 @@ export function FloatingTopBar() {
           style={{ background: sidebarOpen ? "rgba(36,50,49,0.08)" : "none" }}
           title={pick("側欄", "Sidebar")}
         >
-          <Menu size={18} strokeWidth={1.8} />
+          <Menu size={18} strokeWidth={2.2} />
         </button>
         {activeFrameId && (
           <div className="frame-breadcrumb">
@@ -90,14 +90,14 @@ export function FloatingTopBar() {
           className="top-bar-btn"
           title={pick("儲存", "Save")}
         >
-          {saved ? <Check size={18} strokeWidth={1.8} /> : <Save size={18} strokeWidth={1.8} />}
+          {saved ? <Check size={18} strokeWidth={2.2} /> : <Save size={18} strokeWidth={2.2} />}
         </button>
         <button
           onClick={toggleGearMenu}
           className="top-bar-btn"
           title={pick("設定", "Settings")}
         >
-          <Settings size={18} strokeWidth={1.8} />
+          <Settings size={18} strokeWidth={2.2} />
         </button>
       </div>
     </div>

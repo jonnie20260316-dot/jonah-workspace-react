@@ -212,7 +212,7 @@ async function createWindow() {
   // Strip X-Frame-Options and CSP frame-ancestors headers for AI chat sites (claude.ai, chatgpt.com)
   // This allows them to be embedded in webview tags, which otherwise block due to frame-ancestors directives
   function stripEmbedBlockingHeaders(sess) {
-    const AI_ORIGINS = ['*://claude.ai/*', '*://chatgpt.com/*', '*://*.claude.ai/*', '*://*.chatgpt.com/*'];
+    const AI_ORIGINS = ['*://claude.ai/*', '*://chatgpt.com/*', '*://*.claude.ai/*', '*://*.chatgpt.com/*', '*://gemini.google.com/*', '*://*.google.com/*'];
     sess.webRequest.onHeadersReceived({ urls: AI_ORIGINS }, (details, callback) => {
       const headers = { ...details.responseHeaders };
       for (const key of Object.keys(headers)) {
@@ -227,7 +227,11 @@ async function createWindow() {
 
   // Register header stripping for both default and persist:aichat sessions
   stripEmbedBlockingHeaders(session.defaultSession);
-  stripEmbedBlockingHeaders(session.fromPartition('persist:aichat'));
+  const aiChatSession = session.fromPartition('persist:aichat');
+  stripEmbedBlockingHeaders(aiChatSession);
+  // Spoof a standard Chrome UA so claude.ai/chatgpt.com/gemini.google.com don't block Electron
+  const chromeUA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+  aiChatSession.setUserAgent(chromeUA);
 
   // IPC: Screen source picker support
   ipcMain.handle('screen:get-sources', async () => {

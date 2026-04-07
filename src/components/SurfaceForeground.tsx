@@ -7,6 +7,11 @@ import { screenToBoardPoint } from "../utils/viewport";
 import { getConnectionPoints, connectorPath } from "../utils/geometry";
 import type { SurfaceElement } from "../types";
 
+function diamondPoints(x: number, y: number, w: number, h: number): string {
+  const cx = x + w / 2, cy = y + h / 2;
+  return `${cx},${y} ${x + w},${cy} ${cx},${y + h} ${x},${cy}`;
+}
+
 const TEXT_DRAG_CORNER = 6;
 
 type Corner = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
@@ -15,6 +20,7 @@ interface Props {
   viewportRef: RefObject<HTMLDivElement | null>;
   connectorDraft?: { fx: number; fy: number; tx: number; ty: number } | null;
   dragSelectRect?: { x: number; y: number; w: number; h: number } | null;
+  previewElement?: SurfaceElement | null;
 }
 
 const HANDLE_SIZE = 8;
@@ -59,7 +65,7 @@ function applyResize(
  * SurfaceForeground — top SVG layer of the Edgeless whiteboard.
  * Renders connectors, selection handles, and snap dots above all blocks.
  */
-export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect }: Props) {
+export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect, previewElement }: Props) {
   const { elements, updateElement } = useSurfaceStore();
   const { selectedIds, setSelectedIds, activeTool, editingTextId } = useSessionStore();
 
@@ -402,6 +408,44 @@ export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect 
           );
         })}
       </g>
+
+      {/* Draw tool preview — rendered here (z:99999) so it's visible above blocks */}
+      {previewElement && (previewElement.type === "rect" || previewElement.type === "ellipse" || previewElement.type === "diamond") && (() => {
+        const el = previewElement;
+        const dashArray = el.strokeStyle === "dashed" ? "8 4" : el.strokeStyle === "dotted" ? "2 3" : undefined;
+        return (
+          <g pointerEvents="none">
+            {el.type === "rect" && (
+              <rect x={el.x} y={el.y} width={el.w} height={el.h}
+                rx={el.cornerRadius ?? 0}
+                fill={el.fillColor} stroke={el.strokeColor}
+                strokeWidth={el.strokeWidth} strokeDasharray={dashArray} opacity={el.opacity} />
+            )}
+            {el.type === "ellipse" && (
+              <ellipse cx={el.x + el.w / 2} cy={el.y + el.h / 2} rx={el.w / 2} ry={el.h / 2}
+                fill={el.fillColor} stroke={el.strokeColor}
+                strokeWidth={el.strokeWidth} strokeDasharray={dashArray} opacity={el.opacity} />
+            )}
+            {el.type === "diamond" && (
+              <polygon points={diamondPoints(el.x, el.y, el.w, el.h)}
+                fill={el.fillColor} stroke={el.strokeColor}
+                strokeWidth={el.strokeWidth} strokeDasharray={dashArray} opacity={el.opacity} />
+            )}
+          </g>
+        );
+      })()}
+      {previewElement?.type === "brush" && (
+        <path
+          d={previewElement.pathData ?? ""}
+          fill="none"
+          stroke={previewElement.strokeColor}
+          strokeWidth={previewElement.strokeWidth}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={previewElement.opacity}
+          pointerEvents="none"
+        />
+      )}
 
       <g className="surface-drag-rect">
         {dragSelectRect && dragSelectRect.w > 2 && dragSelectRect.h > 2 && (

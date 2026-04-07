@@ -201,19 +201,22 @@ export function Canvas() {
       }
     };
 
-    // Clear pan mode if window loses focus (e.g. Alt+Tab on Windows) — prevents stuck pan mode
+    // Clear pan mode if window loses or regains focus (e.g. Alt+Tab on Windows) — prevents stuck pan mode
     const onWindowBlur = () => clearPanMode();
+    const onWindowFocus = () => clearPanMode(); // Space may have been released while focus was away
     const onVisibilityChange = () => { if (document.hidden) clearPanMode(); };
 
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onWindowBlur);
+    window.addEventListener("focus", onWindowFocus);
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onWindowBlur);
+      window.removeEventListener("focus", onWindowFocus);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
@@ -382,8 +385,8 @@ export function Canvas() {
             );
           })}
 
-        {/* Surface foreground: connectors, selection handles — above blocks */}
-        <SurfaceForeground viewportRef={viewportRef} connectorDraft={drawTool.connectorDraft} dragSelectRect={dragSelectRect} />
+        {/* Surface foreground: connectors, selection handles, draw previews — above blocks */}
+        <SurfaceForeground viewportRef={viewportRef} connectorDraft={drawTool.connectorDraft} dragSelectRect={dragSelectRect} previewElement={drawTool.preview} />
       </div>
 
       {/* Pinned blocks HUD — viewport-fixed, outside canvas transform */}

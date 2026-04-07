@@ -21,6 +21,7 @@ import { useBlockStore } from "./useBlockStore";
 import { useViewportStore } from "./useViewportStore";
 import { useProjectStore } from "./useProjectStore";
 import { useSessionStore } from "./useSessionStore";
+import { useSurfaceStore } from "./useSurfaceStore";
 import type { SyncMeta, SyncStatus, SyncQueueItem, SyncPayload, ConflictInfo, GitSyncStatus } from "../types";
 import type { Block } from "../types";
 import type { ProjectCard } from "./useProjectStore";
@@ -180,6 +181,9 @@ export function rehydrateStores(): void {
       archive: Array.isArray(rawBoard.archive) ? rawBoard.archive as ProjectCard[] : [],
     },
   });
+
+  const surfaceElements = loadJSON("surface-elements", []);
+  useSurfaceStore.setState({ elements: surfaceElements });
 
   const lang = (loadText("lang") || "zh") as "zh" | "en";
   useSessionStore.setState({ lang });
