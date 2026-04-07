@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, memo } from "react";
 import type { ReactNode } from "react";
-import { ChevronUp, ChevronDown, ArchiveX, Palette, GripVertical, Pin, PinOff } from "lucide-react";
+import { ChevronUp, ChevronDown, ArchiveX, Palette, GripVertical, Pin, PinOff, X } from "lucide-react";
 import { useBlockStore } from "../stores/useBlockStore";
 import { useSessionStore } from "../stores/useSessionStore";
 import { useBlockDrag } from "../hooks/useBlockDrag";
@@ -44,11 +44,13 @@ interface BlockShellProps {
 }
 
 function BlockShellInner({ block, children }: BlockShellProps) {
-  const { updateBlock, archiveBlock, bringToFront } = useBlockStore();
+  const { updateBlock, archiveBlock, removeBlock, bringToFront } = useBlockStore();
   const { selectedIds, setSelectedIds, addToSelection, activeFrameId } = useSessionStore();
   const isSelected = selectedIds.includes(block.id);
   const isInActiveFrame = activeFrameId != null ? block.zoneId === activeFrameId : false;
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const [editingLabel, setEditingLabel] = useState(false);
+  const labelInputRef = useRef<HTMLInputElement>(null);
   // Block bloom: animate on first mount, then clear class
   const [justCreated, setJustCreated] = useState(true);
   useEffect(() => {
@@ -70,6 +72,11 @@ function BlockShellInner({ block, children }: BlockShellProps) {
 
   const handleCollapse = () => updateBlock(block.id, { collapsed: !block.collapsed });
   const handleArchive = () => archiveBlock(block.id);
+  const handleDelete = () => {
+    if (window.confirm(pick("刪除此區塊？此操作無法復原。", "Delete this block? This cannot be undone."))) {
+      removeBlock(block.id);
+    }
+  };
   const handlePin = () => {
     if (block.pinned) {
       updateBlock(block.id, { pinned: false });
@@ -97,6 +104,16 @@ function BlockShellInner({ block, children }: BlockShellProps) {
 
   const cfg = BLOCK_REGISTRY[block.type];
   const blockTitle = pick(cfg.zhTitle, cfg.title);
+  const keepMounted = cfg.keepMounted ?? false;
+  const editableTitle = cfg.editableTitle ?? false;
+
+  // Focus the label input whenever we enter edit mode
+  useEffect(() => {
+    if (editingLabel && labelInputRef.current) {
+      labelInputRef.current.focus();
+      labelInputRef.current.select();
+    }
+  }, [editingLabel]);
 
   return (
     <article
@@ -139,7 +156,41 @@ function BlockShellInner({ block, children }: BlockShellProps) {
 
         {/* Title */}
         <div className="block-title">
-          <h2>{blockTitle}</h2>
+          {editableTitle ? (
+            editingLabel ? (
+              <input
+                ref={labelInputRef}
+                className="block-title-input"
+                defaultValue={block.label ?? ""}
+                placeholder={blockTitle}
+                onBlur={(e) => {
+                  updateBlock(block.id, { label: e.target.value.trim() });
+                  setEditingLabel(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    updateBlock(block.id, { label: (e.target as HTMLInputElement).value.trim() });
+                    setEditingLabel(false);
+                    e.preventDefault();
+                  } else if (e.key === "Escape") {
+                    setEditingLabel(false);
+                    e.preventDefault();
+                  }
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <h2
+                className="block-title-editable"
+                onClick={(e) => { e.stopPropagation(); setEditingLabel(true); }}
+                title={pick("點擊修改標題", "Click to rename")}
+              >
+                {block.label || blockTitle}
+              </h2>
+            )
+          ) : (
+            <h2>{blockTitle}</h2>
+          )}
         </div>
 
         {/* Actions */}
@@ -163,6 +214,11 @@ function BlockShellInner({ block, children }: BlockShellProps) {
           {/* Archive */}
           <button onClick={handleArchive} title={pick("封存", "Archive")}>
             <ArchiveX size={14} />
+          </button>
+
+          {/* Delete */}
+          <button onClick={handleDelete} title={pick("刪除", "Delete")} className="block-btn-delete">
+            <X size={14} />
           </button>
 
           {/* Color Picker */}
@@ -214,8 +270,12 @@ function BlockShellInner({ block, children }: BlockShellProps) {
       </div>
 
       {/* Block Body */}
-      {!block.collapsed && (
-        <div className="block-body">{children}</div>
+      {keepMounted ? (
+        <div className={`block-body${block.collapsed ? " block-body--hidden" : ""}`}>
+          {children}
+        </div>
+      ) : (
+        !block.collapsed && <div className="block-body">{children}</div>
       )}
 
       {/* Resize Handles */}

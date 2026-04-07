@@ -619,8 +619,9 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
         useStreamStore.getState().setActiveStream(streamRef.current);
       }
 
-      // Update visible preview
+      // Update visible preview — null first to force video element reload
       if (videoRef.current) {
+        videoRef.current.srcObject = null;
         videoRef.current.srcObject = streamRef.current;
         videoRef.current.play().catch((err) => console.warn("Preview play failed:", err));
       }
@@ -1084,18 +1085,16 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
         )}
       </div>
 
-      {/* Video stage */}
+      {/* Video stage — always 16:9 regardless of block width */}
       <div
         ref={stageRef}
         style={{
           position: "relative",
-          height: "320px",
+          width: "100%",
+          aspectRatio: "16 / 9",
           backgroundColor: "#000",
           borderRadius: "4px",
           overflow: "hidden",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
         }}
       >
         <video

@@ -7,6 +7,8 @@ import { screenToBoardPoint } from "../utils/viewport";
 import { getConnectionPoints, connectorPath } from "../utils/geometry";
 import type { SurfaceElement } from "../types";
 
+const TEXT_DRAG_CORNER = 6;
+
 type Corner = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 
 interface Props {
@@ -59,7 +61,7 @@ function applyResize(
  */
 export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect }: Props) {
   const { elements, updateElement } = useSurfaceStore();
-  const { selectedIds, setSelectedIds, activeTool } = useSessionStore();
+  const { selectedIds, setSelectedIds, activeTool, editingTextId } = useSessionStore();
 
   const resizeRef = useRef<{
     id: string;
@@ -82,6 +84,31 @@ export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect 
     origFromPoint: [number, number];
     origToPoint: [number, number];
   } | null>(null);
+  const textDragRef = useRef<{
+    id: string;
+    startBX: number;
+    startBY: number;
+    origX: number;
+    origY: number;
+  } | null>(null);
+
+  function startTextDrag(e: React.PointerEvent<SVGRectElement>, el: SurfaceElement) {
+    e.stopPropagation();
+    if (activeTool !== "select") return;
+    if (!viewportRef.current) return;
+    const { viewport } = useViewportStore.getState();
+    const rect = viewportRef.current.getBoundingClientRect();
+    const b = screenToBoardPoint(e.clientX, e.clientY, viewport, rect);
+    textDragRef.current = {
+      id: el.id,
+      startBX: b.x,
+      startBY: b.y,
+      origX: el.x,
+      origY: el.y,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setSelectedIds([el.id]);
+  }
 
   function startConnectorDrag(e: React.PointerEvent<SVGPathElement>, el: SurfaceElement) {
     e.stopPropagation();
@@ -113,6 +140,10 @@ export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect 
       (el.type === "rect" || el.type === "ellipse" || el.type === "diamond")
   );
 
+  const selectedTexts = elements.filter(
+    (el) => selectedIds.includes(el.id) && el.type === "text" && editingTextId !== el.id
+  );
+
   const allShapes = elements.filter(
     (el) => el.type === "rect" || el.type === "ellipse" || el.type === "diamond"
   );
@@ -129,7 +160,9 @@ export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect 
     resizeRef.current = {
       id: el.id, corner,
       startBX: b.x, startBY: b.y,
-      origX: el.x, origY: el.y, origW: el.w, origH: el.h,
+      origX: el.x, origY: el.y,
+      origW: Math.max(el.w, 10),
+      origH: Math.max(el.h, 10),
     };
     e.currentTarget.setPointerCapture(e.pointerId);
   }
@@ -152,10 +185,18 @@ export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect 
 
   useEffect(() => {
     const onPointerMove = (e: PointerEvent) => {
-      if (!dragRef.current || !viewportRef.current) return;
+      if (!viewportRef.current) return;
       const { viewport } = useViewportStore.getState();
       const rect = viewportRef.current.getBoundingClientRect();
       const b = screenToBoardPoint(e.clientX, e.clientY, viewport, rect);
+
+      if (textDragRef.current) {
+        const { id, startBX, startBY, origX, origY } = textDragRef.current;
+        updateElement(id, { x: origX + (b.x - startBX), y: origY + (b.y - startBY) });
+        return;
+      }
+
+      if (!dragRef.current) return;
       const { id, startBX, startBY, origX, origY, origW, origH, origFromPoint, origToPoint } = dragRef.current;
       const dx = b.x - startBX;
       const dy = b.y - startBY;
@@ -174,6 +215,7 @@ export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect 
     const onPointerUp = () => {
       dragRef.current = null;
       resizeRef.current = null;
+      textDragRef.current = null;
     };
 
     document.addEventListener("pointermove", onPointerMove);
@@ -312,6 +354,53 @@ export function SurfaceForeground({ viewportRef, connectorDraft, dragSelectRect 
             ))}
           </g>
         ))}
+      </g>
+
+      {/* Drag hit-area + selection outline for text elements */}
+      <g className="surface-text-selection">
+        {selectedTexts.map((el) => {
+          const w = Math.max(el.w, 120);
+          const h = Math.max(el.h, 32);
+          return (
+            <g key={el.id}>
+              <rect
+                x={el.x - 2}
+                y={el.y - 2}
+                width={w + 4}
+                height={h + 4}
+                fill="transparent"
+                stroke="var(--accent, #4f9cf9)"
+                strokeWidth={1.5}
+                strokeDasharray="5 3"
+                rx={3}
+                style={{ pointerEvents: "all", cursor: "move" }}
+                onPointerDown={(e) => startTextDrag(e, el)}
+              />
+              {/* Corner resize handles */}
+              {(["nw", "ne", "se", "sw"] as Corner[]).map((corner, i) => {
+                const cxArr = [el.x - 2, el.x + w + 2, el.x + w + 2, el.x - 2];
+                const cyArr = [el.y - 2, el.y - 2, el.y + h + 2, el.y + h + 2];
+                return (
+                  <rect
+                    key={corner}
+                    x={cxArr[i] - TEXT_DRAG_CORNER / 2}
+                    y={cyArr[i] - TEXT_DRAG_CORNER / 2}
+                    width={TEXT_DRAG_CORNER}
+                    height={TEXT_DRAG_CORNER}
+                    rx={1}
+                    fill="white"
+                    stroke="var(--accent, #4f9cf9)"
+                    strokeWidth={1.5}
+                    style={{ pointerEvents: "all", cursor: CURSOR_MAP[corner] }}
+                    onPointerDown={(e) => onHandlePointerDown(e, el, corner)}
+                    onPointerMove={onHandlePointerMove}
+                    onPointerUp={onHandlePointerUp}
+                  />
+                );
+              })}
+            </g>
+          );
+        })}
       </g>
 
       <g className="surface-drag-rect">

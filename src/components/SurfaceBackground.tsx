@@ -137,6 +137,7 @@ function TextEditor({ el, onSave }: {
         fontSize: `${el.fontSize ?? 18}px`,
         fontWeight: el.fontWeight ?? "normal",
         textAlign: el.textAlign ?? "left",
+        color: el.color ?? "#243231",
       }}
       onBlur={(e) => commit(e.currentTarget)}
       onKeyDown={(e) => {
@@ -161,6 +162,7 @@ function TextEl({ el, isSelected, isEditing, onSelect, onEdit, onSave }: {
   onEdit: () => void;
   onSave: (text: string) => void;
 }) {
+  const activeTool = useSessionStore((s) => s.activeTool);
   const w = Math.max(el.w, 120);
   const h = Math.max(el.h, 32);
 
@@ -182,8 +184,8 @@ function TextEl({ el, isSelected, isEditing, onSelect, onEdit, onSave }: {
             fontSize: `${el.fontSize ?? 18}px`,
             fontWeight: el.fontWeight ?? "normal",
             textAlign: el.textAlign ?? "left",
-            outline: isSelected ? "2px solid var(--accent, #4f9cf9)" : "none",
-            outlineOffset: "2px",
+            color: el.color ?? "#243231",
+            cursor: activeTool === "select" ? "move" : undefined,
           }}
           onClick={(e) => { e.stopPropagation(); onSelect(); }}
           onDoubleClick={(e) => { e.stopPropagation(); onEdit(); }}

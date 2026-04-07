@@ -104,6 +104,15 @@
 
 .board-block.is-collapsed .block-body { display: none; }
 
+/* keepMounted blocks: visually hidden when collapsed but NOT removed from DOM */
+.block-body--hidden {
+  visibility: hidden;
+  overflow: hidden;
+  height: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
 /* === Block Header === */
 .block-head {
   display: flex;
@@ -226,6 +235,12 @@
 .block-actions button:hover {
   color: var(--ink);
   background: rgba(36, 50, 49, 0.06);
+}
+
+/* Delete button — red tint on hover */
+.block-actions .block-btn-delete:hover {
+  color: #e53935 !important;
+  background: rgba(229, 57, 53, 0.08) !important;
 }
 
 /* === Color Picker Flyout === */
@@ -1006,6 +1021,174 @@ body[data-pan-mode] .board-block {
   width: 72px;
   accent-color: var(--accent, #4f9cf9);
   cursor: pointer;
+}
+
+/* ── TextPropertiesPanel ── */
+.text-props-panel {
+  position: fixed;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 186;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--surface-2, #1e1e1e);
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  user-select: none;
+  white-space: nowrap;
+  flex-wrap: wrap;
+  max-width: 520px;
+}
+.text-props-panel label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  color: var(--text-tertiary, rgba(255,255,255,0.4));
+  cursor: pointer;
+}
+.text-props-panel input[type="color"] {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+}
+.text-props-panel .props-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border, rgba(255,255,255,0.1));
+  margin: 0 4px;
+}
+.text-props-panel .props-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, rgba(255,255,255,0.6));
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.text-props-panel .props-btn:hover {
+  background: var(--surface-3, rgba(255,255,255,0.08));
+}
+.text-props-panel .props-btn.active {
+  background: var(--surface-3, rgba(255,255,255,0.1));
+  color: var(--text-primary, #fff);
+}
+.text-props-panel .props-btn.danger:hover {
+  background: rgba(239,68,68,0.15);
+  color: rgb(239,68,68);
+}
+.text-props-panel .props-btn.sticky-send {
+  padding: 0 8px;
+  color: rgba(39,174,96,0.8);
+}
+.text-props-panel .props-btn.sticky-send:hover {
+  background: rgba(39,174,96,0.12);
+  color: rgb(39,174,96);
+}
+/* Font size preset row */
+.text-props-panel .props-size-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.text-props-panel .props-size-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, rgba(255,255,255,0.6));
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.text-props-panel .props-size-btn:hover {
+  background: var(--surface-3, rgba(255,255,255,0.08));
+}
+.text-props-panel .props-size-btn.active {
+  background: var(--accent, #4f9cf9);
+  color: #fff;
+}
+
+/* ── Sticky block ─────────────────────────────────────────────── */
+/* Make block-body a flex column so sticky-wrapper can grow to fill it */
+.type-sticky .block-body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sticky-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+/* Title heading inside sticky body (shown when block.label is set) */
+.sticky-body-title {
+  font-size: calc(13px * var(--text-scale, 1));
+  font-weight: 700;
+  color: var(--ink);
+  padding: 10px var(--space-4) 0;
+  flex-shrink: 0;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.sticky-area {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-3) var(--space-4);
+  overflow-y: auto;
+  color: var(--ink);
+}
+.sticky-area hr {
+  border: none;
+  border-top: 1.5px solid var(--line-strong);
+  margin: 10px 0;
+}
+
+/* ── Block editable title (for editableTitle blocks like sticky) ── */
+.block-title-editable {
+  cursor: text;
+  border-radius: 3px;
+  padding: 1px 3px;
+  margin: -1px -3px;
+  transition: background var(--dur-instant);
+}
+.block-title-editable:hover {
+  background: rgba(36, 50, 49, 0.07);
+}
+.block-title-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--accent);
+  outline: none;
+  font-size: inherit;
+  font-family: inherit;
+  font-weight: inherit;
+  color: var(--ink);
+  width: 100%;
+  padding: 0;
+  line-height: inherit;
 }
 
 /* ── Surface text element ─────────────────────────────────────── */

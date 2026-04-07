@@ -149,6 +149,28 @@ export function GearMenu() {
     }
   };
 
+  const handleRestoreSticky = async () => {
+    if (!window.electronAPI?.restoreStorage) return;
+    const result = await window.electronAPI.restoreStorage();
+    if (!result.ok || !result.data) {
+      alert(pick("找不到備份檔案", "Backup file not found"));
+      return;
+    }
+    const snapshot = JSON.parse(result.data) as Record<string, string>;
+    let count = 0;
+    for (const [k, v] of Object.entries(snapshot)) {
+      if (k.includes(":block-global:sticky-")) {
+        localStorage.setItem(k, v);
+        count++;
+      }
+    }
+    if (count > 0) {
+      window.location.reload();
+    } else {
+      alert(pick("備份中沒有找到便利貼資料", "No sticky note data found in backup"));
+    }
+  };
+
   function timeAgoShort(iso: string | null): string {
     if (!iso) return pick("從未", "Never");
     const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -309,6 +331,13 @@ export function GearMenu() {
           </Section>
           <div style={divider} />
         </>
+      )}
+
+      {/* Restore sticky notes from backup — Electron only */}
+      {window.electronAPI?.isElectron && (
+        <button onClick={handleRestoreSticky} style={actionBtn}>
+          ♻ {pick("從備份恢復便利貼", "Restore sticky notes")}
+        </button>
       )}
 
       {/* Export / Import */}

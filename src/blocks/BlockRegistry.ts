@@ -31,6 +31,10 @@ export interface BlockTypeConfig {
   zhSubtitle: string;
   size: { w: number; h: number };
   unique?: boolean;
+  /** Keep children mounted when collapsed (use CSS hide instead of unmounting). Required for blocks with live media streams. */
+  keepMounted?: boolean;
+  /** Allow the user to rename the block header title in-place (stored as block.label). */
+  editableTitle?: boolean;
 }
 
 export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
@@ -41,6 +45,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     subtitle: "Quick thought",
     zhSubtitle: "隨手記",
     size: { w: 440, h: 330 },
+    editableTitle: true,
   },
   intention: {
     component: IntentionBlock,
@@ -180,6 +185,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     subtitle: "Record & clip",
     zhSubtitle: "錄製剪輯",
     size: { w: 990, h: 682 },
+    keepMounted: true,
   },
   "youtube-studio": {
     component: YouTubeStudioBlock,
@@ -188,6 +194,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     subtitle: "Live streaming",
     zhSubtitle: "直播控制台",
     size: { w: 900, h: 600 },
+    keepMounted: true,
   },
   "ai-chat": {
     component: AIChatBlock,

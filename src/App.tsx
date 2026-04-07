@@ -14,6 +14,7 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { FitButton } from "./components/FitButton";
 import { ToolBar } from "./components/ToolBar";
 import { ShapePropertiesPanel } from "./components/ShapePropertiesPanel";
+import { TextPropertiesPanel } from "./components/TextPropertiesPanel";
 import { Minimap } from "./components/Minimap";
 import { FullscreenDashboard } from "./components/FullscreenDashboard";
 
@@ -40,6 +41,7 @@ export default function App() {
         <Minimap />
         <ToolBar />
         <ShapePropertiesPanel />
+        <TextPropertiesPanel />
         <FullscreenDashboard />
       </div>
     </ErrorBoundary>

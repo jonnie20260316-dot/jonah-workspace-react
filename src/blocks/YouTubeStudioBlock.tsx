@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
+import { loadJSON, saveJSON } from "../utils/storage";
 import {
   getStoredTokens,
   saveTokens,
@@ -91,9 +92,19 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
   const [editPrivacy, setEditPrivacy] = useState<"public" | "private" | "unlisted">("private");
   const [editSaving, setEditSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [bitrate, setBitrateState] = useState<number>(() =>
+    loadJSON<number>("youtube-studio-bitrate", 3_000_000)
+  );
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const bitrateRef = useRef<number>(loadJSON<number>("youtube-studio-bitrate", 3_000_000));
   const activeStream = useStreamStore((s) => s.activeStream);
+
+  const handleBitrateChange = (bps: number) => {
+    setBitrateState(bps);
+    bitrateRef.current = bps;
+    saveJSON("youtube-studio-bitrate", bps);
+  };
 
   const isElectron = !!window.electronAPI?.youtubeAuthStart;
   const hasRtmp = !!window.electronAPI?.youtubeStartStream;
@@ -290,7 +301,7 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
         ? "video/webm;codecs=vp8,opus"
         : "video/webm";
 
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitrateRef.current });
       recorderRef.current = recorder;
 
       recorder.ondataavailable = async (e) => {
@@ -453,6 +464,33 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
               </span>
             </div>
           )}
+
+          {/* Bitrate selector */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: s(11) }}>
+            <span style={{ color: "#999", flexShrink: 0 }}>{pick("碼率", "Bitrate")}:</span>
+            {([
+              { label: "720p / 2.5M", bps: 2_500_000 },
+              { label: "1080p / 4.5M", bps: 4_500_000 },
+              { label: "1080p HQ / 8M", bps: 8_000_000 },
+            ] as { label: string; bps: number }[]).map(({ label, bps }) => (
+              <button
+                key={bps}
+                onClick={() => handleBitrateChange(bps)}
+                style={{
+                  padding: "2px 8px",
+                  borderRadius: 4,
+                  border: "1px solid",
+                  borderColor: bitrate === bps ? "var(--accent, #4f9cf9)" : "var(--line, #e0e0e0)",
+                  background: bitrate === bps ? "var(--accent, #4f9cf9)" : "transparent",
+                  color: bitrate === bps ? "#fff" : "inherit",
+                  cursor: "pointer",
+                  fontSize: s(10),
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
           {/* Stream health */}
           {streamHealth && (

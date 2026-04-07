@@ -39,6 +39,8 @@ export interface Block {
   pinned?: boolean;
   pinnedOrder?: number;
   zoneId?: string;
+  /** Optional user-set label that overrides the block type title in the header. */
+  label?: string;
 }
 
 // ─── Surface Elements (Edgeless whiteboard layer) ─────────────────────────────
@@ -70,6 +72,7 @@ export interface SurfaceElement {
   fontSize?:   number;
   fontWeight?: "normal" | "bold";
   textAlign?:  "left" | "center" | "right";
+  color?:      string;
   // Connector (type=connector)
   fromId?:     string;
   toId?:       string;
