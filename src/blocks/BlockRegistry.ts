@@ -21,6 +21,7 @@ import { YouTubeStudioBlock } from "./YouTubeStudioBlock";
 import { AIChatBlock } from "./AIChatBlock";
 import { BrainBlock } from "./BrainBlock";
 import { LabBlock } from "./LabBlock";
+import { ScreenshotBlock } from "./ScreenshotBlock";
 import type { Block, BlockType } from "../types";
 
 export interface BlockTypeConfig {
@@ -203,6 +204,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     subtitle: "Claude & ChatGPT",
     zhSubtitle: "Claude 與 ChatGPT",
     size: { w: 880, h: 660 },
+    keepMounted: true,
   },
   brain: {
     component: BrainBlock,
@@ -219,6 +221,14 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     subtitle: "Research · Ideas · Builds",
     zhSubtitle: "研究・想法・構建",
     size: { w: 820, h: 520 },
+  },
+  screenshot: {
+    component: ScreenshotBlock,
+    title: "Screenshot",
+    zhTitle: "截圖",
+    subtitle: "Capture & annotate",
+    zhSubtitle: "擷取與標註",
+    size: { w: 660, h: 440 },
   },
 };
 

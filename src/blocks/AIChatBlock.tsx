@@ -29,8 +29,6 @@ export function AIChatBlock({ block }: AIChatBlockProps) {
     saveJSON(`ai-chat-tab:${block.id}`, next);
   };
 
-  const src = tab === "claude" ? "https://claude.ai" : "https://chatgpt.com";
-
   if (!isElectron) {
     return (
       <div
@@ -89,15 +87,32 @@ export function AIChatBlock({ block }: AIChatBlockProps) {
         ))}
       </div>
 
-      {/* Webview container — use flex on container for webview to fill reliably */}
-      <div style={{ flex: 1, overflow: "hidden", borderRadius: "4px", display: "flex" }}>
+      {/* Dual webview — both rendered, inactive hidden (JW-38: visibility not display) */}
+      <div style={{ flex: 1, overflow: "hidden", borderRadius: "4px", display: "flex", position: "relative" }}>
         <webview
-          key={tab}
-          src={src}
+          src="https://claude.ai"
           partition="persist:aichat"
           style={{
-            flex: 1,
+            flex: tab === "claude" ? 1 : undefined,
             border: "none",
+            visibility: tab === "claude" ? "visible" : "hidden",
+            position: tab === "claude" ? "relative" : "absolute",
+            width: tab === "claude" ? undefined : "100%",
+            height: tab === "claude" ? undefined : "100%",
+            pointerEvents: tab === "claude" ? "auto" : "none",
+          }}
+        />
+        <webview
+          src="https://chatgpt.com"
+          partition="persist:aichat"
+          style={{
+            flex: tab === "chatgpt" ? 1 : undefined,
+            border: "none",
+            visibility: tab === "chatgpt" ? "visible" : "hidden",
+            position: tab === "chatgpt" ? "relative" : "absolute",
+            width: tab === "chatgpt" ? undefined : "100%",
+            height: tab === "chatgpt" ? undefined : "100%",
+            pointerEvents: tab === "chatgpt" ? "auto" : "none",
           }}
         />
       </div>

@@ -159,7 +159,7 @@ export function GearMenu() {
     const snapshot = JSON.parse(result.data) as Record<string, string>;
     let count = 0;
     for (const [k, v] of Object.entries(snapshot)) {
-      if (k.includes(":block-global:sticky-")) {
+      if (k.includes(":block-global:sticky-") || /session:\d{4}-\d{2}-\d{2}:sticky-/.test(k)) {
         localStorage.setItem(k, v);
         count++;
       }

@@ -26,7 +26,7 @@ interface StickyBlockProps {
  * "---" shortcut: Enter on a line with exactly "---" inserts an <hr>.
  */
 export function StickyBlock({ block }: StickyBlockProps) {
-  const [body, setBody] = useBlockField(block.id, "body", "", { global: true });
+  const [body, setBody] = useBlockField(block.id, "body", "");
 
   const bodyRef = useRef<HTMLDivElement>(null);
   const isFocusedRef = useRef(false);

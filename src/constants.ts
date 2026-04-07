@@ -47,6 +47,7 @@ export const GLOBAL_KEYS = new Set<string>([
   "github-sync-token",
   "text-scale",
   "surface-elements",
+  "sticky-daily-migrated",
 ]);
 
 // ─── Zone / Frame color palettes ─────────────────────────────────────────────

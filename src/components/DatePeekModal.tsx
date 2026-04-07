@@ -28,12 +28,13 @@ function formatFullDate(dateStr: string, lang: "zh" | "en"): string {
   });
 }
 
-type TabKey = "journal" | "kit" | "intention" | "tasks";
+type TabKey = "journal" | "kit" | "intention" | "tasks" | "sticky";
 const TABS: Array<{ key: TabKey; zh: string; en: string }> = [
   { key: "journal", zh: "日記", en: "Journal" },
   { key: "kit", zh: "KIT", en: "KIT" },
   { key: "intention", zh: "意向", en: "Intention" },
   { key: "tasks", zh: "任務", en: "Tasks" },
+  { key: "sticky", zh: "便利貼", en: "Sticky Notes" },
 ];
 
 function EmptyNote() {
@@ -114,11 +115,21 @@ export function DatePeekModal({ date, onClose, onNavigate }: DatePeekModalProps)
     done: f(tasksBlock?.id, `task:${i}:done`),
   }));
 
+  // Sticky notes — load body for each sticky block on this date
+  const stickyBlocks = blocks.filter((b) => b.type === "sticky");
+  const stickyEntries = stickyBlocks.map((b) => ({
+    id: b.id,
+    label: b.label ?? "",
+    body: loadFieldForDate(date, b.id, "body"),
+  }));
+  const stickyHasAny = stickyEntries.some((s) => s.body.trim() && s.body.trim() !== "<br>");
+
   const tabHasContent: Record<TabKey, boolean> = {
     journal: journalHasAny,
     kit: kitHasAny,
     intention: intentionHasAny,
     tasks: taskItems.some((t) => t.done === "true" || t.done === "1"),
+    sticky: stickyHasAny,
   };
 
   // Close on Escape or outside click
@@ -313,6 +324,37 @@ export function DatePeekModal({ date, onClose, onNavigate }: DatePeekModalProps)
                       </div>
                     );
                   })}
+                </div>
+              ) : <EmptyNote />
+            )}
+
+            {activeTab === "sticky" && (
+              stickyHasAny ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {stickyEntries.filter((s) => s.body.trim() && s.body.trim() !== "<br>").map((s) => (
+                    <div key={s.id} style={{
+                      padding: "10px 12px",
+                      borderRadius: "var(--radius-sm)",
+                      background: "rgba(36,50,49,0.03)",
+                      border: "1px solid var(--line)",
+                    }}>
+                      {s.label && (
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>
+                          {s.label}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: "var(--ink)",
+                          lineHeight: 1.65,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                        }}
+                        dangerouslySetInnerHTML={{ __html: s.body }}
+                      />
+                    </div>
+                  ))}
                 </div>
               ) : <EmptyNote />
             )}

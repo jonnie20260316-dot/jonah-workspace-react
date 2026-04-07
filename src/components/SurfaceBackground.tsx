@@ -127,29 +127,37 @@ function TextEditor({ el, onSave }: {
     onSave(node.textContent ?? "");
   }
 
+  const vAlign = el.verticalAlign ?? "top";
   return (
-    <div
-      ref={divRef}
-      className="surface-text-div"
-      contentEditable
-      suppressContentEditableWarning
-      style={{
-        fontSize: `${el.fontSize ?? 18}px`,
-        fontWeight: el.fontWeight ?? "normal",
-        textAlign: el.textAlign ?? "left",
-        color: el.color ?? "#243231",
-      }}
-      onBlur={(e) => commit(e.currentTarget)}
-      onKeyDown={(e) => {
-        e.stopPropagation(); // block canvas shortcuts while typing
-        if (e.key === "Escape") {
-          e.preventDefault();
-          commit(e.currentTarget as HTMLDivElement);
-        }
-      }}
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      {el.text}
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: vAlign === "middle" ? "center" : vAlign === "bottom" ? "flex-end" : "flex-start",
+      height: "100%",
+    }}>
+      <div
+        ref={divRef}
+        className="surface-text-div"
+        contentEditable
+        suppressContentEditableWarning
+        style={{
+          fontSize: `${el.fontSize ?? 18}px`,
+          fontWeight: el.fontWeight ?? "normal",
+          textAlign: el.textAlign ?? "left",
+          color: el.color ?? "#243231",
+        }}
+        onBlur={(e) => commit(e.currentTarget)}
+        onKeyDown={(e) => {
+          e.stopPropagation(); // block canvas shortcuts while typing
+          if (e.key === "Escape") {
+            e.preventDefault();
+            commit(e.currentTarget as HTMLDivElement);
+          }
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {el.text}
+      </div>
     </div>
   );
 }
@@ -178,19 +186,26 @@ function TextEl({ el, isSelected, isEditing, onSelect, onEdit, onSave }: {
       {isEditing ? (
         <TextEditor el={el} onSave={onSave} />
       ) : (
-        <div
-          className="surface-text-div"
-          style={{
-            fontSize: `${el.fontSize ?? 18}px`,
-            fontWeight: el.fontWeight ?? "normal",
-            textAlign: el.textAlign ?? "left",
-            color: el.color ?? "#243231",
-            cursor: activeTool === "select" ? "move" : undefined,
-          }}
-          onClick={(e) => { e.stopPropagation(); onSelect(); }}
-          onDoubleClick={(e) => { e.stopPropagation(); onEdit(); }}
-        >
-          {el.text || <span style={{ opacity: 0.35, fontStyle: "italic" }}>文字…</span>}
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: (el.verticalAlign ?? "top") === "middle" ? "center" : (el.verticalAlign ?? "top") === "bottom" ? "flex-end" : "flex-start",
+          height: "100%",
+        }}>
+          <div
+            className="surface-text-div"
+            style={{
+              fontSize: `${el.fontSize ?? 18}px`,
+              fontWeight: el.fontWeight ?? "normal",
+              textAlign: el.textAlign ?? "left",
+              color: el.color ?? "#243231",
+              cursor: activeTool === "select" ? "move" : undefined,
+            }}
+            onClick={(e) => { e.stopPropagation(); onSelect(); }}
+            onDoubleClick={(e) => { e.stopPropagation(); onEdit(); }}
+          >
+            {el.text || <span style={{ opacity: 0.35, fontStyle: "italic" }}>文字…</span>}
+          </div>
         </div>
       )}
     </foreignObject>

@@ -22,7 +22,8 @@ export type BlockType =
   | "youtube-studio"
   | "ai-chat"
   | "brain"
-  | "lab";
+  | "lab"
+  | "screenshot";
 
 export interface Block {
   id: string;
@@ -72,6 +73,7 @@ export interface SurfaceElement {
   fontSize?:   number;
   fontWeight?: "normal" | "bold";
   textAlign?:  "left" | "center" | "right";
+  verticalAlign?: "top" | "middle" | "bottom";
   color?:      string;
   // Connector (type=connector)
   fromId?:     string;

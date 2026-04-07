@@ -2,7 +2,7 @@ import {
   BookOpen, Layers2, CheckSquare, Kanban, Target, Zap, Timer,
   FileText, StickyNote, Repeat2, MessageSquare, Film,
   BarChart2, Music2, LayoutDashboard, Brain, ClipboardList, Video, Play, Bot,
-  Cpu, FlaskConical,
+  Cpu, FlaskConical, Camera,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { BlockType } from "../types";
@@ -30,4 +30,5 @@ export const BLOCK_ICONS: Record<BlockType, LucideIcon> = {
   "ai-chat": Bot,
   brain: Cpu,
   lab: FlaskConical,
+  screenshot: Camera,
 };

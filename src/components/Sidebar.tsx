@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from "react";
-import { X, LayoutGrid, Rows3 } from "lucide-react";
+import { X, LayoutGrid, Rows3, ChevronRight, RotateCcw } from "lucide-react";
 import { useUIStore } from "../stores/useUIStore";
 import { useBlockStore } from "../stores/useBlockStore";
 import { useSessionStore } from "../stores/useSessionStore";
@@ -10,6 +10,7 @@ import { useLang } from "../hooks/useLang";
 import { loadJSON, saveJSON, loadFieldForDate } from "../utils/storage";
 import { BLOCK_REGISTRY } from "../blocks/BlockRegistry";
 import { DatePeekModal } from "./DatePeekModal";
+import { StickyHistoryPanel } from "./StickyHistoryPanel";
 import type { BlockType } from "../types";
 
 const DAY_NAMES_ZH = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
@@ -38,7 +39,7 @@ const DEFAULT_CATEGORY_ORDER: BlockType[] = [
   "journal", "kit", "intention", "tasks", "projects", "timer",
   "intel", "threads", "threads-intel", "prompted-notes", "content",
   "sticky", "swipe", "video", "video-capture", "spotify", "metrics", "dashboard",
-  "brain", "lab",
+  "brain", "lab", "screenshot",
 ];
 
 function loadCategoryOrder(): BlockType[] {
@@ -56,15 +57,26 @@ export function Sidebar() {
   const [compact, setCompact] = useState(false);
   const [categories, setCategories] = useState<BlockType[]>(loadCategoryOrder);
   const [peekDate, setPeekDate] = useState<string | null>(null);
+  const [stickyHistoryOpen, setStickyHistoryOpen] = useState(false);
+  const [dateHistoryOpen, setDateHistoryOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const dragItemRef = useRef<number | null>(null);
   const dragOverRef = useRef<number | null>(null);
 
   const journalBlock = useMemo(() => blocks.find((b) => b.type === "journal"), [blocks]);
+  const stickyBlocks = useMemo(() => blocks.filter((b) => b.type === "sticky" && !b.archived), [blocks]);
+  const archivedBlocks = useMemo(() => blocks.filter((b) => b.archived), [blocks]);
   const pastDates = useMemo(() => getPastDates(30), []);
+  const { restoreBlock } = useBlockStore();
 
   const hasContent = (date: string) => {
-    if (!journalBlock) return false;
-    return loadFieldForDate(date, journalBlock.id, "body").trim() !== "";
+    // Check journal
+    if (journalBlock && loadFieldForDate(date, journalBlock.id, "body").trim() !== "") return true;
+    // Check sticky notes
+    for (const sb of stickyBlocks) {
+      if (loadFieldForDate(date, sb.id, "body").trim() !== "") return true;
+    }
+    return false;
   };
 
   const filtered = blocks.filter((b) => {
@@ -261,20 +273,56 @@ export function Sidebar() {
             </div>
           )}
 
-          {/* Date history section */}
+          {/* Sticky history button */}
+          {stickyBlocks.length > 0 && (
+            <button
+              onClick={() => setStickyHistoryOpen(true)}
+              style={{
+                display: "block",
+                width: "100%",
+                border: "1px dashed var(--line)",
+                background: "none",
+                cursor: "pointer",
+                borderRadius: "var(--radius-sm)",
+                padding: "5px 8px",
+                fontSize: 11,
+                color: "var(--text-tertiary)",
+                marginTop: 8,
+                textAlign: "center",
+                transition: "background var(--dur-instant)",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(36,50,49,0.04)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+            >
+              {pick("便利貼歷程", "Sticky Note History")}
+            </button>
+          )}
+
+          {/* Date history section — collapsible */}
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
-            <div style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: "var(--text-tertiary)",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              marginBottom: 6,
-              paddingLeft: 2,
-            }}>
+            <button
+              onClick={() => setDateHistoryOpen((v) => !v)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                width: "100%",
+                border: "none",
+                background: "none",
+                cursor: "pointer",
+                fontSize: 10,
+                fontWeight: 700,
+                color: "var(--text-tertiary)",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                marginBottom: 6,
+                paddingLeft: 2,
+              }}
+            >
+              <ChevronRight size={10} style={{ transform: dateHistoryOpen ? "rotate(90deg)" : "none", transition: "transform 150ms" }} />
               {pick("日期紀錄", "Date History")}
-            </div>
-            {pastDates.map((date) => {
+            </button>
+            {dateHistoryOpen && pastDates.map((date) => {
               const hasEntry = hasContent(date);
               const isActive = date === activeDate;
               return (
@@ -314,6 +362,78 @@ export function Sidebar() {
               );
             })}
           </div>
+
+          {/* Archived blocks section — collapsible */}
+          {archivedBlocks.length > 0 && (
+            <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+              <button
+                onClick={() => setArchiveOpen((v) => !v)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  width: "100%",
+                  border: "none",
+                  background: "none",
+                  cursor: "pointer",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: "var(--text-tertiary)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  marginBottom: 6,
+                  paddingLeft: 2,
+                }}
+              >
+                <ChevronRight size={10} style={{ transform: archiveOpen ? "rotate(90deg)" : "none", transition: "transform 150ms" }} />
+                {pick("封存區塊", "Archived")} ({archivedBlocks.length})
+              </button>
+              {archiveOpen && archivedBlocks.map((b) => {
+                const Icon = BLOCK_ICONS[b.type];
+                const cfg = BLOCK_REGISTRY[b.type];
+                return (
+                  <div
+                    key={b.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "3px 6px",
+                      borderRadius: "var(--radius-sm)",
+                      fontSize: 12,
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    <Icon size={10} style={{ flexShrink: 0, color: "var(--text-tertiary)" }} />
+                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {b.label || (lang === "zh" ? cfg?.zhTitle : cfg?.title) || b.type}
+                    </span>
+                    <button
+                      onClick={() => restoreBlock(b.id)}
+                      title={pick("恢復", "Restore")}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 22,
+                        height: 22,
+                        border: "none",
+                        background: "none",
+                        cursor: "pointer",
+                        borderRadius: "var(--radius-sm)",
+                        color: "var(--text-tertiary)",
+                        flexShrink: 0,
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(36,50,49,0.07)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+                    >
+                      <RotateCcw size={11} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -328,6 +448,11 @@ export function Sidebar() {
             closeSidebar();
           }}
         />
+      )}
+
+      {/* Sticky Note History Panel */}
+      {stickyHistoryOpen && (
+        <StickyHistoryPanel onClose={() => setStickyHistoryOpen(false)} />
       )}
     </>
   );

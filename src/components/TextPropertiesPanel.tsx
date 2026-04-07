@@ -3,9 +3,9 @@ import { useSessionStore } from "../stores/useSessionStore";
 import { useBlockStore } from "../stores/useBlockStore";
 import { useViewportStore } from "../stores/useViewportStore";
 import { useToast } from "../hooks/useToast";
-import { saveJSON } from "../utils/storage";
+import { saveJSON, saveText } from "../utils/storage";
 import { pick } from "../utils/i18n";
-import { AlignLeft, AlignCenter, AlignRight, Bold, Trash2, StickyNote } from "lucide-react";
+import { AlignLeft, AlignCenter, AlignRight, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Bold, Trash2, StickyNote } from "lucide-react";
 import type { SurfaceElement } from "../types";
 
 const FONT_SIZES: { label: string; value: number }[] = [
@@ -67,8 +67,8 @@ export function TextPropertiesPanel() {
       color: "",
     });
 
-    // Pre-fill the sticky body field (global key)
-    saveJSON(`block-global:${newId}:body`, el.text ?? "");
+    // Pre-fill the sticky body field (now date-scoped, not global)
+    saveText(`${newId}:body`, el.text ?? "");
 
     removeElement(el.id);
     clearSelection();
@@ -78,6 +78,7 @@ export function TextPropertiesPanel() {
   const fontSize = el.fontSize ?? 18;
   const isBold   = el.fontWeight === "bold";
   const align    = el.textAlign ?? "left";
+  const vAlign   = el.verticalAlign ?? "top";
   const color    = el.color ?? "#243231";
 
   return (
@@ -128,6 +129,29 @@ export function TextPropertiesPanel() {
         title={pick("靠右", "Align right")}
       >
         <AlignRight size={14} />
+      </button>
+
+      {/* Vertical align */}
+      <button
+        className={`props-btn${vAlign === "top" ? " active" : ""}`}
+        onClick={() => update({ verticalAlign: "top" })}
+        title={pick("靠上", "Align top")}
+      >
+        <AlignVerticalJustifyStart size={14} />
+      </button>
+      <button
+        className={`props-btn${vAlign === "middle" ? " active" : ""}`}
+        onClick={() => update({ verticalAlign: "middle" })}
+        title={pick("垂直置中", "Align middle")}
+      >
+        <AlignVerticalJustifyCenter size={14} />
+      </button>
+      <button
+        className={`props-btn${vAlign === "bottom" ? " active" : ""}`}
+        onClick={() => update({ verticalAlign: "bottom" })}
+        title={pick("靠下", "Align bottom")}
+      >
+        <AlignVerticalJustifyEnd size={14} />
       </button>
 
       <div className="props-divider" />

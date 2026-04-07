@@ -6,6 +6,40 @@ import {
 
 let _activeDate = "";
 
+/**
+ * One-time migration: move existing global sticky note bodies to today's
+ * date-scoped storage so they appear on the current day after the switch
+ * from global to daily-scoped sticky notes.
+ */
+export function migrateStickyToDaily() {
+  const flag = localStorage.getItem(STORAGE_PREFIX + "sticky-daily-migrated");
+  if (flag) return;
+
+  const today = _activeDate || new Date().toISOString().slice(0, 10);
+  const keysToMigrate: string[] = [];
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.includes(":block-global:sticky-") && key.endsWith(":body")) {
+      keysToMigrate.push(key);
+    }
+  }
+
+  for (const key of keysToMigrate) {
+    const value = localStorage.getItem(key);
+    if (!value || !value.trim()) continue;
+    const match = key.match(/:block-global:(sticky-[^:]+):body$/);
+    if (!match) continue;
+    const blockId = match[1];
+    const newKey = STORAGE_PREFIX + "session:" + today + ":" + blockId + ":body";
+    if (!localStorage.getItem(newKey)) {
+      localStorage.setItem(newKey, value);
+    }
+  }
+
+  localStorage.setItem(STORAGE_PREFIX + "sticky-daily-migrated", "1");
+}
+
 export function setActiveDate(date: string) {
   _activeDate = date;
 }

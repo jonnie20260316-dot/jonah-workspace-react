@@ -7,6 +7,7 @@ import { GearMenu } from "./components/GearMenu";
 import { RichTextToolbar } from "./components/RichTextToolbar";
 import { ToastContainer } from "./components/Toast";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { migrateStickyToDaily } from "./utils/storage";
 import { useTimerTick } from "./hooks/useTimerTick";
 import { useSyncBoot } from "./hooks/useSyncBoot";
 import { useGitQuit } from "./hooks/useGitQuit";
@@ -17,6 +18,9 @@ import { ShapePropertiesPanel } from "./components/ShapePropertiesPanel";
 import { TextPropertiesPanel } from "./components/TextPropertiesPanel";
 import { Minimap } from "./components/Minimap";
 import { FullscreenDashboard } from "./components/FullscreenDashboard";
+
+// Run once at module load — before any React render reads sticky fields
+migrateStickyToDaily();
 
 export default function App() {
   useTimerTick();
