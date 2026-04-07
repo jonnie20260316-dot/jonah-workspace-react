@@ -4,7 +4,7 @@ import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
 import { loadJSON, saveJSON } from "../utils/storage";
 
-type AIChatTab = "claude" | "chatgpt";
+type AIChatTab = "claude" | "chatgpt" | "gemini";
 
 interface AIChatBlockProps {
   block: Block;
@@ -64,7 +64,7 @@ export function AIChatBlock({ block }: AIChatBlockProps) {
           flexShrink: 0,
         }}
       >
-        {(["claude", "chatgpt"] as AIChatTab[]).map((t) => (
+        {(["claude", "chatgpt", "gemini"] as AIChatTab[]).map((t) => (
           <button
             key={t}
             onClick={() => switchTab(t)}
@@ -82,7 +82,9 @@ export function AIChatBlock({ block }: AIChatBlockProps) {
           >
             {t === "claude"
               ? pick("Claude 對話", "Claude")
-              : pick("ChatGPT 對話", "ChatGPT")}
+              : t === "chatgpt"
+              ? pick("ChatGPT 對話", "ChatGPT")
+              : pick("Gemini 對話", "Gemini")}
           </button>
         ))}
       </div>
@@ -113,6 +115,19 @@ export function AIChatBlock({ block }: AIChatBlockProps) {
             width: tab === "chatgpt" ? undefined : "100%",
             height: tab === "chatgpt" ? undefined : "100%",
             pointerEvents: tab === "chatgpt" ? "auto" : "none",
+          }}
+        />
+        <webview
+          src="https://gemini.google.com"
+          partition="persist:aichat"
+          style={{
+            flex: tab === "gemini" ? 1 : undefined,
+            border: "none",
+            visibility: tab === "gemini" ? "visible" : "hidden",
+            position: tab === "gemini" ? "relative" : "absolute",
+            width: tab === "gemini" ? undefined : "100%",
+            height: tab === "gemini" ? undefined : "100%",
+            pointerEvents: tab === "gemini" ? "auto" : "none",
           }}
         />
       </div>

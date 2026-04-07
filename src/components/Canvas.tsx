@@ -75,6 +75,13 @@ export function Canvas() {
 
   // Keyboard: Space = pan mode
   useEffect(() => {
+    const clearPanMode = () => {
+      spacePressedRef.current = false;
+      panStateRef.current = null;
+      delete document.body.dataset.panMode;
+      setSpaceOverride(null);
+    };
+
     // Check if focus is inside a text input, textarea, or contenteditable
     const isTextInputFocused = (): boolean => {
       const el = document.activeElement;
@@ -190,19 +197,24 @@ export function Canvas() {
 
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.code === "Space") {
-        spacePressedRef.current = false;
-        panStateRef.current = null;
-        delete document.body.dataset.panMode;
-        setSpaceOverride(null);
+        clearPanMode();
       }
     };
 
+    // Clear pan mode if window loses focus (e.g. Alt+Tab on Windows) — prevents stuck pan mode
+    const onWindowBlur = () => clearPanMode();
+    const onVisibilityChange = () => { if (document.hidden) clearPanMode(); };
+
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onWindowBlur);
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onWindowBlur);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
 

@@ -592,6 +592,8 @@ const panelStyle: React.CSSProperties = {
   borderRadius: "var(--radius-lg)",
   padding: "14px 16px",
   width: 248,
+  maxHeight: "calc(100vh - 80px)",
+  overflowY: "auto",
   boxShadow: "var(--shadow-overlay)",
   transformOrigin: "top right",
   animation: "gearEnter 260ms var(--ease-spring) forwards",
