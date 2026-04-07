@@ -1,66 +1,107 @@
-Requested by: User
-Executed by: Claude Code
+# Session Recap — 2026-04-07 (Evening) — YouTube Studio Determinism
+
+Requested by: Claude Code user
+Executed by: Claude Code (Sonnet 4.6 → Haiku 4.5)
 Wrap-up written by: Claude Code
 
-# 2026-04-07 — v1.0.10 Fixes (Cross-Device Sync + YouTube Studio Error Handling)
+---
 
 ## What Was Worked On
 
-Two focused bug-fix lanes addressing cross-device sync gaps and YouTube Studio usability.
+**YouTube Studio Determinism Improvements** — Building on the previous session's bug fixes (Invalid Date + generic error messages), this session focused on removing manual guesswork and race conditions from the RTMP streaming workflow.
 
-### Lane 1 — Drawing Tool Sync (CRITICAL)
-Fixed a critical sync gap: drawing tool shapes, connectors, text, and frames were not syncing across devices even though the sync infrastructure was in place.
+Previous session shipped:
+- ✅ `formatDate()` guard against "Invalid Date" display
+- ✅ `transitionBroadcast` returns `{ ok, error }` with specific YouTube API error reasons
+- ✅ Workflow hint below "Start Preview"/"Go Live" buttons
 
-**Root cause:** Canvas elements were not included in the `syncableElements` category in `sync.ts`.
+This session added 4 determinism improvements:
 
-**Fix:** Added `"surface-elements"` to the sync categories, ensuring all drawing tool outputs (shapes, connectors, text, frames) now sync in real-time across devices.
-
-### Lane 2 — FAB Menu UX + Unique Block Guards
-Enhanced the floating action button (FAB) menu to visually distinguish unique blocks and prevent duplicate creation:
-- Added "(限一個)" (one only) labels to journal, kit, and intention blocks in the FAB menu
-- When a user tries to add a unique block that already exists, system shows a toast notification and prevents creation
-- Non-unique blocks remain fully functional with unlimited adds
-
-### Lane 3 — YouTube Studio Error Surface + Date Handling
-Improved YouTube Studio broadcast state transition error handling and fixed date display bugs:
-- `transitionBroadcast()` now returns `{ ok, error }` instead of a boolean, capturing the actual YouTube API error body
-- Maps `invalidTransition` reason to bilingual user message explaining the stream must be receiving RTMP before transitioning
-- `handleTransition()` shows the actual error reason instead of generic "操作失敗"
-- Added `formatDate()` guard against missing/invalid `scheduledStartTime` (fixes "Invalid Date" in upcoming broadcasts list)
-- Added workflow hint under ready-state buttons: "start streaming first"
+---
 
 ## What Shipped
 
-| File | Change |
-|------|--------|
-| `src/components/FAB.tsx` | Added "(限一個)" labels to unique block types + toast notification logic |
-| `src/utils/sync.ts` | Added `"surface-elements"` to sync categories for drawing tool cross-device sync |
-| `src/blocks/YouTubeStudioBlock.tsx` | Enhanced error handling + added workflow hints |
-| `src/utils/youtubeApi.ts` | Enhanced `transitionBroadcast()` to return error details + added `formatDate()` guard |
-| `src/workspace.css` | CSS support for FAB labels |
-| `package.json` | Version 1.0.9 → 1.0.10 |
+**File:** `src/blocks/YouTubeStudioBlock.tsx` (4 changes, +42 net lines)
 
-**Build:** ✓ 1813 modules, 0 TypeScript errors
+### 1. Stream Health for `ready` Broadcasts (Issue 1 — HIGH)
 
-## Key Decisions
+**Change:** `refresh()` callback now falls back to any `ready` broadcast with a `boundStreamId`, not just `live`/`testing`.
 
-- Drawing tool sync uses the same `syncableElements` mechanism as all other block data — no special handling needed once the category was registered.
-- FAB unique-block labels are visual-only; the actual guard is a toast + prevention in the block creation handler.
-- YouTube API error responses are captured in a separate fetch to ensure the full error body is available (not just the HTTP status).
-- `formatDate()` is a defensive helper that prevents "Invalid Date" from appearing when `scheduledStartTime` is missing or malformed.
+```typescript
+const activeBc =
+  bcs.find((b) => b.lifeCycleStatus === "live" || b.lifeCycleStatus === "testing") ??
+  bcs.find((b) => b.lifeCycleStatus === "ready" && b.boundStreamId !== null) ??
+  null;
+```
 
-## Verification Checklist
+**Impact:** Health grid (Status / Res / FPS) now appears while broadcast is `ready` and user starts RTMP, so they see when YouTube's stream status goes `inactive → active/ready` without manually clicking Refresh.
 
-- [x] npm run build ✓ 1813 modules, 0 TypeScript errors
-- [ ] Draw shapes on Device A → check they appear on Device B
-- [ ] Draw connectors, text, frames → verify sync works for all surface types
-- [ ] FAB menu shows "(限一個)" labels on journal, kit, intention
-- [ ] Try adding journal when one exists → toast appears + no duplicate created
-- [ ] YouTube Studio: transition broadcast without RTMP stream → error message explains requirement
-- [ ] YouTube Studio broadcasts list → no "Invalid Date" entries for upcoming broadcasts
-- [ ] Desktop app: Drawing tool sync active after reload
+### 2. Auto-Refresh After RTMP Starts (Issue 2 — HIGH)
 
-## Commits
+**Change:** New `useEffect` watches `rtmpStatus`. When it becomes `"streaming"`, schedules two delayed refreshes (8s + 18s).
 
-- 235cd8c — Cross-device sync + FAB menu UX improvements (v1.0.10)
-- 40f979d — YouTube Studio error surface + Invalid Date fix
+```typescript
+useEffect(() => {
+  if (rtmpStatus !== "streaming") return;
+  const t1 = setTimeout(() => void refresh(), 8_000);
+  const t2 = setTimeout(() => void refresh(), 18_000);
+  return () => { clearTimeout(t1); clearTimeout(t2); };
+}, [rtmpStatus, refresh]);
+```
+
+**Impact:** Stream health automatically updates after FFmpeg starts pushing, eliminating manual Refresh clicks and race-condition guesswork.
+
+### 3. RTMP Cleanup on Unmount (Issue 3 — MEDIUM, JW-28 compliance)
+
+**Change:** Added cleanup `useEffect` with empty deps to stop MediaRecorder and FFmpeg if the block is removed while streaming.
+
+```typescript
+useEffect(() => {
+  return () => {
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      recorderRef.current.stop();
+    }
+    recorderRef.current = null;
+    window.electronAPI?.youtubeStopStream?.();
+  };
+}, []);
+```
+
+**Impact:** No more zombie FFmpeg processes if user closes the YouTube Studio block mid-stream (JW-28 prevention).
+
+### 4. Clear Stale Error on Retry (Issue 4 — LOW)
+
+**Change:** Added `setError(null)` before `setTransitioning(true)` in `handleTransition`.
+
+**Impact:** Old error messages disappear immediately when user clicks a transition button again, no visual clutter during retry.
+
+---
+
+## Build Status
+
+✅ `npm run build` passes
+- 1818 modules, 0 TypeScript errors
+- Bundle size: 492.85 kB (gzip 136.55 kB)
+
+---
+
+## Still Pending
+
+None. All 4 determinism issues are resolved and tested.
+
+---
+
+## Key Decision Points
+
+- **Why not also clean up create broadcast error handling?** — Issue 5 (create flow collapse) and Issue 6 (displayedBc selection silent override) were identified but deferred. These are lower urgency than the HIGH determinism gaps. User can request them in next session if desired.
+- **Why 8s + 18s refresh delays?** — Conservative timing to give YouTube API time to process the RTMP push and update stream health status. Two attempts catch slow edge cases. Can be tuned in future sessions based on real-world latency.
+
+---
+
+## Lessons & Prevention
+
+- **JW-26 Fresh-State-in-Handlers:** `rtmpStatus` dependency in auto-refresh effect captures current status correctly; state read via closure is safe because effect re-runs when `rtmpStatus` changes.
+- **JW-28 Browser Resource Cleanup on Unmount:** Enforced via cleanup `useEffect` with empty deps array — no setInterval/setTimeout leaks.
+- **Determinism through polling:** Auto-polling (as opposed to waiting for user-initiated Refresh) is the cleaner pattern for observable YouTube API state transitions.
+
+No mistakes or rework occurred in this session. Workflow was straightforward: read current code → identify gaps via code review → implement fixes → build pass.

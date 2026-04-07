@@ -120,6 +120,17 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
     return unsub;
   }, []);
 
+  // Cleanup RTMP on unmount (JW-28)
+  useEffect(() => {
+    return () => {
+      if (recorderRef.current && recorderRef.current.state !== "inactive") {
+        recorderRef.current.stop();
+      }
+      recorderRef.current = null;
+      window.electronAPI?.youtubeStopStream?.();
+    };
+  }, []);
+
   // Listen for RTMP stream status from FFmpeg
   useEffect(() => {
     if (!window.electronAPI?.onYoutubeStreamStatus) return;
@@ -149,8 +160,11 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
       const bcs = await listBroadcasts();
       setBroadcasts(bcs);
 
-      // Get stream health for the first active/testing broadcast
-      const activeBc = bcs.find((b) => b.lifeCycleStatus === "live" || b.lifeCycleStatus === "testing");
+      // Get stream health for the first active/testing broadcast, falling back to ready broadcasts
+      const activeBc =
+        bcs.find((b) => b.lifeCycleStatus === "live" || b.lifeCycleStatus === "testing") ??
+        bcs.find((b) => b.lifeCycleStatus === "ready" && b.boundStreamId !== null) ??
+        null;
       if (activeBc?.boundStreamId) {
         const health = await getStreamHealth(activeBc.boundStreamId);
         setStreamHealth(health);
@@ -175,6 +189,14 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
     };
   }, [authed, refresh]);
 
+  // Auto-refresh stream health after RTMP starts pushing
+  useEffect(() => {
+    if (rtmpStatus !== "streaming") return;
+    const t1 = setTimeout(() => void refresh(), 8_000);
+    const t2 = setTimeout(() => void refresh(), 18_000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [rtmpStatus, refresh]);
+
   const handleConnect = useCallback(() => {
     if (!isElectron) {
       setError(pick("需要 Electron 桌面版", "Requires Electron desktop app"));
@@ -196,6 +218,7 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
       const confirmed = window.confirm(pick("確定要結束直播？", "End the live stream?"));
       if (!confirmed) return;
     }
+    setError(null);
     setTransitioning(true);
     try {
       const result = await transitionBroadcast(id, status);
