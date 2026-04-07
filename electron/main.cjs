@@ -362,6 +362,20 @@ ipcMain.handle('fs:file-exists', async (_event, dirPath, filename) => {
   catch { return false; }
 });
 
+ipcMain.handle('fs:list-dir', async (_event, dirPath) => {
+  try {
+    if (!fs.existsSync(dirPath)) return [];
+    return fs.readdirSync(dirPath)
+      .filter(name => !name.startsWith('.'))
+      .map(name => {
+        const full = path.join(dirPath, name);
+        const stat = fs.statSync(full);
+        return { name, size: stat.size, mtime: stat.mtimeMs };
+      })
+      .sort((a, b) => b.mtime - a.mtime);
+  } catch { return []; }
+});
+
 // ─── IPC: Storage backup (insurance against localStorage loss on quit) ────────
 const BACKUP_FILENAME = 'jonah-workspace-backup.json';
 

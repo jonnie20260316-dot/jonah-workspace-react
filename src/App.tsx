@@ -15,6 +15,7 @@ import { FitButton } from "./components/FitButton";
 import { ToolBar } from "./components/ToolBar";
 import { ShapePropertiesPanel } from "./components/ShapePropertiesPanel";
 import { Minimap } from "./components/Minimap";
+import { FullscreenDashboard } from "./components/FullscreenDashboard";
 
 export default function App() {
   useTimerTick();
@@ -39,6 +40,7 @@ export default function App() {
         <Minimap />
         <ToolBar />
         <ShapePropertiesPanel />
+        <FullscreenDashboard />
       </div>
     </ErrorBoundary>
   );

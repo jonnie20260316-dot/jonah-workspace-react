@@ -19,6 +19,8 @@ import { PromptedNotesBlock } from "./PromptedNotesBlock";
 import { VideoCaptureBlock } from "./VideoCaptureBlock";
 import { YouTubeStudioBlock } from "./YouTubeStudioBlock";
 import { AIChatBlock } from "./AIChatBlock";
+import { BrainBlock } from "./BrainBlock";
+import { LabBlock } from "./LabBlock";
 import type { Block, BlockType } from "../types";
 
 export interface BlockTypeConfig {
@@ -194,6 +196,22 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     subtitle: "Claude & ChatGPT",
     zhSubtitle: "Claude 與 ChatGPT",
     size: { w: 880, h: 660 },
+  },
+  brain: {
+    component: BrainBlock,
+    title: "Brain",
+    zhTitle: "知識中心",
+    subtitle: "Briefs · Memory · Skills · Cron",
+    zhSubtitle: "簡報・記憶・技能・排程",
+    size: { w: 820, h: 560 },
+  },
+  lab: {
+    component: LabBlock,
+    title: "Lab",
+    zhTitle: "實驗室",
+    subtitle: "Research · Ideas · Builds",
+    zhSubtitle: "研究・想法・構建",
+    size: { w: 820, h: 520 },
   },
 };
 

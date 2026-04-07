@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readFile: (dirPath, filename) => ipcRenderer.invoke('fs:read-file', dirPath, filename),
   writeFile: (dirPath, filename, content) => ipcRenderer.invoke('fs:write-file', dirPath, filename, content),
   fileExists: (dirPath, filename) => ipcRenderer.invoke('fs:file-exists', dirPath, filename),
+  listDir: (dirPath) => ipcRenderer.invoke('fs:list-dir', dirPath),
 
   // ── Screen capture source picker ───────────────────────────────────────────
   getScreenSources: () => ipcRenderer.invoke('screen:get-sources'),

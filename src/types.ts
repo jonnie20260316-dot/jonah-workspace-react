@@ -20,7 +20,9 @@ export type BlockType =
   | "prompted-notes"
   | "video-capture"
   | "youtube-studio"
-  | "ai-chat";
+  | "ai-chat"
+  | "brain"
+  | "lab";
 
 export interface Block {
   id: string;
@@ -196,6 +198,7 @@ declare global {
       readFile: (dirPath: string, filename: string) => Promise<string | null>;
       writeFile: (dirPath: string, filename: string, content: string) => Promise<boolean>;
       fileExists: (dirPath: string, filename: string) => Promise<boolean>;
+      listDir: (dirPath: string) => Promise<{ name: string; size: number; mtime: number }[]>;
       // Screen capture
       getScreenSources: () => Promise<{ id: string; name: string; thumbnail: string }[]>;
       selectScreenSource: (id: string) => Promise<void>;

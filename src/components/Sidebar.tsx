@@ -38,6 +38,7 @@ const DEFAULT_CATEGORY_ORDER: BlockType[] = [
   "journal", "kit", "intention", "tasks", "projects", "timer",
   "intel", "threads", "threads-intel", "prompted-notes", "content",
   "sticky", "swipe", "video", "video-capture", "spotify", "metrics", "dashboard",
+  "brain", "lab",
 ];
 
 function loadCategoryOrder(): BlockType[] {
