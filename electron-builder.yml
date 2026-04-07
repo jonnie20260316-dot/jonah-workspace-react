@@ -43,15 +43,17 @@ mac:
 
 win:
   target:
-    - target: nsis
+    - target: zip
       arch:
         - x64
-  icon: build/icon.png
+  signAndEditExecutable: false
+  # icon: build/icon.png  # temporarily disabled for Apple Silicon builds (rcedit requires Wine/x86)
+  # TODO: Add back portable, nsis, and icon when building on Windows, or use Docker/CI for cross-platform builds
 
-nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true
-  createDesktopShortcut: true
+# nsis:  # disabled for cross-platform builds on Apple Silicon
+#   oneClick: false
+#   allowToChangeInstallationDirectory: true
+#   createDesktopShortcut: true
 
 publish:
   provider: github
