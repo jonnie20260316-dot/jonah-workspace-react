@@ -257,12 +257,15 @@ export async function getStreamHealth(streamId: string): Promise<YTStreamHealth 
 
 interface YTBroadcastInsertResponse {
   id: string;
+  status?: {
+    privacyStatus?: string;
+  };
 }
 
 export async function createBroadcast(
   title: string,
   privacyStatus: "public" | "private" | "unlisted"
-): Promise<string | null> {
+): Promise<{ id: string; privacyStatus: string } | null> {
   const data = await ytFetch<YTBroadcastInsertResponse>(
     `/liveBroadcasts?part=snippet,status`,
     {
@@ -279,7 +282,8 @@ export async function createBroadcast(
       }),
     }
   );
-  return data?.id ?? null;
+  if (!data) return null;
+  return { id: data.id, privacyStatus: data.status?.privacyStatus ?? privacyStatus };
 }
 
 interface YTStreamInsertResponse {

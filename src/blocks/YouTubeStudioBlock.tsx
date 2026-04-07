@@ -241,8 +241,35 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
     setCreating(true);
     setError(null);
     try {
-      const broadcastId = await createBroadcast(createTitle.trim(), createPrivacy);
-      if (!broadcastId) throw new Error("broadcast creation failed");
+      const result = await createBroadcast(createTitle.trim(), createPrivacy);
+      if (!result) throw new Error("broadcast creation failed");
+      const { id: broadcastId, privacyStatus: actualPrivacy } = result;
+
+      // YouTube sometimes silently overrides the requested privacy — attempt to fix it
+      if (actualPrivacy !== createPrivacy) {
+        console.warn(`YouTube overrode privacy: requested "${createPrivacy}", got "${actualPrivacy}" — attempting fix`);
+        const fixResult = await updateBroadcastPrivacy(
+          {
+            id: broadcastId,
+            title: createTitle.trim(),
+            description: "",
+            scheduledStartTime: new Date().toISOString(),
+            thumbnail: "",
+            lifeCycleStatus: "created",
+            privacyStatus: actualPrivacy,
+            boundStreamId: null,
+            concurrentViewers: null,
+          },
+          createPrivacy
+        );
+        if (!fixResult.ok) {
+          setError(pick(
+            `直播已建立，但 YouTube 將隱私設為「私人」(${fixResult.error ?? "平台限制"})`,
+            `Broadcast created, but YouTube set privacy to "private" (${fixResult.error ?? "platform restriction"})`
+          ));
+        }
+      }
+
       const streamInfo = await createLiveStream(createTitle.trim());
       if (!streamInfo) throw new Error("stream creation failed");
       await bindBroadcast(broadcastId, streamInfo.streamId);
