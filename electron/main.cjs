@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, WebContentsView, ipcMain, dialog, session, desktopCapturer, systemPreferences, shell } = require('electron');
+const { app, BrowserWindow, BrowserView, ipcMain, dialog, session, desktopCapturer, systemPreferences, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
 const path = require('path');
@@ -40,6 +40,11 @@ try {
 }
 
 const isDev = !app.isPackaged;
+
+// POSIX single-quote escaping — makes any path safe for shell interpolation
+function sq(str) {
+  return "'" + String(str).replace(/'/g, "'\\''") + "'";
+}
 
 // ─── Chromium flags — must be set before app.whenReady() ─────────────────────
 // Prevents navigator.webdriver=true so sites like Spotify don't detect Electron
@@ -88,7 +93,7 @@ autoUpdater.autoInstallOnAppQuit = false;
 autoUpdater.forceDevUpdateConfig = true; // allow updater to run in unpackaged/dev context
 
 let mainWindow = null;
-let spotifyView = null;
+let spotifyBV = null; // BrowserView for Spotify player
 
 function sendUpdaterStatus(payload) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -136,18 +141,18 @@ function runCustomMacInstaller() {
 
   const script = `
     set -e
-    mkdir -p "${tmpDir}"
-    unzip -q "${downloadedFilePath}" -d "${tmpDir}"
-    NEW_APP=$(find "${tmpDir}" -name "*.app" -maxdepth 1 | head -1)
+    mkdir -p ${sq(tmpDir)}
+    unzip -q ${sq(downloadedFilePath)} -d ${sq(tmpDir)}
+    NEW_APP=$(find ${sq(tmpDir)} -name "*.app" -maxdepth 1 | head -1)
     if [ -z "$NEW_APP" ]; then
-      rm -rf "${tmpDir}"
+      rm -rf ${sq(tmpDir)}
       echo "ERROR: no .app found in zip" >&2
       exit 1
     fi
-    ditto "$NEW_APP" "${appPath}"
-    xattr -dr com.apple.quarantine "${appPath}" 2>/dev/null || true
-    rm -rf "${tmpDir}"
-    open "${appPath}"
+    ditto "$NEW_APP" ${sq(appPath)}
+    xattr -dr com.apple.quarantine ${sq(appPath)} 2>/dev/null || true
+    rm -rf ${sq(tmpDir)}
+    open ${sq(appPath)}
   `;
 
   exec(script, (err) => {
@@ -240,6 +245,7 @@ async function createWindow() {
 
   // Enable getDisplayMedia() in renderer — use pre-selected source from picker
   let selectedSourceId = null;
+  let validSourceIds = new Set();
 
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
     desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
@@ -289,6 +295,7 @@ async function createWindow() {
       types: ['screen', 'window'],
       thumbnailSize: { width: 320, height: 180 },
     });
+    validSourceIds = new Set(sources.map((s) => s.id));
     return sources.map((s) => ({
       id: s.id,
       name: s.name,
@@ -297,6 +304,10 @@ async function createWindow() {
   });
 
   ipcMain.handle('screen:select-source', (_event, id) => {
+    if (typeof id !== 'string' || !validSourceIds.has(id)) {
+      console.warn('[screen] Rejected unknown source id:', id);
+      return;
+    }
     selectedSourceId = id;
   });
 
@@ -373,40 +384,71 @@ ipcMain.handle('app:open-devtools', () => {
   mainWindow.webContents.openDevTools();
 });
 
-// Attach a WebContentsView (full renderer, supports DRM) over the block bounds
+const SPOTIFY_ALLOWED_ORIGINS = [
+  'https://open.spotify.com',
+  'https://accounts.spotify.com',
+  'https://www.spotify.com',
+];
+
+function sanitizeBounds(raw) {
+  const x = Number(raw?.x); const y = Number(raw?.y);
+  const width = Number(raw?.width); const height = Number(raw?.height);
+  if ([x, y, width, height].some((n) => !isFinite(n) || n < 0 || n > 32767)) return null;
+  return { x: Math.round(x), y: Math.round(y), width: Math.round(width), height: Math.round(height) };
+}
+
+// Attach a BrowserView (full renderer, supports DRM) over the block bounds
 ipcMain.handle('spotify:attach', (_event, url, bounds) => {
-  if (!mainWindow) return;
-  if (!spotifyView) {
-    spotifyView = new WebContentsView({
-      webPreferences: {
-        partition: 'persist:spotify',
-        plugins: true,
-        nodeIntegration: false,
-        contextIsolation: true,
-      },
-    });
-    mainWindow.contentView.addChildView(spotifyView);
-    spotifyView.webContents.loadURL(url);
-    spotifyView.webContents.on('dom-ready', () => {
-      spotifyView?.webContents.executeJavaScript(`
-        try { Object.defineProperty(navigator, 'webdriver', { get: () => false }); } catch(e) {}
-        if (!window.chrome) window.chrome = { runtime: {} };
-      `).catch(() => {});
-    });
+  try {
+    if (!mainWindow) return;
+    if (!spotifyBV) {
+      let parsedUrl;
+      try { parsedUrl = new URL(url); } catch { console.warn('[Spotify] Invalid URL:', url); return; }
+      if (!SPOTIFY_ALLOWED_ORIGINS.some((o) => parsedUrl.origin === new URL(o).origin)) {
+        console.warn('[Spotify] Blocked non-allowlisted URL:', url);
+        return;
+      }
+      spotifyBV = new BrowserView({
+        webPreferences: {
+          partition: 'persist:spotify',
+          plugins: true,
+          nodeIntegration: false,
+          contextIsolation: true,
+        },
+      });
+      mainWindow.addBrowserView(spotifyBV);
+      spotifyBV.webContents.loadURL(url);
+      spotifyBV.webContents.on('dom-ready', () => {
+        spotifyBV?.webContents.executeJavaScript(`
+          try { Object.defineProperty(navigator, 'webdriver', { get: () => false }); } catch(e) {}
+          if (!window.chrome) window.chrome = { runtime: {} };
+        `).catch(() => {});
+      });
+      console.log('[Spotify] BrowserView created, loading', url);
+    }
+    const b = sanitizeBounds(bounds);
+    if (!b) { console.warn('[Spotify] Invalid bounds:', bounds); return; }
+    console.log('[Spotify] setBounds', b);
+    spotifyBV.setBounds((b.width > 0 && b.height > 0) ? b : { x: 0, y: 0, width: 0, height: 0 });
+  } catch (err) {
+    console.error('[Spotify] attach error:', err.message);
   }
-  const b = { x: Math.round(bounds.x), y: Math.round(bounds.y), width: Math.round(bounds.width), height: Math.round(bounds.height) };
-  spotifyView.setBounds((b.width > 0 && b.height > 0) ? b : { x: 0, y: 0, width: 0, height: 0 });
 });
 
 ipcMain.handle('spotify:detach', () => {
-  if (spotifyView && mainWindow) {
-    mainWindow.contentView.removeChildView(spotifyView);
-    spotifyView = null;
+  if (spotifyBV && mainWindow) {
+    mainWindow.removeBrowserView(spotifyBV);
+    spotifyBV.webContents.destroy();
+    spotifyBV = null;
+    console.log('[Spotify] BrowserView detached');
   }
 });
 
 ipcMain.handle('spotify:reload', (_event, url) => {
-  if (spotifyView && url) spotifyView.webContents.loadURL(url);
+  if (spotifyBV && url) {
+    spotifyBV.webContents.loadURL(url);
+    console.log('[Spotify] reload', url);
+  }
 });
 
 ipcMain.handle('spotify:open-login', () => {

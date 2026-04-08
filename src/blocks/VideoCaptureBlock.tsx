@@ -312,6 +312,9 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     </button>
   );
 
+  // eslint-disable-next-line react-hooks/refs
+  const pipStream = pipStreamRef.current;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
       {/* Screen recording permission banner — shown after app update resets TCC permissions */}
@@ -575,7 +578,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
             onMouseDown={handlePipDragStart}
             onTouchStart={handlePipDragStart}
           >
-            <PipPreviewVideo stream={pipStreamRef.current} />
+            <PipPreviewVideo stream={pipStream} />
           </div>
         )}
 

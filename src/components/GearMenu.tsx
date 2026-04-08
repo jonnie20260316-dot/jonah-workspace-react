@@ -12,6 +12,15 @@ import { SelectiveSyncModal } from "./SelectiveSyncModal";
 import { ConflictResolutionModal } from "./ConflictResolutionModal";
 import type { Lang, SyncPayload, ConflictInfo, UpdateStatus } from "../types";
 
+function timeAgoShort(iso: string | null): string {
+  if (!iso) return pick("從未", "Never");
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60) return pick(`${diff}秒前`, `${diff}s ago`);
+  const mins = Math.floor(diff / 60);
+  if (mins < 60) return pick(`${mins}分前`, `${mins}m ago`);
+  return pick(`${Math.floor(mins / 60)}小時前`, `${Math.floor(mins / 60)}h ago`);
+}
+
 function storageUsageKB(): number {
   let total = 0;
   for (let i = 0; i < localStorage.length; i++) {
@@ -170,15 +179,6 @@ export function GearMenu() {
       alert(pick("備份中沒有找到便利貼資料", "No sticky note data found in backup"));
     }
   };
-
-  function timeAgoShort(iso: string | null): string {
-    if (!iso) return pick("從未", "Never");
-    const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-    if (diff < 60) return pick(`${diff}秒前`, `${diff}s ago`);
-    const mins = Math.floor(diff / 60);
-    if (mins < 60) return pick(`${mins}分前`, `${mins}m ago`);
-    return pick(`${Math.floor(mins / 60)}小時前`, `${Math.floor(mins / 60)}h ago`);
-  }
 
   const usedKB = storageUsageKB();
   const estimatedMaxKB = 5120; // 5 MB typical localStorage limit

@@ -29,6 +29,8 @@ interface ViewportStore {
   animateToFrame: (frame: SurfaceElement, onDone?: () => void) => void;
 }
 
+let _animRafId: number | null = null;
+
 export const useViewportStore = create<ViewportStore>((set, get) => ({
   viewport: normaliseViewport(loadJSON("viewport", { x: 700, y: 120 })),
   boardSize: loadJSON("board-size", { w: 20000, h: 15000 }),
@@ -109,6 +111,10 @@ export const useViewportStore = create<ViewportStore>((set, get) => ({
   },
 
   animateToFrame: (frame, onDone) => {
+    if (_animRafId !== null) {
+      cancelAnimationFrame(_animRafId);
+      _animRafId = null;
+    }
     const startVp = { ...get().viewport };
     const padding = 80;
     const bboxW = frame.w + padding * 2;
@@ -137,12 +143,13 @@ export const useViewportStore = create<ViewportStore>((set, get) => ({
       };
       set({ viewport: newVp });
       if (t < 1) {
-        requestAnimationFrame(tick);
+        _animRafId = requestAnimationFrame(tick);
       } else {
+        _animRafId = null;
         saveJSON("viewport", newVp);
         onDone?.();
       }
     }
-    requestAnimationFrame(tick);
+    _animRafId = requestAnimationFrame(tick);
   },
 }));

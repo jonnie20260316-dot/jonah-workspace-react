@@ -15,6 +15,7 @@ interface YouTubeStudioBlockProps {
   block: Block;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
   useLang();
   const [error, setError] = useState<string | null>(null);

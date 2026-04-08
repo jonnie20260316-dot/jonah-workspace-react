@@ -48,6 +48,10 @@ function relativeTime(ms: number): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+function isRecentlyAlive(lastBeat: number): boolean {
+  return lastBeat > 0 && (Date.now() - lastBeat) < 2 * 60 * 60 * 1000;
+}
+
 function EmptyState({ msg }: { msg: string }) {
   return <div style={{ color: "#bbb", fontSize: "12px", fontStyle: "italic", padding: "20px 0", textAlign: "center" }}>{msg}</div>;
 }
@@ -124,7 +128,7 @@ function AgentsTab() {
   if (state === null) return <EmptyState msg="Loading…" />;
 
   const lastBeat = state.heartbeatTimestamp ? new Date(state.heartbeatTimestamp).getTime() : 0;
-  const mainOnline = lastBeat > 0 && (Date.now() - lastBeat) < 2 * 60 * 60 * 1000;
+  const mainOnline = isRecentlyAlive(lastBeat);
 
   return (
     <div style={PANEL}>

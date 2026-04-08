@@ -48,6 +48,7 @@ export function TextPropertiesPanel() {
     if (!el) return;
     const { zCounter } = useBlockStore.getState();
     const { boardSize } = useViewportStore.getState();
+    // eslint-disable-next-line react-hooks/purity
     const newId = `sticky-${Date.now()}`;
     const w = 440;
     const h = 330;

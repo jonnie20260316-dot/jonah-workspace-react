@@ -4,6 +4,7 @@ interface StreamStore {
   /** The active MediaStream from VideoCaptureBlock (screen/camera/PiP composite) */
   activeStream: MediaStream | null;
   setActiveStream: (stream: MediaStream | null) => void;
+  stopActiveStream: () => void;
   // Streaming state (for FloatingStreamControls)
   isStreaming: boolean;
   setIsStreaming: (v: boolean) => void;
@@ -33,6 +34,11 @@ interface StreamStore {
 export const useStreamStore = create<StreamStore>((set) => ({
   activeStream: null,
   setActiveStream: (stream) => set({ activeStream: stream }),
+  stopActiveStream: () => {
+    const stream = useStreamStore.getState().activeStream;
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    set({ activeStream: null });
+  },
   isStreaming: false,
   setIsStreaming: (v) => set({ isStreaming: v }),
   captureMode: null,

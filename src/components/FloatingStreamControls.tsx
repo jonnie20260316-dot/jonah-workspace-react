@@ -9,11 +9,6 @@ export function FloatingStreamControls() {
   const micMuted = useStreamStore((s) => s.micMuted);
   const toggleMicMute = useStreamStore((s) => s.toggleMicMute);
   const openSourcePicker = useStreamStore((s) => s.openSourcePicker);
-  const showSourcePicker = useStreamStore((s) => s.showSourcePicker);
-  const screenSources = useStreamStore((s) => s.screenSources);
-  const cameras = useStreamStore((s) => s.cameras);
-  const pickSource = useStreamStore((s) => s.pickSource);
-  const closeSourcePicker = useStreamStore((s) => s.closeSourcePicker);
 
   if (!isStreaming) return null;
 

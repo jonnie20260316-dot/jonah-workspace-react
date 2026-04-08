@@ -89,47 +89,28 @@ export function AIChatBlock({ block }: AIChatBlockProps) {
         ))}
       </div>
 
-      {/* Dual webview — both rendered, inactive hidden (JW-38: visibility not display) */}
+      {/* All webviews rendered, inactive hidden (JW-38: visibility not display) */}
       <div style={{ flex: 1, overflow: "hidden", borderRadius: "4px", display: "flex", position: "relative" }}>
-        <webview
-          src="https://claude.ai"
-          partition="persist:aichat"
-          style={{
-            flex: tab === "claude" ? 1 : undefined,
-            border: "none",
-            visibility: tab === "claude" ? "visible" : "hidden",
-            position: tab === "claude" ? "relative" : "absolute",
-            width: tab === "claude" ? undefined : "100%",
-            height: tab === "claude" ? undefined : "100%",
-            pointerEvents: tab === "claude" ? "auto" : "none",
-          }}
-        />
-        <webview
-          src="https://chatgpt.com"
-          partition="persist:aichat"
-          style={{
-            flex: tab === "chatgpt" ? 1 : undefined,
-            border: "none",
-            visibility: tab === "chatgpt" ? "visible" : "hidden",
-            position: tab === "chatgpt" ? "relative" : "absolute",
-            width: tab === "chatgpt" ? undefined : "100%",
-            height: tab === "chatgpt" ? undefined : "100%",
-            pointerEvents: tab === "chatgpt" ? "auto" : "none",
-          }}
-        />
-        <webview
-          src="https://gemini.google.com"
-          partition="persist:aichat"
-          style={{
-            flex: tab === "gemini" ? 1 : undefined,
-            border: "none",
-            visibility: tab === "gemini" ? "visible" : "hidden",
-            position: tab === "gemini" ? "relative" : "absolute",
-            width: tab === "gemini" ? undefined : "100%",
-            height: tab === "gemini" ? undefined : "100%",
-            pointerEvents: tab === "gemini" ? "auto" : "none",
-          }}
-        />
+        {([
+          { key: "claude",  src: "https://claude.ai" },
+          { key: "chatgpt", src: "https://chatgpt.com" },
+          { key: "gemini",  src: "https://gemini.google.com" },
+        ] as { key: AIChatTab; src: string }[]).map(({ key, src }) => (
+          <webview
+            key={key}
+            src={src}
+            partition="persist:aichat"
+            style={{
+              flex: tab === key ? 1 : undefined,
+              border: "none",
+              visibility: tab === key ? "visible" : "hidden",
+              position: tab === key ? "relative" : "absolute",
+              width: tab === key ? undefined : "100%",
+              height: tab === key ? undefined : "100%",
+              pointerEvents: tab === key ? "auto" : "none",
+            }}
+          />
+        ))}
       </div>
     </div>
   );

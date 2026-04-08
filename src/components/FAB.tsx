@@ -40,6 +40,7 @@ export function FAB() {
     const y = Math.max(20, Math.min(spawnY, boardSize.h - config.size.h - 20));
 
     addBlock({
+      // eslint-disable-next-line react-hooks/purity
       id: `${type}-${Date.now()}`,
       type,
       x,

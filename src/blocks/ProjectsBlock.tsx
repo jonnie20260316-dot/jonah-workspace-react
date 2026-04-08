@@ -28,6 +28,7 @@ export function ProjectsBlock({ block }: ProjectsBlockProps) {
 
   const handleAddCard = (column: keyof ProjectBoard) => {
     const card: ProjectCard = {
+      // eslint-disable-next-line react-hooks/purity
       id: crypto.randomUUID?.() ?? Date.now().toString(36) + Math.random().toString(36).slice(2),
       text: pick("新卡片", "New card"),
       description: "",
