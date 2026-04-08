@@ -22,7 +22,6 @@ interface SpotifyBlockProps {
 
 function toSpotifyEmbedUrl(raw: string): string {
   try {
-    // Handle spotify: URI scheme (e.g. spotify:track:4iV5W9uYEdYUVa79Axb7Rh)
     if (raw.startsWith("spotify:")) {
       const parts = raw.replace("spotify:", "").split(":");
       if (parts.length >= 2) {
@@ -35,7 +34,6 @@ function toSpotifyEmbedUrl(raw: string): string {
     if (!u.hostname.includes("spotify.com")) return "";
     if (u.pathname.startsWith("/embed/")) return raw;
 
-    // Strip /intl-xx/ prefix from localized URLs
     const path = u.pathname.replace(/^\/intl-[a-z]{2}(-[a-z]{2})?\//i, "/");
     return `https://open.spotify.com/embed${path}?utm_source=generator`;
   } catch {
@@ -55,7 +53,6 @@ function toSpotifyOpenUrl(raw: string): string {
     }
     const u = new URL(raw);
     if (!u.hostname.includes("spotify.com")) return "https://open.spotify.com";
-    // Strip /embed/ prefix if present
     const path = u.pathname
       .replace(/^\/embed\//, "/")
       .replace(/^\/intl-[a-z]{2}(-[a-z]{2})?\//i, "/");
@@ -68,7 +65,7 @@ function toSpotifyOpenUrl(raw: string): string {
 /**
  * Spotify block.
  * - Electron: webview with persist:spotify session — one-time login, remembered.
- * - Browser: iframe embed fallback (no login).
+ * - Browser: preset tabs + full-screen modal with Spotify embed.
  * Fields: spotify-presets:{blockId}, spotify-ui:{blockId}
  */
 export function SpotifyBlock({ block }: SpotifyBlockProps) {
@@ -84,7 +81,6 @@ export function SpotifyBlock({ block }: SpotifyBlockProps) {
   const [uiState, setUiState] = useState<SpotifyUiState>(() =>
     loadJSON(`spotify-ui:${block.id}`, { activeId: null, compact: false })
   );
-
   // Refresh presets when Spotify modal closes
   useEffect(() => {
     if (!spotifyModal.open) {
@@ -94,7 +90,6 @@ export function SpotifyBlock({ block }: SpotifyBlockProps) {
 
   const activeId = uiState.activeId || presets[0]?.id || null;
   const active = presets.find((p) => p.id === activeId) || presets[0] || null;
-  const compact = uiState.compact;
 
   const switchPreset = (id: string) => {
     const next = { ...uiState, activeId: id };
@@ -106,16 +101,13 @@ export function SpotifyBlock({ block }: SpotifyBlockProps) {
     switchPreset(preset.id);
     if (isElectron && webviewRef.current) {
       webviewRef.current.loadURL(toSpotifyOpenUrl(preset.url));
+    } else {
+      // Browser: open Spotify in a new tab
+      window.open(toSpotifyOpenUrl(preset.url), "_blank");
     }
   };
 
-  const toggleCompact = () => {
-    const next = { ...uiState, compact: !uiState.compact };
-    setUiState(next);
-    saveJSON(`spotify-ui:${block.id}`, next);
-  };
-
-  // Tabs bar (shared between Electron and browser modes)
+  // Tabs bar (shared)
   const tabsBar = (
     <div
       style={{
@@ -160,23 +152,6 @@ export function SpotifyBlock({ block }: SpotifyBlockProps) {
       >
         + {pick("新增", "Add")}
       </button>
-      {!isElectron && presets.length > 0 && (
-        <button
-          onClick={toggleCompact}
-          style={{
-            marginLeft: "auto",
-            padding: `${s(6)} ${s(8)}`,
-            fontSize: s(12),
-            backgroundColor: compact ? "#333" : "#ddd",
-            color: compact ? "#fff" : "#000",
-            border: "none",
-            borderRadius: "2px",
-            cursor: "pointer",
-          }}
-        >
-          {compact ? "\u2922" : "\u2921"}
-        </button>
-      )}
     </div>
   );
 
@@ -195,43 +170,41 @@ export function SpotifyBlock({ block }: SpotifyBlockProps) {
     );
   }
 
-  // Browser mode: iframe embed fallback
+  // Browser mode: preset tabs — clicking opens Spotify in a new tab
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: s(8) }}>
       {tabsBar}
-      <div
-        style={{
-          backgroundColor: "#f5f5f5",
-          borderRadius: "4px",
-          overflow: "hidden",
-        }}
-      >
-        {!active ? (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "200px",
-              color: "#999",
-              fontSize: s(14),
-            }}
-          >
-            {pick("點擊「＋新增」貼上 Spotify 連結", "Click '+ Add' to paste a Spotify link")}
-          </div>
-        ) : (
-          <iframe
-            key={active.id}
-            src={toSpotifyEmbedUrl(active.url)}
-            width="100%"
-            height={compact ? 152 : 352}
-            frameBorder={0}
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy"
-            style={{ borderRadius: "12px", display: "block" }}
-          />
-        )}
-      </div>
+      {!active ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "120px",
+            color: "#999",
+            fontSize: s(14),
+          }}
+        >
+          {pick("點擊「＋新增」貼上 Spotify 連結", "Click '+ Add' to paste a Spotify link")}
+        </div>
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px",
+            color: "#666",
+            fontSize: s(13),
+            textAlign: "center",
+          }}
+        >
+          {pick(
+            "點擊上方標籤在新分頁中開啟 Spotify",
+            "Click a tab above to open Spotify in a new tab"
+          )}
+        </div>
+      )}
     </div>
   );
 }

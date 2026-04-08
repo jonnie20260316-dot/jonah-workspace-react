@@ -5,9 +5,9 @@ Newest sessions at the top.
 
 ---
 
-## 2026-04-08 (late evening) | Spotify Block — Persistent Login via Webview
+## 2026-04-08 (late evening) | Spotify Block — Persistent Login (Final)
 
-Switched SpotifyBlock from iframe embeds to Electron webview with `persist:spotify` session. Users log into Spotify once, session persists across app restarts. Preset tabs navigate within webview. 3 files, +45 lines. Build ✓ 1820 modules. See history/recaps/2026-04-08-spotify-login-feature.md.
+Dual-mode Spotify block: Electron webview with `persist:spotify` (persistent login) + browser preset tabs opening new tabs. Iterated from webview-only → fullscreen modal → environment-aware rendering. Lessons: clarify environment upfront, visual verify before marking done. 1 file net change (SpotifyBlock.tsx). Build ✓ 1827 modules. See history/recaps/2026-04-08-spotify-final.md.
 
 ## 2026-04-08 (late evening) | Collapse/Pin Stops Streaming + PiP Auto-Reappear After Source Switch — (1) VideoCaptureBlock + YouTubeStudioBlock: added useEffect watching `block.collapsed`/`block.pinned` to call `stopStream()` / `stopRtmpStream()` — streaming stops immediately on collapse/pin, no background audio/RTMP. (2) PiP fix: removed `setPipEnabled(false)` calls from "ended" event handler and catch block in `startPipCamera` — source switches no longer permanently disable PiP toggle. Removed `setPipEnabled` from deps array. Result: PiP overlay reappears automatically after source switch without user re-enabling. 2 files, +8 lines. Build ✓ 1820 modules, 0 TypeScript errors. See history/recaps/2026-04-08-collapse-pin-pip-fix.md.
 
