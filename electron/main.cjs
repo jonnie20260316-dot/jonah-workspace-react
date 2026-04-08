@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, session, desktopCapturer, systemPreferences, shell } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, dialog, session, desktopCapturer, systemPreferences, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
 const path = require('path');
@@ -88,7 +88,7 @@ autoUpdater.autoInstallOnAppQuit = false;
 autoUpdater.forceDevUpdateConfig = true; // allow updater to run in unpackaged/dev context
 
 let mainWindow = null;
-let spotifyPlayerWin = null;
+let spotifyView = null;
 
 function sendUpdaterStatus(payload) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -373,37 +373,43 @@ ipcMain.handle('app:open-devtools', () => {
   mainWindow.webContents.openDevTools();
 });
 
-// Opens (or focuses) the persistent Spotify player window at the given URL
-ipcMain.handle('spotify:open-player', (_event, url) => {
-  if (spotifyPlayerWin && !spotifyPlayerWin.isDestroyed()) {
-    if (url) spotifyPlayerWin.loadURL(url);
-    spotifyPlayerWin.show();
-    spotifyPlayerWin.focus();
-    return;
+// Attach a WebContentsView (full renderer, supports DRM) over the block bounds
+ipcMain.handle('spotify:attach', (_event, url, bounds) => {
+  if (!mainWindow) return;
+  if (!spotifyView) {
+    spotifyView = new WebContentsView({
+      webPreferences: {
+        partition: 'persist:spotify',
+        plugins: true,
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+    mainWindow.contentView.addChildView(spotifyView);
+    spotifyView.webContents.loadURL(url);
+    spotifyView.webContents.on('dom-ready', () => {
+      spotifyView?.webContents.executeJavaScript(`
+        try { Object.defineProperty(navigator, 'webdriver', { get: () => false }); } catch(e) {}
+        if (!window.chrome) window.chrome = { runtime: {} };
+      `).catch(() => {});
+    });
   }
-  spotifyPlayerWin = new BrowserWindow({
-    width: 420,
-    height: 650,
-    title: 'Spotify',
-    webPreferences: {
-      partition: 'persist:spotify',
-      plugins: true,
-      nodeIntegration: false,
-      contextIsolation: true,
-    },
-  });
-  spotifyPlayerWin.loadURL(url || 'https://open.spotify.com');
-  spotifyPlayerWin.on('closed', () => { spotifyPlayerWin = null; });
+  const b = { x: Math.round(bounds.x), y: Math.round(bounds.y), width: Math.round(bounds.width), height: Math.round(bounds.height) };
+  spotifyView.setBounds((b.width > 0 && b.height > 0) ? b : { x: 0, y: 0, width: 0, height: 0 });
+});
+
+ipcMain.handle('spotify:detach', () => {
+  if (spotifyView && mainWindow) {
+    mainWindow.contentView.removeChildView(spotifyView);
+    spotifyView = null;
+  }
+});
+
+ipcMain.handle('spotify:reload', (_event, url) => {
+  if (spotifyView && url) spotifyView.webContents.loadURL(url);
 });
 
 ipcMain.handle('spotify:open-login', () => {
-  // Navigate player window to login, or open a login-focused window
-  if (spotifyPlayerWin && !spotifyPlayerWin.isDestroyed()) {
-    spotifyPlayerWin.loadURL('https://accounts.spotify.com/login');
-    spotifyPlayerWin.show();
-    spotifyPlayerWin.focus();
-    return;
-  }
   const loginWin = new BrowserWindow({
     width: 500,
     height: 700,

@@ -260,7 +260,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       s.setShowSourcePicker(false);
       s.setScreenSources([]);
     };
-  }, [isStreaming, captureMode, openSourcePicker, toggleMicMute, pickSource, cameras, setShowSourcePicker, setScreenSources]);
+  }, [isStreaming]);
 
   /* ── Helper: device label with fallback ── */
   const deviceLabel = (dev: MediaDeviceInfo, idx: number, kind: "cam" | "mic") => {

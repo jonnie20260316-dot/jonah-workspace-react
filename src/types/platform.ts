@@ -57,7 +57,9 @@ declare global {
       githubGetFile: (token: string, owner: string, repo: string, filepath: string) => Promise<{ ok: boolean; exists?: boolean; content?: string | null; sha?: string | null; error?: string }>;
       githubPutFile: (token: string, owner: string, repo: string, filepath: string, content: string, sha?: string) => Promise<{ ok: boolean; error?: string }>;
       openDevTools: () => Promise<void>;
-      spotifyOpenPlayer: (url: string) => Promise<void>;
+      spotifyAttach: (url: string, bounds: { x: number; y: number; width: number; height: number }) => Promise<void>;
+      spotifyDetach: () => Promise<void>;
+      spotifyReload: (url: string) => Promise<void>;
       spotifyOpenLogin: () => Promise<void>;
       onSpotifyLoginDone: (cb: () => void) => () => void;
       requestQuit: () => Promise<void>;

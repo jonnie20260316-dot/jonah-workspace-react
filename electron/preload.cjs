@@ -77,7 +77,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   githubPutFile: (token, owner, repo, filepath, content, sha) => ipcRenderer.invoke('github:put-file', token, owner, repo, filepath, content, sha),
 
   openDevTools: () => ipcRenderer.invoke('app:open-devtools'),
-  spotifyOpenPlayer: (url) => ipcRenderer.invoke('spotify:open-player', url),
+  spotifyAttach: (url, bounds) => ipcRenderer.invoke('spotify:attach', url, bounds),
+  spotifyDetach: () => ipcRenderer.invoke('spotify:detach'),
+  spotifyReload: (url) => ipcRenderer.invoke('spotify:reload', url),
   spotifyOpenLogin: () => ipcRenderer.invoke('spotify:open-login'),
   onSpotifyLoginDone: (callback) => {
     const handler = () => callback();
