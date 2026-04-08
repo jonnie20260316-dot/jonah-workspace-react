@@ -1,0 +1,377 @@
+/* ── Surface text element ─────────────────────────────────────── */
+.surface-text-div {
+  font-family: inherit;
+  line-height: 1.4;
+  color: var(--fg, #243231);
+  padding: 4px 6px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-width: 60px;
+  min-height: 28px;
+  box-sizing: border-box;
+}
+.surface-text-div[contenteditable="true"] {
+  outline: 2px solid var(--accent, #4f9cf9);
+  background: rgba(255, 255, 255, 0.92);
+  cursor: text;
+  user-select: text;
+}
+.surface-text-div:not([contenteditable="true"]) {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ── Surface connector snap dots ─────────────────────────────────────── */
+.connector-snap-dot {
+  transition: r 0.1s ease;
+}
+
+/* ─── Phase 7: Frame (Zone) ──────────────────────────────────────────────── */
+
+.frame-header-fo {
+  overflow: visible;
+}
+
+.frame-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  height: 32px;
+  background: rgba(255,255,255,0.72);
+  backdrop-filter: blur(6px);
+  border-radius: 6px 6px 0 0;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  user-select: none;
+  box-sizing: border-box;
+  width: 100%;
+  cursor: move;
+}
+
+.frame-header input,
+.frame-header button,
+.frame-header .frame-palette-dot {
+  cursor: default;
+}
+
+.frame-name-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #243231);
+  outline: none;
+  min-width: 0;
+}
+
+.frame-name-input::placeholder {
+  color: rgba(36,50,49,0.35);
+  font-weight: 400;
+}
+
+.frame-palette {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.frame-palette-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: transform 0.1s, border-color 0.1s;
+}
+
+.frame-palette-dot:hover {
+  transform: scale(1.25);
+}
+
+.frame-palette-dot.active {
+  border-color: rgba(0,0,0,0.45);
+}
+
+.frame-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  color: rgba(36,50,49,0.45);
+  font-size: 13px;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.frame-action-btn:hover {
+  background: rgba(36,50,49,0.08);
+  color: rgba(36,50,49,0.8);
+}
+
+.frame-resize-handles {
+  pointer-events: all;
+}
+
+.frame-block-count {
+  font-size: 11px;
+  color: rgba(36,50,49,0.5);
+  padding: 0 4px;
+  background: rgba(36,50,49,0.06);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* ─── Phase 8: Room Navigation ───────────────────────────────────────────── */
+
+/* Focus mode — dim blocks outside active frame */
+.frame-focus-mode .board-block:not(.in-active-frame) {
+  opacity: 0.12;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.frame-focus-mode .board-block.in-active-frame {
+  transition: opacity 0.25s;
+}
+
+/* Breadcrumb in FloatingTopBar */
+.frame-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.frame-breadcrumb-home {
+  font-size: 14px;
+  line-height: 1;
+}
+.frame-breadcrumb-sep {
+  font-size: 13px;
+  color: rgba(36,50,49,0.35);
+}
+.frame-breadcrumb-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text, #243231);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* FrameSwitcher modal */
+.frame-switcher-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(36,50,49,0.2);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 100px;
+}
+.frame-switcher {
+  background: rgba(255,252,246,0.97);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius: var(--radius-xl);
+  width: 400px;
+  max-height: 480px;
+  box-shadow: var(--shadow-overlay);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.frame-switcher-search {
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  outline: none;
+  border-bottom: 1px solid rgba(36,50,49,0.1);
+  width: 100%;
+  box-sizing: border-box;
+  color: var(--text, #243231);
+}
+.frame-switcher-list {
+  overflow-y: auto;
+  max-height: 380px;
+}
+.frame-switcher-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(36,50,49,0.05);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+.frame-switcher-item:hover {
+  background: rgba(36,50,49,0.05);
+}
+.frame-switcher-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.frame-switcher-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text, #243231);
+}
+.frame-switcher-count {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: rgba(36,50,49,0.08);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+.frame-switcher-empty {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+/* ContextMenu */
+.context-menu {
+  position: fixed;
+  z-index: 300;
+  background: rgba(255,252,246,0.96);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(36,50,49,0.12);
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(36,50,49,0.14), 0 1px 4px rgba(36,50,49,0.08);
+  padding: 4px;
+  min-width: 180px;
+  user-select: none;
+}
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text, #243231);
+  text-align: left;
+  gap: 8px;
+}
+.context-menu-item:hover {
+  background: rgba(36,50,49,0.07);
+}
+.context-menu-item--danger { color: #c0392b; }
+.context-menu-item--danger:hover { background: rgba(192,57,43,0.08); }
+.context-menu-label { flex: 1; }
+.context-menu-shortcut {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  opacity: 0.8;
+}
+.context-menu-sep {
+  height: 1px;
+  background: rgba(36,50,49,0.08);
+  margin: 3px 6px;
+}
+
+/* Minimap */
+.minimap-container {
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
+  z-index: 180;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.minimap-toggle {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: none;
+  background: rgba(255,252,246,0.92);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  box-shadow: 0 2px 12px rgba(36,50,49,0.12);
+  cursor: pointer;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--dur-fast) var(--ease-standard);
+}
+
+.minimap-toggle:hover {
+  box-shadow: 0 4px 16px rgba(36,50,49,0.16);
+  transform: scale(1.05);
+}
+
+.minimap-toggle:active {
+  transform: scale(0.95);
+}
+
+.minimap-panel {
+  width: 168px;
+  height: 126px;
+  border-radius: 10px;
+  background: rgba(255,252,246,0.92);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(36,50,49,0.12);
+  box-shadow: 0 4px 24px rgba(36,50,49,0.14);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.minimap-svg {
+  display: block;
+  width: 160px;
+  height: 120px;
+  border-radius: 6px;
+}
+
+/* ─── Date History (Sidebar) ─────────────────────────────────────────────── */
+.date-history-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ─── Date Peek Modal ────────────────────────────────────────────────────── */
+.date-peek-modal {
+  animation: peekIn 160ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes peekIn {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ─── FAB Menu: Unique Block Labels ──────────────────────────────────────── */
+.limit-badge {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  opacity: 0.7;
+  font-weight: 500;
+}

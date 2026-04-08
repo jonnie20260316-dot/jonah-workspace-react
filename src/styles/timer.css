@@ -1,0 +1,495 @@
+
+/* =====================================================
+   TIMER RING
+   ===================================================== */
+.timer-ring-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+.timer-ring-svg {
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+.timer-ring-track {
+  fill: none;
+  stroke: rgba(31, 120, 111, 0.14);
+  stroke-linecap: round;
+}
+.timer-ring-progress {
+  fill: none;
+  stroke-linecap: round;
+  will-change: stroke-dashoffset;
+}
+.timer-ring-progress.running {
+  transition: stroke-dashoffset 1s linear, stroke var(--dur-medium) var(--ease-standard);
+}
+.timer-ring-progress.idle {
+  transition: stroke var(--dur-medium) var(--ease-standard);
+}
+.timer-ring-overtime {
+  fill: none;
+  stroke-linecap: round;
+  animation: timerOvertimePulse 1.4s var(--ease-standard) infinite;
+}
+.timer-ring-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.timer-ring-mode-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  margin-bottom: 2px;
+}
+.timer-ring-time {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  font-weight: 200;
+  line-height: 1;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.timer-ring-status {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  letter-spacing: 0.04em;
+}
+.timer-ring-overtime-badge {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--danger-soft);
+  color: var(--danger);
+  margin-top: 4px;
+}
+
+/* =====================================================
+   TIMER DAILY STATS
+   ===================================================== */
+.timer-divider {
+  height: 1px;
+  background: var(--line);
+  margin: var(--space-3) 0;
+}
+.timer-daily-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.timer-daily-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.timer-daily-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.timer-daily-counts {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.timer-daily-counts:hover { color: var(--accent); }
+.timer-progress-track {
+  height: 6px;
+  background: var(--line);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.timer-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--accent), rgba(31, 120, 111, 0.7));
+  transition: width 0.6s var(--ease-standard);
+}
+.timer-progress-fill.exceeded {
+  background: linear-gradient(90deg, var(--accent), var(--gold));
+}
+.timer-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+.timer-stat-card {
+  padding: 10px 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+.timer-stat-value {
+  font-size: 22px;
+  font-weight: 200;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  line-height: 1;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.timer-stat-value.exceeded { color: var(--gold); }
+.timer-stat-label {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.3;
+}
+
+/* =====================================================
+   SESSION LOG
+   ===================================================== */
+.timer-log-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 6px 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: color var(--dur-fast);
+}
+.timer-log-toggle:hover { color: var(--ink); }
+.timer-log-toggle-chevron {
+  transition: transform var(--dur-fast) var(--ease-standard);
+  color: var(--text-tertiary);
+}
+.timer-log-toggle-chevron.open { transform: rotate(180deg); }
+.timer-session-log {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height var(--dur-medium) var(--ease-standard);
+}
+.timer-session-log.open { max-height: 200px; }
+.timer-session-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto auto auto 20px;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 11px;
+  border-bottom: 1px solid var(--line);
+}
+.timer-session-row:last-child { border-bottom: none; }
+.ts-check { color: var(--accent); }
+.ts-task {
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ts-dur { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.ts-ot { color: var(--danger); font-size: 10px; font-variant-numeric: tabular-nums; }
+.ts-time { color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.ts-edit {
+  display: flex;
+  align-items: center;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  padding: 0;
+  transition: color var(--dur-instant);
+}
+.ts-edit:hover { color: var(--ink); }
+.timer-log-rest-note {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 8px 0;
+  font-style: italic;
+}
+
+/* =====================================================
+   CALENDAR PICKER
+   ===================================================== */
+.cal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: transparent;
+}
+.cal-popup {
+  z-index: 300;
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  padding: var(--space-3);
+  width: 260px;
+  animation: calPopupIn var(--dur-medium) var(--ease-spring) forwards;
+}
+.cal-popup.exiting {
+  animation: calPopupOut var(--dur-fast) var(--ease-exit) forwards;
+}
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+.cal-month {
+  font-family: var(--font-display);
+  font-size: calc(14px * var(--text-scale, 1));
+  font-weight: 600;
+  color: var(--ink);
+}
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  transition: background var(--dur-instant), color var(--dur-instant);
+}
+.cal-nav:hover { background: rgba(36, 50, 49, 0.06); color: var(--ink); }
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cal-day-name {
+  font-size: 9px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 0;
+}
+.cal-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  font-size: 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  transition: background var(--dur-instant), color var(--dur-instant);
+  position: relative;
+}
+.cal-day:hover { background: rgba(36, 50, 49, 0.06); }
+.cal-day.other-month { color: var(--text-tertiary); }
+.cal-day.cal-today {
+  font-weight: 700;
+  color: var(--accent);
+}
+.cal-day.cal-active {
+  background: var(--accent);
+  color: var(--text-inverted);
+  font-weight: 600;
+}
+.cal-day.cal-active:hover { background: var(--accent-deep); }
+.cal-day.cal-has-data::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.cal-day.cal-active.cal-has-data::after {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+/* =====================================================
+   TIMER SETTINGS PANEL
+   ===================================================== */
+.timer-settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  transition: color var(--dur-instant), background var(--dur-instant);
+  padding: 0;
+}
+.timer-settings-btn:hover { color: var(--ink); background: rgba(36, 50, 49, 0.06); }
+.timer-settings-btn.active { color: var(--accent); }
+.timer-settings-panel {
+  margin-top: var(--space-2);
+  animation: timerSettingsIn var(--dur-medium) var(--ease-standard) forwards;
+}
+.timer-settings-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--space-2);
+}
+.timer-setting-group {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: var(--space-2);
+}
+.timer-setting-group-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 6px 10px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.timer-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink);
+  gap: var(--space-2);
+}
+.timer-setting-row:last-child { border-bottom: none; }
+.timer-setting-row input[type="number"] {
+  width: 60px;
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  background: var(--surface-0);
+  color: var(--ink);
+  text-align: right;
+}
+.timer-setting-toggle {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.timer-setting-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.timer-setting-toggle-track {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-pill);
+  background: var(--line-strong);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-standard);
+}
+.timer-setting-toggle input:checked + .timer-setting-toggle-track {
+  background: var(--accent);
+}
+.timer-setting-toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: white;
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+.timer-setting-toggle input:checked + .timer-setting-toggle-track::after {
+  transform: translateX(14px);
+}
+.timer-sound-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  transition: background var(--dur-instant);
+}
+.timer-sound-item:last-child { border-bottom: none; }
+.timer-sound-item:hover { background: rgba(36, 50, 49, 0.04); }
+.timer-sound-item.selected { background: var(--accent-soft); }
+.timer-sound-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: background var(--dur-instant), color var(--dur-instant);
+}
+.timer-sound-play:hover { background: var(--accent); color: white; border-color: var(--accent); }
+.timer-sound-name {
+  flex: 1;
+  font-size: 12px;
+  color: var(--ink);
+}
+.timer-sound-check {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.timer-upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--accent);
+  transition: background var(--dur-instant);
+}
+.timer-upload-btn:hover { background: var(--accent-soft); }
+
+/* During Space pan, prevent inputs from capturing pointer or showing text cursor */
+body[data-pan-mode] input,
+body[data-pan-mode] textarea,
+body[data-pan-mode] button,
+body[data-pan-mode] select,
+body[data-pan-mode] [contenteditable] {
+  pointer-events: none !important;
+  cursor: grab !important;
+}
+body[data-pan-mode] .board-block {
+  cursor: grab !important;
+}
+

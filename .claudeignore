@@ -9,6 +9,11 @@ node_modules/
 history/recaps/
 history/lessons/
 
+# Reference docs (read on demand via explicit Read, not auto-indexed)
+PREVENTION_RULES.md
+ARCH_REFERENCE.md
+SESSION_PROTOCOL.md
+
 # Electron packaging artifacts
 *.dmg
 *.zip
