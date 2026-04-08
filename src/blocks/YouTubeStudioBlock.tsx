@@ -387,6 +387,13 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
     }
   }, []);
 
+  // Stop RTMP stream when block is collapsed or pinned
+  useEffect(() => {
+    if (block.collapsed || block.pinned) {
+      stopRtmpStream();
+    }
+  }, [block.collapsed, block.pinned, stopRtmpStream]);
+
   const isRtmpActive = rtmpStatus === "streaming" || rtmpStatus === "starting";
 
   const s = (base: number) => `calc(${base}px * var(--text-scale, 1))`;

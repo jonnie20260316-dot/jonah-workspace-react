@@ -285,7 +285,6 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       // Monitor track ended (camera disconnect)
       stream.getVideoTracks()[0]?.addEventListener("ended", () => {
         stopPipCamera();
-        setPipEnabled(false);
       });
 
       // Start canvas composite
@@ -299,9 +298,8 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       setIsPipActive(true);
     } catch (err) {
       console.error("PiP camera failed:", err);
-      setPipEnabled(false);
     }
-  }, [selectedCamId, enumerateDevicesNow, startCompositeLoop, stopCompositeLoop, setPipEnabled]);
+  }, [selectedCamId, enumerateDevicesNow, startCompositeLoop, stopCompositeLoop]);
 
   const stopPipCamera = useCallback(() => {
     setIsPipActive(false);
@@ -444,6 +442,13 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     useStreamStore.getState().setActiveStream(null);
     setStreamStats({ fps: "—", res: "—" });
   }, [stopPipCamera]);
+
+  // Stop stream when block is collapsed or pinned
+  useEffect(() => {
+    if ((block.collapsed || block.pinned) && streamRef.current) {
+      stopStream();
+    }
+  }, [block.collapsed, block.pinned, stopStream]);
 
   /* ── Step 3: startScreenStream with real deviceId ── */
   const startScreenStream = useCallback(async () => {
