@@ -1,398 +1,47 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useRef } from "react";
 import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
-import { loadJSON, saveJSON } from "../utils/storage";
-import {
-  getStoredTokens,
-  saveTokens,
-  clearTokens,
-  listBroadcasts,
-  transitionBroadcast,
-  getStreamHealth,
-  getStreamKey,
-  createBroadcast,
-  createLiveStream,
-  bindBroadcast,
-  updateBroadcastPrivacy,
-  deleteBroadcast,
-} from "../utils/youtubeApi";
+import { getStoredTokens } from "../utils/youtubeApi";
 import { useStreamStore } from "../stores/useStreamStore";
-import type { YTBroadcast, YTStreamHealth } from "../utils/youtubeApi";
-import type { Block, YTTokens, YTStreamStatus } from "../types";
+import type { Block } from "../types";
+import { statusColor, statusLabel, healthLabel, healthColor, formatDate } from "../utils/youtubeFormatters";
+import { useYouTubeBitrate } from "../hooks/youtube/useYouTubeBitrate";
+import { useYouTubeAuth } from "../hooks/youtube/useYouTubeAuth";
+import { useRtmpStream } from "../hooks/youtube/useRtmpStream";
+import { useYouTubePolling } from "../hooks/youtube/useYouTubePolling";
+import { useYouTubeBroadcastLifecycle } from "../hooks/youtube/useYouTubeBroadcastLifecycle";
 
 interface YouTubeStudioBlockProps {
   block: Block;
 }
 
-const POLL_INTERVAL = 30_000;
-
-/** Status pill color map */
-function statusColor(status: string): string {
-  switch (status) {
-    case "live": return "#ff0000";
-    case "testing": return "#ff9800";
-    case "ready": return "#4caf50";
-    case "created": return "#2196f3";
-    default: return "#888";
-  }
-}
-
-function statusLabel(status: string): string {
-  switch (status) {
-    case "live": return pick("直播中", "LIVE");
-    case "testing": return pick("測試中", "TESTING");
-    case "ready": return pick("就緒", "READY");
-    case "created": return pick("已建立", "CREATED");
-    case "complete": return pick("已結束", "ENDED");
-    default: return status.toUpperCase();
-  }
-}
-
-function healthLabel(status: string): string {
-  switch (status) {
-    case "good": return pick("良好", "Good");
-    case "ok": return pick("尚可", "OK");
-    case "bad": return pick("不佳", "Bad");
-    case "noData": return pick("無數據", "No Data");
-    default: return status;
-  }
-}
-
-function healthColor(status: string): string {
-  switch (status) {
-    case "good": return "#4caf50";
-    case "ok": return "#ff9800";
-    case "bad": return "#f44336";
-    default: return "#888";
-  }
-}
-
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return isNaN(d.getTime()) ? "—" : d.toLocaleString();
-}
-
 export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
   useLang();
-  const [authed, setAuthed] = useState(() => getStoredTokens() !== null);
-  const [broadcasts, setBroadcasts] = useState<YTBroadcast[]>([]);
-  const [streamHealth, setStreamHealth] = useState<YTStreamHealth | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [transitioning, setTransitioning] = useState(false);
-  const [rtmpStatus, setRtmpStatus] = useState<YTStreamStatus["status"]>("stopped");
-  const [rtmpStarting, setRtmpStarting] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [createTitle, setCreateTitle] = useState("");
-  const [createPrivacy, setCreatePrivacy] = useState<"public" | "private" | "unlisted">("private");
-  const [creating, setCreating] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editPrivacy, setEditPrivacy] = useState<"public" | "private" | "unlisted">("private");
-  const [editSaving, setEditSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [bitrate, setBitrateState] = useState<number>(() =>
-    loadJSON<number>("youtube-studio-bitrate", 3_000_000)
-  );
+  const [authed, setAuthed] = useState(() => getStoredTokens() !== null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const bitrateRef = useRef<number>(loadJSON<number>("youtube-studio-bitrate", 3_000_000));
   const activeStream = useStreamStore((s) => s.activeStream);
 
-  const handleBitrateChange = (bps: number) => {
-    setBitrateState(bps);
-    bitrateRef.current = bps;
-    saveJSON("youtube-studio-bitrate", bps);
-  };
-
-  const isElectron = !!window.electronAPI?.youtubeAuthStart;
-  const hasRtmp = !!window.electronAPI?.youtubeStartStream;
-
-  // Listen for OAuth tokens from Electron main process
-  useEffect(() => {
-    if (!window.electronAPI?.onYoutubeTokens) return;
-    const unsub = window.electronAPI.onYoutubeTokens((tokens: YTTokens) => {
-      saveTokens(tokens);
-      setAuthed(true);
-      setError(null);
-    });
-    return unsub;
-  }, []);
-
-  // Cleanup RTMP on unmount (JW-28)
-  useEffect(() => {
-    return () => {
-      if (recorderRef.current && recorderRef.current.state !== "inactive") {
-        recorderRef.current.stop();
-      }
-      recorderRef.current = null;
-      window.electronAPI?.youtubeStopStream?.();
-    };
-  }, []);
-
-  // Listen for RTMP stream status from FFmpeg
-  useEffect(() => {
-    if (!window.electronAPI?.onYoutubeStreamStatus) return;
-    const unsub = window.electronAPI.onYoutubeStreamStatus((data: YTStreamStatus) => {
-      setRtmpStatus(data.status);
-      if (data.status === "error" && "error" in data) {
-        setError(data.error);
-      }
-      if (data.status === "stopped" || data.status === "error") {
-        // Stop the MediaRecorder if FFmpeg died
-        if (recorderRef.current && recorderRef.current.state !== "inactive") {
-          recorderRef.current.stop();
-        }
-        recorderRef.current = null;
-        setRtmpStarting(false);
-      }
-    });
-    return unsub;
-  }, []);
-
-  // Fetch broadcasts + stream health
-  const refresh = useCallback(async () => {
-    if (!getStoredTokens()) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const bcs = await listBroadcasts();
-      setBroadcasts(bcs);
-
-      // Get stream health for the first active/testing broadcast, falling back to ready broadcasts
-      const activeBc =
-        bcs.find((b) => b.lifeCycleStatus === "live" || b.lifeCycleStatus === "testing") ??
-        bcs.find((b) => b.lifeCycleStatus === "ready" && b.boundStreamId !== null) ??
-        null;
-      if (activeBc?.boundStreamId) {
-        const health = await getStreamHealth(activeBc.boundStreamId);
-        setStreamHealth(health);
-      } else {
-        setStreamHealth(null);
-      }
-    } catch (err) {
-      console.error("YouTube API error:", err);
-      setError(pick("API 請求失敗", "API request failed"));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Auto-poll when authenticated
-  useEffect(() => {
-    if (!authed) return;
-    refresh();
-    pollRef.current = setInterval(refresh, POLL_INTERVAL);
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [authed, refresh]);
-
-  // Auto-refresh stream health after RTMP starts pushing
-  useEffect(() => {
-    if (rtmpStatus !== "streaming") return;
-    const t1 = setTimeout(() => void refresh(), 8_000);
-    const t2 = setTimeout(() => void refresh(), 18_000);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [rtmpStatus, refresh]);
-
-  const handleConnect = useCallback(() => {
-    if (!isElectron) {
-      setError(pick("需要 Electron 桌面版", "Requires Electron desktop app"));
-      return;
-    }
-    window.electronAPI!.youtubeAuthStart();
-  }, [isElectron]);
-
-  const handleDisconnect = useCallback(() => {
-    clearTokens();
-    setAuthed(false);
-    setBroadcasts([]);
-    setStreamHealth(null);
-    if (pollRef.current) clearInterval(pollRef.current);
-  }, []);
-
-  const handleTransition = useCallback(async (id: string, status: "testing" | "live" | "complete") => {
-    if (status === "complete") {
-      const confirmed = window.confirm(pick("確定要結束直播？", "End the live stream?"));
-      if (!confirmed) return;
-    }
-    setError(null);
-    setTransitioning(true);
-    try {
-      const result = await transitionBroadcast(id, status);
-      if (result.ok) {
-        // Refresh immediately to show new status
-        await refresh();
-      } else {
-        setError(result.error ?? pick("操作失敗", "Operation failed"));
-      }
-    } catch {
-      setError(pick("操作失敗", "Operation failed"));
-    } finally {
-      setTransitioning(false);
-    }
-  }, [refresh]);
-
-  // ─── Create broadcast ───────────────────────────────────────────────────
-  const handleCreate = useCallback(async () => {
-    if (!createTitle.trim()) return;
-    setCreating(true);
-    setError(null);
-    try {
-      const result = await createBroadcast(createTitle.trim(), createPrivacy);
-      if (!result) throw new Error("broadcast creation failed");
-      const { id: broadcastId, privacyStatus: actualPrivacy } = result;
-
-      // YouTube sometimes silently overrides the requested privacy — attempt to fix it
-      if (actualPrivacy !== createPrivacy) {
-        console.warn(`YouTube overrode privacy: requested "${createPrivacy}", got "${actualPrivacy}" — attempting fix`);
-        const fixResult = await updateBroadcastPrivacy(
-          {
-            id: broadcastId,
-            title: createTitle.trim(),
-            description: "",
-            scheduledStartTime: new Date().toISOString(),
-            thumbnail: "",
-            lifeCycleStatus: "created",
-            privacyStatus: actualPrivacy,
-            boundStreamId: null,
-            concurrentViewers: null,
-          },
-          createPrivacy
-        );
-        if (!fixResult.ok) {
-          setError(pick(
-            `直播已建立，但 YouTube 將隱私設為「私人」(${fixResult.error ?? "平台限制"})`,
-            `Broadcast created, but YouTube set privacy to "private" (${fixResult.error ?? "platform restriction"})`
-          ));
-        }
-      }
-
-      const streamInfo = await createLiveStream(createTitle.trim());
-      if (!streamInfo) throw new Error("stream creation failed");
-      await bindBroadcast(broadcastId, streamInfo.streamId);
-      setShowCreateForm(false);
-      setCreateTitle("");
-      await refresh();
-    } catch {
-      setError(pick("建立直播失敗", "Failed to create broadcast"));
-    } finally {
-      setCreating(false);
-    }
-  }, [createTitle, createPrivacy, refresh]);
-
-  // ─── Edit privacy ────────────────────────────────────────────────────────
-  const handleUpdatePrivacy = useCallback(async (bc: YTBroadcast) => {
-    setEditSaving(true);
-    const result = await updateBroadcastPrivacy(bc, editPrivacy);
-    setEditSaving(false);
-    if (result.ok) {
-      setEditingId(null);
-      await refresh();
-    } else {
-      setError(result.error ?? pick("更新失敗", "Update failed"));
-    }
-  }, [editPrivacy, refresh]);
-
-  // ─── Delete broadcast ────────────────────────────────────────────────────
-  const handleDelete = useCallback(async (id: string) => {
-    setDeletingId(id);
-    try {
-      const result = await deleteBroadcast(id);
-      if (result.ok) {
-        if (selectedId === id) setSelectedId(null);
-        if (editingId === id) setEditingId(null);
-        await refresh();
-      } else {
-        setError(result.error ?? pick("刪除失敗", "Delete failed"));
-      }
-    } finally {
-      setDeletingId(null);
-    }
-  }, [selectedId, editingId, refresh]);
-
-  // ─── RTMP streaming (FFmpeg) ────────────────────────────────────────────
-  const startRtmpStream = useCallback(async (broadcast: YTBroadcast) => {
-    if (!hasRtmp || !broadcast.boundStreamId) return;
-    // Need an active capture source
-    const stream = useStreamStore.getState().activeStream;
-    if (!stream) {
-      setError(pick("請先在錄影區塊開始擷取", "Start a capture source in Video Capture first"));
-      return;
-    }
-
-    setRtmpStarting(true);
-    setError(null);
-
-    try {
-      // Get RTMP URL + stream key from YouTube API
-      const keyInfo = await getStreamKey(broadcast.boundStreamId);
-      if (!keyInfo) {
-        setError(pick("無法取得串流金鑰", "Failed to get stream key"));
-        setRtmpStarting(false);
-        return;
-      }
-
-      const rtmpUrl = `${keyInfo.rtmpUrl}/${keyInfo.streamKey}`;
-
-      // Start FFmpeg process
-      const ok = await window.electronAPI!.youtubeStartStream(rtmpUrl);
-      if (!ok) {
-        setRtmpStarting(false);
-        return;
-      }
-
-      // Create a MediaRecorder to pipe chunks to FFmpeg
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-        ? "video/webm;codecs=vp9,opus"
-        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-        ? "video/webm;codecs=vp8,opus"
-        : "video/webm";
-
-      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitrateRef.current });
-      recorderRef.current = recorder;
-
-      recorder.ondataavailable = async (e) => {
-        if (e.data.size > 0 && window.electronAPI?.youtubeStreamChunk) {
-          const buf = await e.data.arrayBuffer();
-          window.electronAPI.youtubeStreamChunk(buf);
-        }
-      };
-
-      recorder.onerror = () => {
-        setError(pick("錄製器錯誤", "Recorder error"));
-        stopRtmpStream();
-      };
-
-      recorder.start(1000); // 1s chunks — matches OBS's push model
-      setRtmpStarting(false);
-    } catch (err) {
-      console.error("RTMP stream start failed:", err);
-      setError(pick("串流啟動失敗", "Stream start failed"));
-      setRtmpStarting(false);
-    }
-  }, [hasRtmp]);
-
-  const stopRtmpStream = useCallback(async () => {
-    // Stop MediaRecorder
-    if (recorderRef.current && recorderRef.current.state !== "inactive") {
-      recorderRef.current.stop();
-    }
-    recorderRef.current = null;
-    // Stop FFmpeg
-    if (window.electronAPI?.youtubeStopStream) {
-      await window.electronAPI.youtubeStopStream();
-    }
-  }, []);
-
-  // Stop RTMP stream when block is collapsed or pinned
-  useEffect(() => {
-    if (block.collapsed || block.pinned) {
-      stopRtmpStream();
-    }
-  }, [block.collapsed, block.pinned, stopRtmpStream]);
+  const { bitrate, bitrateRef, handleBitrateChange } = useYouTubeBitrate();
+  const { rtmpStatus, rtmpStarting, hasRtmp, startRtmpStream, stopRtmpStream } = useRtmpStream({ block, bitrateRef, setError });
+  const { broadcasts, setBroadcasts, streamHealth, setStreamHealth, loading, refresh } = useYouTubePolling({ authed, rtmpStatus, pollRef, setError });
+  const { isElectron, handleConnect, handleDisconnect } = useYouTubeAuth({ setAuthed, setError, pollRef, setBroadcasts, setStreamHealth });
+  const {
+    transitioning,
+    showCreateForm, setShowCreateForm,
+    createTitle, setCreateTitle,
+    createPrivacy, setCreatePrivacy,
+    creating,
+    selectedId, setSelectedId,
+    editingId, setEditingId,
+    editPrivacy, setEditPrivacy,
+    editSaving,
+    deletingId,
+    handleTransition,
+    handleCreate,
+    handleUpdatePrivacy,
+    handleDelete,
+  } = useYouTubeBroadcastLifecycle({ refresh, setError });
 
   const isRtmpActive = rtmpStatus === "streaming" || rtmpStatus === "starting";
 
