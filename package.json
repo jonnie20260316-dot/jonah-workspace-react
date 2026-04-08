@@ -19,7 +19,10 @@
     "electron:build:win": "npm run build && electron-builder --win",
     "release": "npm run build && electron-builder --publish always",
     "release:beta": "npm run build && electron-builder --publish always",
-    "release:stable": "npm run build && electron-builder --publish always"
+    "release:stable": "npm run build && electron-builder --publish always",
+    "check": "npm run lint && npm run build",
+    "check:quick": "npm run lint",
+    "prepare": "chmod +x scripts/pre-commit scripts/pre-push && cp scripts/pre-commit .git/hooks/pre-commit && cp scripts/pre-push .git/hooks/pre-push"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",

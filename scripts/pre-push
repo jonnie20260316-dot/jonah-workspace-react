@@ -1,0 +1,17 @@
+#!/bin/sh
+# Pre-push hook: build gate (JW-30)
+# Runs npm run build before allowing push to GitHub
+echo "▸ Running build check (JW-30)..."
+cd "$(git rev-parse --show-toplevel)" && npm run build > /tmp/build-output.txt 2>&1
+BUILD_RESULT=$?
+
+if [ $BUILD_RESULT -ne 0 ]; then
+  echo "✗ Build failed — fix TypeScript errors before pushing:"
+  cat /tmp/build-output.txt | tail -40
+  exit 1
+fi
+
+# Extract module count from manifest
+MODULE_COUNT=$(grep -o '"' dist/.vite/manifest.json 2>/dev/null | wc -l)
+echo "✓ Build passed ($(($MODULE_COUNT / 2)) entries in manifest)"
+exit 0

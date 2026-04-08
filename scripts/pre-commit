@@ -1,0 +1,15 @@
+#!/bin/sh
+# Pre-commit hook: lint gate (JW-30 lite)
+# Runs npm run lint before allowing commit
+echo "▸ Running lint check..."
+cd "$(git rev-parse --show-toplevel)" && npm run lint > /tmp/lint-output.txt 2>&1
+LINT_RESULT=$?
+
+if [ $LINT_RESULT -ne 0 ]; then
+  echo "✗ Lint failed — fix errors before committing:"
+  cat /tmp/lint-output.txt | tail -30
+  exit 1
+fi
+
+echo "✓ Lint passed"
+exit 0

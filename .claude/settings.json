@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/jonnie/jonah-workspace-react && npm run lint 2>&1 | grep -E 'error|warning|✓' | head -25",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
