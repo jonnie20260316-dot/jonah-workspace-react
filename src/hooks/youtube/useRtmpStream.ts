@@ -2,16 +2,15 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { getStreamKey } from "../../utils/youtubeApi";
 import { useStreamStore } from "../../stores/useStreamStore";
 import { pick } from "../../utils/i18n";
-import type { Block, YTStreamStatus } from "../../types";
+import type { YTStreamStatus } from "../../types";
 import type { YTBroadcast } from "../../utils/youtubeApi";
 
 interface UseRtmpStreamParams {
-  block: Block;
   bitrateRef: React.MutableRefObject<number>;
   setError: (msg: string | null) => void;
 }
 
-export function useRtmpStream({ block, bitrateRef, setError }: UseRtmpStreamParams) {
+export function useRtmpStream({ bitrateRef, setError }: UseRtmpStreamParams) {
   const [rtmpStatus, setRtmpStatus] = useState<YTStreamStatus["status"]>("stopped");
   const [rtmpStarting, setRtmpStarting] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -113,13 +112,6 @@ export function useRtmpStream({ block, bitrateRef, setError }: UseRtmpStreamPara
       setRtmpStarting(false);
     }
   }, [hasRtmp, bitrateRef, setError, stopRtmpStream]);
-
-  // Stop RTMP stream when block is collapsed or pinned
-  useEffect(() => {
-    if (block.collapsed || block.pinned) {
-      stopRtmpStream();
-    }
-  }, [block.collapsed, block.pinned, stopRtmpStream]);
 
   return { rtmpStatus, rtmpStarting, hasRtmp, startRtmpStream, stopRtmpStream };
 }

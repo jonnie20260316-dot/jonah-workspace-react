@@ -9,6 +9,11 @@ export function FloatingStreamControls() {
   const micMuted = useStreamStore((s) => s.micMuted);
   const toggleMicMute = useStreamStore((s) => s.toggleMicMute);
   const openSourcePicker = useStreamStore((s) => s.openSourcePicker);
+  const showSourcePicker = useStreamStore((s) => s.showSourcePicker);
+  const screenSources = useStreamStore((s) => s.screenSources);
+  const cameras = useStreamStore((s) => s.cameras);
+  const pickSource = useStreamStore((s) => s.pickSource);
+  const closeSourcePicker = useStreamStore((s) => s.closeSourcePicker);
 
   if (!isStreaming) return null;
 
@@ -110,6 +115,159 @@ export function FloatingStreamControls() {
           <span>{micMuted ? pick("靜音中", "Muted") : pick("麥克風", "Mic")}</span>
         </button>
       )}
+    </div>
+  );
+}
+
+// Viewport-level source picker modal (position: fixed, always visible even when block is collapsed)
+export function FloatingSourcePickerModal() {
+  useLang();
+  const showSourcePicker = useStreamStore((s) => s.showSourcePicker);
+  const screenSources = useStreamStore((s) => s.screenSources);
+  const cameras = useStreamStore((s) => s.cameras);
+  const pickSource = useStreamStore((s) => s.pickSource);
+  const closeSourcePicker = useStreamStore((s) => s.closeSourcePicker);
+
+  if (!showSourcePicker || !pickSource) return null;
+
+  const handleClose = () => {
+    if (closeSourcePicker) closeSourcePicker();
+  };
+
+  const deviceLabel = (dev: MediaDeviceInfo, idx: number) => {
+    return dev.label || `Camera ${idx + 1}`;
+  };
+
+  return (
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      backgroundColor: "rgba(0,0,0,0.8)",
+      zIndex: 9000,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}>
+      <div style={{
+        background: "#1c1c1e",
+        borderRadius: 16,
+        padding: "20px",
+        maxWidth: 680,
+        maxHeight: "75vh",
+        width: "90vw",
+        overflow: "auto",
+        color: "#fff",
+      }}>
+        {/* Header + close button */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <span style={{ fontSize: "16px", fontWeight: 600 }}>
+            {pick("選擇來源", "Choose Source")}
+          </span>
+          <button
+            onClick={handleClose}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#999",
+              fontSize: "24px",
+              cursor: "pointer",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Camera section */}
+        {cameras.length > 0 && (
+          <>
+            <div style={{ color: "#aaa", fontSize: "11px", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              {pick("攝影機", "Cameras")}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "10px", marginBottom: "20px" }}>
+              {cameras.map((cam, i) => (
+                <button
+                  key={cam.deviceId}
+                  onClick={() => {
+                    pickSource(cam.deviceId, "camera");
+                    handleClose();
+                  }}
+                  style={{
+                    background: "#333",
+                    border: "2px solid #555",
+                    borderRadius: "8px",
+                    padding: "12px",
+                    cursor: "pointer",
+                    color: "#fff",
+                    fontSize: "12px",
+                    transition: "border-color 0.15s",
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#0085ff"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#555"; }}
+                >
+                  📷 {deviceLabel(cam, i)}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Screen sources section */}
+        {screenSources.length > 0 && (
+          <>
+            <div style={{ color: "#aaa", fontSize: "11px", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              {pick("螢幕和視窗", "Screens & Windows")}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "10px" }}>
+              {screenSources.map((src) => (
+                <button
+                  key={src.id}
+                  onClick={() => {
+                    pickSource(src.id, "screen");
+                    handleClose();
+                  }}
+                  style={{
+                    background: "#333",
+                    border: "2px solid #555",
+                    borderRadius: "8px",
+                    padding: "8px",
+                    cursor: "pointer",
+                    color: "#fff",
+                    fontSize: "11px",
+                    overflow: "hidden",
+                    transition: "border-color 0.15s",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#0085ff"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#555"; }}
+                >
+                  {src.thumbnail && (
+                    <img
+                      src={src.thumbnail}
+                      alt={src.name}
+                      style={{
+                        width: "100%",
+                        height: 80,
+                        objectFit: "cover",
+                        borderRadius: 4,
+                      }}
+                    />
+                  )}
+                  <div style={{ textAlign: "center", fontSize: "10px" }}>{src.name}</div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {screenSources.length === 0 && cameras.length === 0 && (
+          <div style={{ color: "#aaa", textAlign: "center", padding: "20px" }}>
+            {pick("沒有可用的來源", "No sources available")}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

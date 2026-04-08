@@ -23,7 +23,7 @@ export function YouTubeStudioBlock({ block }: YouTubeStudioBlockProps) {
   const activeStream = useStreamStore((s) => s.activeStream);
 
   const { bitrate, bitrateRef, handleBitrateChange } = useYouTubeBitrate();
-  const { rtmpStatus, rtmpStarting, hasRtmp, startRtmpStream, stopRtmpStream } = useRtmpStream({ block, bitrateRef, setError });
+  const { rtmpStatus, rtmpStarting, hasRtmp, startRtmpStream, stopRtmpStream } = useRtmpStream({ bitrateRef, setError });
   const { broadcasts, setBroadcasts, streamHealth, setStreamHealth, loading, refresh } = useYouTubePolling({ authed, rtmpStatus, pollRef, setError });
   const { isElectron, handleConnect, handleDisconnect } = useYouTubeAuth({ setAuthed, setError, pollRef, setBroadcasts, setStreamHealth });
   const {

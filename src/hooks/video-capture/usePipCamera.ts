@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 interface UsePipCameraParams {
   selectedCamId: string;
@@ -39,7 +39,6 @@ export function usePipCamera({
     if (pipVideoRef.current) pipVideoRef.current.srcObject = null;
   }, [stopCompositeLoop, pipStreamRef, pipVideoRef]);
 
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const startPipCamera = useCallback(async () => {
     // Clean up any existing PiP resources before starting fresh
     stopCompositeLoop();
@@ -55,7 +54,20 @@ export function usePipCamera({
           : { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
         audio: false,
       };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch {
+        // Stale/invalid deviceId — fall back to any available camera
+        if (selectedCamId) {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: false,
+          });
+        } else {
+          throw new Error("No camera available");
+        }
+      }
       pipStreamRef.current = stream;
 
       if (pipVideoRef.current) {
@@ -82,20 +94,25 @@ export function usePipCamera({
       setIsPipActive(true);
     } catch (err) {
       console.error("PiP camera failed:", err);
+      setIsPipActive(false);
     }
-  }, [selectedCamId, enumerateDevicesNow, startCompositeLoop, stopCompositeLoop, pipStreamRef, pipVideoRef, canvasRef, compositeStreamRef]);
+  }, [selectedCamId, enumerateDevicesNow, startCompositeLoop, stopCompositeLoop, pipStreamRef, pipVideoRef, canvasRef, compositeStreamRef, stopPipCamera]);
 
-  // Auto-manage PiP based on state
+  // Use refs to stabilize effect deps so function identity changes don't retrigger
+  const startPipCameraRef = useRef(startPipCamera);
+  const stopPipCameraRef = useRef(stopPipCamera);
+  useEffect(() => { startPipCameraRef.current = startPipCamera; });
+  useEffect(() => { stopPipCameraRef.current = stopPipCamera; });
+
+  // Auto-manage PiP based on state (with stable refs to avoid race conditions)
   useEffect(() => {
     if (pipEnabled && isStreaming && captureMode === "screen") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      startPipCamera();
-      return () => stopPipCamera(); // cleanup old PiP when deps change (e.g. camera device switch)
+      startPipCameraRef.current();
+      return () => stopPipCameraRef.current();
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      stopPipCamera();
+      stopPipCameraRef.current();
     }
-  }, [pipEnabled, isStreaming, captureMode, startPipCamera, stopPipCamera]);
+  }, [pipEnabled, isStreaming, captureMode]);
 
   return { isPipActive, startPipCamera, stopPipCamera };
 }

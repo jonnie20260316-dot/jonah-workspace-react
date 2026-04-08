@@ -239,6 +239,14 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       s.setCaptureMode(captureMode);
       s.setOpenSourcePicker(openSourcePicker);
       s.setToggleMicMute(toggleMicMute);
+      s.setPickSource((id, mode) => pickSource(id, mode));
+      s.setCameras(cameras);
+      s.setCloseSourcePicker(() => {
+        setShowSourcePicker(false);
+        setScreenSources([]);
+        useStreamStore.getState().setShowSourcePicker(false);
+        useStreamStore.getState().setScreenSources([]);
+      });
     }
     return () => {
       s.setIsStreaming(false);
@@ -246,8 +254,13 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       s.setOpenSourcePicker(null);
       s.setToggleMicMute(null);
       s.setMicMuted(false);
+      s.setPickSource(null);
+      s.setCameras([]);
+      s.setCloseSourcePicker(null);
+      s.setShowSourcePicker(false);
+      s.setScreenSources([]);
     };
-  }, [isStreaming, captureMode, openSourcePicker, toggleMicMute]);
+  }, [isStreaming, captureMode, openSourcePicker, toggleMicMute, pickSource, cameras, setShowSourcePicker, setScreenSources]);
 
   /* ── Helper: device label with fallback ── */
   const deviceLabel = (dev: MediaDeviceInfo, idx: number, kind: "cam" | "mic") => {

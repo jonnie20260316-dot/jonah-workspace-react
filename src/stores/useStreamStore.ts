@@ -17,6 +17,17 @@ interface StreamStore {
   // Source switch
   openSourcePicker: (() => void) | null;
   setOpenSourcePicker: (fn: (() => void) | null) => void;
+  // Source picker modal state (for FloatingStreamControls viewport-level picker)
+  showSourcePicker: boolean;
+  setShowSourcePicker: (v: boolean) => void;
+  screenSources: { id: string; name: string; thumbnail: string }[];
+  setScreenSources: (v: { id: string; name: string; thumbnail: string }[]) => void;
+  cameras: MediaDeviceInfo[];
+  setCameras: (v: MediaDeviceInfo[]) => void;
+  pickSource: ((sourceId: string, mode: "screen" | "camera") => void) | null;
+  setPickSource: (fn: ((sourceId: string, mode: "screen" | "camera") => void) | null) => void;
+  closeSourcePicker: (() => void) | null;
+  setCloseSourcePicker: (fn: (() => void) | null) => void;
 }
 
 export const useStreamStore = create<StreamStore>((set) => ({
@@ -32,4 +43,14 @@ export const useStreamStore = create<StreamStore>((set) => ({
   setToggleMicMute: (fn) => set({ toggleMicMute: fn }),
   openSourcePicker: null,
   setOpenSourcePicker: (fn) => set({ openSourcePicker: fn }),
+  showSourcePicker: false,
+  setShowSourcePicker: (v) => set({ showSourcePicker: v }),
+  screenSources: [],
+  setScreenSources: (v) => set({ screenSources: v }),
+  cameras: [],
+  setCameras: (v) => set({ cameras: v }),
+  pickSource: null,
+  setPickSource: (fn) => set({ pickSource: fn }),
+  closeSourcePicker: null,
+  setCloseSourcePicker: (fn) => set({ closeSourcePicker: fn }),
 }));
