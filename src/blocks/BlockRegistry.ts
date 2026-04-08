@@ -154,6 +154,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockTypeConfig> = {
     subtitle: "Music control",
     zhSubtitle: "音樂控制",
     size: { w: 550, h: 330 },
+    keepMounted: true,
   },
   dashboard: {
     component: DashboardBlock,

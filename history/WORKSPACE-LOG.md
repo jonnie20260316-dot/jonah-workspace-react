@@ -5,6 +5,10 @@ Newest sessions at the top.
 
 ---
 
+## 2026-04-08 (late evening) | Spotify Block — Persistent Login via Webview
+
+Switched SpotifyBlock from iframe embeds to Electron webview with `persist:spotify` session. Users log into Spotify once, session persists across app restarts. Preset tabs navigate within webview. 3 files, +45 lines. Build ✓ 1820 modules. See history/recaps/2026-04-08-spotify-login-feature.md.
+
 ## 2026-04-08 (late evening) | Collapse/Pin Stops Streaming + PiP Auto-Reappear After Source Switch — (1) VideoCaptureBlock + YouTubeStudioBlock: added useEffect watching `block.collapsed`/`block.pinned` to call `stopStream()` / `stopRtmpStream()` — streaming stops immediately on collapse/pin, no background audio/RTMP. (2) PiP fix: removed `setPipEnabled(false)` calls from "ended" event handler and catch block in `startPipCamera` — source switches no longer permanently disable PiP toggle. Removed `setPipEnabled` from deps array. Result: PiP overlay reappears automatically after source switch without user re-enabling. 2 files, +8 lines. Build ✓ 1820 modules, 0 TypeScript errors. See history/recaps/2026-04-08-collapse-pin-pip-fix.md.
 
 ## 2026-04-08 | AI Chat UA spoof + sync surface-elements fix + draw preview visibility + bolder top bar icons — (1) `electron/main.cjs`: `persist:aichat` session gets Chrome 124 UA spoof so claude.ai/gemini don't block; Gemini added to AI_ORIGINS header-stripping filter. (2) `useSyncStore.ts`: `rehydrateStores()` now also restores `surface-elements` into `useSurfaceStore` after GitHub sync pull — drawing shapes/brushes/frames now persist across devices. (3) `SurfaceForeground.tsx` + `Canvas.tsx`: draw tool preview moved from SurfaceBackground (zIndex 0) to SurfaceForeground (zIndex 99999) — preview trail now visible during drag. (4) `FloatingTopBar.tsx`: icon strokeWidth 1.8 → 2.2 for bolder appearance. 5 files, +64 lines. Build ✓ 1820 modules, 0 TypeScript errors. See history/recaps/2026-04-08-session-recap.md.

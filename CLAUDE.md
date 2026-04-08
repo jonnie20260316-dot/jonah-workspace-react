@@ -40,41 +40,9 @@ Repo files are the durable memory layer. Chat context only becomes durable after
 - `npm run build` must pass before any work is considered done (JW-30)
 - **Never delete and recreate files wholesale** — edit in place
 
-## Key Constants (React)
+## Constants, GLOBAL_KEYS, and Directory Layout
 
-```
-Storage prefix:    "jonah-workspace:v2:"
-LAYOUT_VERSION:    "2026-03-24-f"
-GRID:              24
-MIN_ZOOM:          0.07 / MAX_ZOOM: 6.0
-VIEWPORT_PADDING:  2400
-DEFAULT_LANG:      "zh"
-```
-
-Defined in: `src/constants.ts`
-
-## GLOBAL_KEYS (persist across dates)
-
-```javascript
-"blocks", "viewport", "board-size", "project-board", "lang", "snap",
-"overlap", "hero-collapsed", "timer-state", "timer-base-minutes",
-"active-date", "session-migration-done", "layout-version",
-"timer-settings", "timer-daily-target", "timer-sound",
-"threads-intel-records",
-"threads-intel-archived", "threads-intel-archive-days",
-"history-compact", "sidebar-category-order",
-"device-id", "sync-meta", "timer-height-migrated-v1",
-"git-sync-enabled", "git-sync-dir", "git-sync-remote",
-"github-sync-enabled", "github-sync-repo", "github-sync-token",
-"text-scale"
-```
-
-GLOBAL_KEY_PREFIXES (dynamic keys matched by prefix):
-```javascript
-["timer-sessions:", "timer-sounds:", "prompted-notes-config:", "prompted-notes-entries:", "spotify-presets:", "spotify-ui:", "content-draft-history:", "video-capture-settings:", "vc-saved-videos:"]
-```
-
-Session-scoped keys use pattern: `session:{YYYY-MM-DD}:{blockId}:{field}`
+→ See `ARCH_REFERENCE.md` for Key Constants, GLOBAL_KEYS list, GLOBAL_KEY_PREFIXES, and full directory layout.
 
 ## Block Types (19)
 
@@ -85,23 +53,6 @@ Unique blocks (only one allowed): `journal`, `kit`, `intention`
 
 Block registry: `src/blocks/BlockRegistry.ts`
 Block shell (drag/resize/color/header): `src/blocks/BlockShell.tsx`
-
-## Architecture
-
-```
-src/
-  blocks/          — 17 block components + BlockShell + BlockRegistry
-  components/      — Canvas, FloatingTopBar, DateNav, CalendarModal, GearMenu, FAB, Sidebar, etc.
-  hooks/           — useLang, useBlockDrag, useBlockResize, ...
-  stores/          — useBlockStore, useSessionStore, useViewportStore, useSyncStore
-  styles/          — tokens.css (design tokens)
-  utils/           — i18n (pick()), blockIcons, storage helpers
-  types.ts         — Block, Session, etc.
-  constants.ts     — shared constants
-  workspace.css    — all component styles
-electron/          — main.js, preload.js
-electron-builder.yml — packaging config
-```
 
 ## Development Commands
 

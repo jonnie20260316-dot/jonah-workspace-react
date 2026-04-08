@@ -232,6 +232,9 @@ async function createWindow() {
   // Spoof a standard Chrome UA so claude.ai/chatgpt.com/gemini.google.com don't block Electron
   const chromeUA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
   aiChatSession.setUserAgent(chromeUA);
+  // Spoof UA for Spotify so open.spotify.com doesn't block Electron
+  const spotifySession = session.fromPartition('persist:spotify');
+  spotifySession.setUserAgent(chromeUA);
 
   // IPC: Screen source picker support
   ipcMain.handle('screen:get-sources', async () => {

@@ -1,0 +1,19 @@
+# Build output
+dist/
+out/
+
+# Dependencies
+node_modules/
+
+# History (78 recaps + 25 lessons — read on demand, don't index)
+history/recaps/
+history/lessons/
+
+# Electron packaging artifacts
+*.dmg
+*.zip
+*.blockmap
+
+# IDE / OS
+.DS_Store
+*.swp
