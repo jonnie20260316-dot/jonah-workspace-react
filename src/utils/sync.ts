@@ -1,6 +1,8 @@
+import type { UseBoundStore, StoreApi } from "zustand";
 import { STORAGE_PREFIX, GLOBAL_KEYS, GLOBAL_KEY_PREFIXES } from "../constants";
 import { loadText, saveText } from "./storage";
 import type { SyncCategory, SyncPayload } from "../types";
+import type { SyncStore } from "../stores/useSyncStore";
 
 // ─── Device identity ─────────────────────────────────────────────────────────
 
@@ -236,9 +238,9 @@ export async function githubPull(
 // ─── Auto-sync debounce scheduling ───────────────────────────────────────────
 
 let githubDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-let useSyncStoreRef: any = null;
+let useSyncStoreRef: UseBoundStore<StoreApi<SyncStore>> | null = null;
 
-export function setUseSyncStoreRef(store: any): void {
+export function setUseSyncStoreRef(store: UseBoundStore<StoreApi<SyncStore>>): void {
   useSyncStoreRef = store;
 }
 
@@ -257,7 +259,7 @@ export function scheduleGitSync(): void {
 
   githubDebounceTimer = setTimeout(() => {
     githubDebounceTimer = null;
-    useSyncStoreRef.getState().githubSyncNow().catch((err: Error) =>
+    useSyncStoreRef!.getState().githubSyncNow().catch((err: Error) =>
       console.error("[github] auto-sync failed:", err)
     );
   }, 30_000);

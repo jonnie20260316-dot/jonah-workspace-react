@@ -39,6 +39,7 @@ export function usePipCamera({
     if (pipVideoRef.current) pipVideoRef.current.srcObject = null;
   }, [stopCompositeLoop, pipStreamRef, pipVideoRef]);
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const startPipCamera = useCallback(async () => {
     // Clean up any existing PiP resources before starting fresh
     stopCompositeLoop();
@@ -87,9 +88,11 @@ export function usePipCamera({
   // Auto-manage PiP based on state
   useEffect(() => {
     if (pipEnabled && isStreaming && captureMode === "screen") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       startPipCamera();
       return () => stopPipCamera(); // cleanup old PiP when deps change (e.g. camera device switch)
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       stopPipCamera();
     }
   }, [pipEnabled, isStreaming, captureMode, startPipCamera, stopPipCamera]);

@@ -92,7 +92,7 @@ async function electronPull(
   return JSON.parse(text) as SyncPayload;
 }
 
-interface SyncStore {
+export interface SyncStore {
   syncMeta: SyncMeta;
   syncStatus: SyncStatus;
   deviceId: string;

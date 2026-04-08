@@ -40,7 +40,7 @@ export const useViewportStore = create<ViewportStore>((set, get) => ({
   },
 
   zoomTo: (nextScale, anchorX, anchorY, viewportRect) => {
-    const { viewport, boardSize } = get();
+    const { viewport } = get();
     const scale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, nextScale));
 
     const cx = viewportRect

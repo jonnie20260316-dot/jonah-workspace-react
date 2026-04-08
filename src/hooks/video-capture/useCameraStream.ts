@@ -1,9 +1,7 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useStreamStore } from "../../stores/useStreamStore";
-import type { Block } from "../../types";
 
 interface UseCameraStreamParams {
-  block: Block;
   selectedCamId: string;
   selectedMicId: string;
   videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -11,6 +9,7 @@ interface UseCameraStreamParams {
   streamRef: React.MutableRefObject<MediaStream | null>;
   micStreamRef: React.MutableRefObject<MediaStream | null>;
   audioCtxRef: React.MutableRefObject<AudioContext | null>;
+  micGainRef: React.MutableRefObject<GainNode | null>;
   recorderRef: React.MutableRefObject<MediaRecorder | null>;
   recTimerRef: React.MutableRefObject<ReturnType<typeof setInterval> | null>;
   enumerateDevicesNow: () => Promise<void>;
@@ -19,7 +18,6 @@ interface UseCameraStreamParams {
 }
 
 export function useCameraStream({
-  block,
   selectedCamId,
   selectedMicId,
   videoRef,
@@ -27,6 +25,7 @@ export function useCameraStream({
   streamRef,
   micStreamRef,
   audioCtxRef,
+  micGainRef,
   recorderRef,
   recTimerRef,
   enumerateDevicesNow,
@@ -59,6 +58,7 @@ export function useCameraStream({
       audioCtxRef.current.close();
       audioCtxRef.current = null;
     }
+    micGainRef.current = null;
     // PiP cleanup
     stopPipCameraRef.current();
     if (videoRef.current) videoRef.current.srcObject = null;
@@ -66,7 +66,7 @@ export function useCameraStream({
     setIsStreaming(false);
     useStreamStore.getState().setActiveStream(null);
     setStreamStats({ fps: "—", res: "—" });
-  }, [stopPipCameraRef, streamRef, micStreamRef, audioCtxRef, recorderRef, recTimerRef, videoRef, screenVideoRef, onRecordingStop]);
+  }, [stopPipCameraRef, streamRef, micStreamRef, audioCtxRef, micGainRef, recorderRef, recTimerRef, videoRef, screenVideoRef, onRecordingStop]);
 
   const startStream = useCallback(async () => {
     if (streamRef.current) {
@@ -113,13 +113,6 @@ export function useCameraStream({
       console.error("Camera access failed:", err);
     }
   }, [selectedCamId, selectedMicId, enumerateDevicesNow, streamRef, videoRef]);
-
-  // Stop stream when block is collapsed or pinned
-  useEffect(() => {
-    if ((block.collapsed || block.pinned) && streamRef.current) {
-      stopStream();
-    }
-  }, [block.collapsed, block.pinned, stopStream, streamRef]);
 
   return { isStreaming, setIsStreaming, streamStats, setStreamStats, startStream, stopStream };
 }

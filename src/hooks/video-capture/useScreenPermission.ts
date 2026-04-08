@@ -22,6 +22,7 @@ export function useScreenPermission() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshScreenPermission();
 
     const onFocus = () => {

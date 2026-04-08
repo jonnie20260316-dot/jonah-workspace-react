@@ -16,8 +16,6 @@ export interface ProjectBoard {
   archive: ProjectCard[];
 }
 
-const DEFAULT_BOARD: ProjectBoard = { queue: [], doing: [], archive: [] };
-
 function normBoard(raw: Record<string, unknown>): ProjectBoard {
   const board: ProjectBoard = { queue: [], doing: [], archive: [] };
   for (const col of ["queue", "doing", "archive"] as const) {

@@ -92,37 +92,40 @@ export function ThreadsIntelModal() {
     if (tiModal.recordId) {
       const rec = records.find((r) => r.id === tiModal.recordId);
       if (rec) {
-        setRecord(rec);
-        setName(rec.name || "");
-        setHandle(rec.handle || "");
-        setUrl(rec.url || "");
-        setFilterReal(rec.filterReal || false);
-        setFilterSubstance(rec.filterSubstance || false);
-        setFilterActive(rec.filterActive || false);
-        setRejectionReason(rec.rejectionReason || "");
-        setSelling(rec.analysis?.selling || "");
-        setReaderGap(rec.analysis?.readerGap || "");
-        setTheirAssumption(rec.analysis?.theirAssumption || "");
-        setRealGap(rec.analysis?.realGap || "");
-        setDecision(rec.comment?.decision as any || "skip");
-        setDecisionReason(rec.comment?.decisionReason || "");
-        setCorePoint(rec.comment?.corePoint || "");
-        setCommentDraft(rec.comment?.draft || "");
-        setPainTags(new Set(rec.painTags || []));
-        setCustomTag(rec.customTag || "");
-        setBlindspotWrong(rec.blindspot?.whatWentWrong || "");
-        setBlindspotCorrect(rec.blindspot?.correctApproach || "");
-        setIsRepeat(rec.blindspot?.isRepeat || false);
-        setRepeatCount(rec.blindspot?.repeatCount || 2);
-        setFollowupReplied(
-          rec.followUp?.replied === true
-            ? "yes"
-            : rec.followUp?.replied === false
-              ? "no"
-              : "pending"
-        );
-        setFollowupContent(rec.followUp?.replyContent || "");
-        setFollowupEffective((rec.followUp?.effective || "") as any);
+        const updateFromRecord = () => {
+          setRecord(rec);
+          setName(rec.name || "");
+          setHandle(rec.handle || "");
+          setUrl(rec.url || "");
+          setFilterReal(rec.filterReal || false);
+          setFilterSubstance(rec.filterSubstance || false);
+          setFilterActive(rec.filterActive || false);
+          setRejectionReason(rec.rejectionReason || "");
+          setSelling(rec.analysis?.selling || "");
+          setReaderGap(rec.analysis?.readerGap || "");
+          setTheirAssumption(rec.analysis?.theirAssumption || "");
+          setRealGap(rec.analysis?.realGap || "");
+          setDecision((rec.comment?.decision as "comment" | "skip" | "observe") || "skip");
+          setDecisionReason(rec.comment?.decisionReason || "");
+          setCorePoint(rec.comment?.corePoint || "");
+          setCommentDraft(rec.comment?.draft || "");
+          setPainTags(new Set(rec.painTags || []));
+          setCustomTag(rec.customTag || "");
+          setBlindspotWrong(rec.blindspot?.whatWentWrong || "");
+          setBlindspotCorrect(rec.blindspot?.correctApproach || "");
+          setIsRepeat(rec.blindspot?.isRepeat || false);
+          setRepeatCount(rec.blindspot?.repeatCount || 2);
+          setFollowupReplied(
+            rec.followUp?.replied === true
+              ? "yes"
+              : rec.followUp?.replied === false
+                ? "no"
+                : "pending"
+          );
+          setFollowupContent(rec.followUp?.replyContent || "");
+          setFollowupEffective((rec.followUp?.effective || "") as "yes" | "no" | "unclear" | "");
+        };
+        updateFromRecord();
       }
     }
   }, [tiModal.open, tiModal.blockId, tiModal.recordId]);
@@ -168,7 +171,7 @@ export function ThreadsIntelModal() {
           followupReplied === "yes" ? true : followupReplied === "no" ? false : null,
         replyContent: followupContent,
         effective:
-          followupEffective === "" ? null : (followupEffective as any),
+          followupEffective === "" ? null : (followupEffective as "yes" | "no" | "unclear"),
       },
     };
 
@@ -425,7 +428,7 @@ export function ThreadsIntelModal() {
               name="tiDecision"
               value="comment"
               checked={decision === "comment"}
-              onChange={(e) => setDecision(e.target.value as any)}
+              onChange={(e) => setDecision(e.target.value as "comment" | "skip" | "observe")}
             />
             {" 適合——有缺口可以切"}
           </label>
@@ -435,7 +438,7 @@ export function ThreadsIntelModal() {
               name="tiDecision"
               value="skip"
               checked={decision === "skip"}
-              onChange={(e) => setDecision(e.target.value as any)}
+              onChange={(e) => setDecision(e.target.value as "comment" | "skip" | "observe")}
             />
             {" 不適合——已在上位輸出"}
           </label>
@@ -445,7 +448,7 @@ export function ThreadsIntelModal() {
               name="tiDecision"
               value="observe"
               checked={decision === "observe"}
-              onChange={(e) => setDecision(e.target.value as any)}
+              onChange={(e) => setDecision(e.target.value as "comment" | "skip" | "observe")}
             />
             {" 觀察就好——素材型"}
           </label>

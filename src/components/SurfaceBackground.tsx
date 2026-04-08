@@ -162,9 +162,8 @@ function TextEditor({ el, onSave }: {
   );
 }
 
-function TextEl({ el, isSelected, isEditing, onSelect, onEdit, onSave }: {
+function TextEl({ el, isEditing, onSelect, onEdit, onSave }: {
   el: SurfaceElement;
-  isSelected: boolean;
   isEditing: boolean;
   onSelect: () => void;
   onEdit: () => void;
@@ -608,7 +607,6 @@ export function SurfaceBackground({ viewportRef, previewElement }: Props) {
           <TextEl
             key={el.id}
             el={el}
-            isSelected={selectedIds.includes(el.id)}
             isEditing={editingTextId === el.id}
             onSelect={() => setSelectedIds([el.id])}
             onEdit={() => setEditingTextId(el.id)}

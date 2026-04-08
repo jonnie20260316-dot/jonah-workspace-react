@@ -16,9 +16,11 @@ export function SyncStatusIndicator({ onConflictClick }: Props) {
   // Fade out "synced" after 3s
   useEffect(() => {
     if (syncStatus === "idle") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVisible(false);
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisible(true);
     if (syncStatus === "synced") {
       const timer = setTimeout(() => setVisible(false), 3000);

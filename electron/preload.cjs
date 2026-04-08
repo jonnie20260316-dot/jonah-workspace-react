@@ -75,6 +75,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── GitHub REST API sync ────────────────────────────────────────────────
   githubGetFile: (token, owner, repo, filepath) => ipcRenderer.invoke('github:get-file', token, owner, repo, filepath),
   githubPutFile: (token, owner, repo, filepath, content, sha) => ipcRenderer.invoke('github:put-file', token, owner, repo, filepath, content, sha),
+  // ── Spotify WebContentsView ─────────────────────────────────────────────
+  spotifyCreate: (bounds) => ipcRenderer.invoke('spotify:create', bounds),
+  spotifySetBounds: (bounds) => ipcRenderer.invoke('spotify:set-bounds', bounds),
+  spotifySetVisible: (visible) => ipcRenderer.invoke('spotify:set-visible', visible),
+  spotifyDestroy: () => ipcRenderer.invoke('spotify:destroy'),
+
   requestQuit: () => ipcRenderer.invoke('app:request-quit'),
   onAboutToQuit: (callback) => {
     const handler = () => callback();

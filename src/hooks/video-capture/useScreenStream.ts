@@ -10,6 +10,7 @@ interface UseScreenStreamParams {
   streamRef: React.MutableRefObject<MediaStream | null>;
   micStreamRef: React.MutableRefObject<MediaStream | null>;
   audioCtxRef: React.MutableRefObject<AudioContext | null>;
+  micGainRef: React.MutableRefObject<GainNode | null>;
   setIsStreaming: (v: boolean) => void;
   setStreamStats: (v: { fps: string; res: string }) => void;
   stopStream: () => void;
@@ -25,6 +26,7 @@ export function useScreenStream({
   streamRef,
   micStreamRef,
   audioCtxRef,
+  micGainRef,
   setIsStreaming,
   setStreamStats,
   stopStream,
@@ -43,6 +45,7 @@ export function useScreenStream({
       audioCtxRef.current.close();
       audioCtxRef.current = null;
     }
+    micGainRef.current = null;
 
     try {
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
@@ -71,8 +74,11 @@ export function useScreenStream({
           sysSource.connect(dest);
         }
 
+        const micGain = audioCtx.createGain();
+        micGainRef.current = micGain;
         const micSrc = audioCtx.createMediaStreamSource(micStream);
-        micSrc.connect(dest);
+        micSrc.connect(micGain);
+        micGain.connect(dest);
 
         finalStream = new MediaStream([
           ...displayStream.getVideoTracks(),
@@ -119,7 +125,7 @@ export function useScreenStream({
       console.error("Screen capture failed:", err);
     }
   }, [screenSysAudio, screenMicOn, selectedMicId, stopStream, enumerateDevicesNow,
-      streamRef, micStreamRef, audioCtxRef, videoRef, screenVideoRef,
+      streamRef, micStreamRef, audioCtxRef, micGainRef, videoRef, screenVideoRef,
       setIsStreaming, setStreamStats]);
 
   return { startScreenStream };

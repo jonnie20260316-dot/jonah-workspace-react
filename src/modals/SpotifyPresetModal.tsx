@@ -36,18 +36,21 @@ export function SpotifyPresetModal() {
     if (!spotifyModal.open || !spotifyModal.blockId) return;
 
     const presets = loadJSON(`spotify-presets:${spotifyModal.blockId}`, []) as SpotifyPreset[];
-    if (spotifyModal.presetId) {
-      const found = presets.find((p) => p.id === spotifyModal.presetId);
-      if (found) {
-        setPreset(found);
-        setLabel(found.label);
-        setUrl(found.url);
+    const updateFromPreset = () => {
+      if (spotifyModal.presetId) {
+        const found = presets.find((p) => p.id === spotifyModal.presetId);
+        if (found) {
+          setPreset(found);
+          setLabel(found.label);
+          setUrl(found.url);
+        }
+      } else {
+        setPreset(null);
+        setLabel("");
+        setUrl("");
       }
-    } else {
-      setPreset(null);
-      setLabel("");
-      setUrl("");
-    }
+    };
+    updateFromPreset();
   }, [spotifyModal.open, spotifyModal.blockId, spotifyModal.presetId]);
 
   const handleSave = () => {

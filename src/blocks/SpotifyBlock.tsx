@@ -1,210 +1,109 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { Block } from "../types";
-import { useModalStore } from "../stores/useModalStore";
-import { loadJSON, saveJSON } from "../utils/storage";
-import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
-
-interface SpotifyPreset {
-  id: string;
-  label: string;
-  url: string;
-}
-
-interface SpotifyUiState {
-  activeId: string | null;
-  compact: boolean;
-}
+import { useLang } from "../hooks/useLang";
 
 interface SpotifyBlockProps {
   block: Block;
 }
 
-function toSpotifyEmbedUrl(raw: string): string {
-  try {
-    if (raw.startsWith("spotify:")) {
-      const parts = raw.replace("spotify:", "").split(":");
-      if (parts.length >= 2) {
-        return `https://open.spotify.com/embed/${parts.join("/")}?utm_source=generator`;
-      }
-      return "";
-    }
-
-    const u = new URL(raw);
-    if (!u.hostname.includes("spotify.com")) return "";
-    if (u.pathname.startsWith("/embed/")) return raw;
-
-    const path = u.pathname.replace(/^\/intl-[a-z]{2}(-[a-z]{2})?\//i, "/");
-    return `https://open.spotify.com/embed${path}?utm_source=generator`;
-  } catch {
-    return "";
-  }
-}
-
-/** Convert stored embed URL to navigable open.spotify.com URL for webview.loadURL() */
-function toSpotifyOpenUrl(raw: string): string {
-  try {
-    if (raw.startsWith("spotify:")) {
-      const parts = raw.replace("spotify:", "").split(":");
-      if (parts.length >= 2) {
-        return `https://open.spotify.com/${parts.join("/")}`;
-      }
-      return "https://open.spotify.com";
-    }
-    const u = new URL(raw);
-    if (!u.hostname.includes("spotify.com")) return "https://open.spotify.com";
-    const path = u.pathname
-      .replace(/^\/embed\//, "/")
-      .replace(/^\/intl-[a-z]{2}(-[a-z]{2})?\//i, "/");
-    return `https://open.spotify.com${path}`;
-  } catch {
-    return "https://open.spotify.com";
-  }
-}
-
 /**
  * Spotify block.
- * - Electron: webview with persist:spotify session — one-time login, remembered.
- * - Browser: preset tabs + full-screen modal with Spotify embed.
- * Fields: spotify-presets:{blockId}, spotify-ui:{blockId}
+ * - Electron: WebContentsView overlaid exactly over this block (unsandboxed,
+ *   plugins:true, persist:spotify). rAF loop keeps bounds in sync on pan/zoom/resize.
+ * - Browser: button opens open.spotify.com in a new tab.
  */
 export function SpotifyBlock({ block }: SpotifyBlockProps) {
   useLang();
   const isElectron = !!window.electronAPI?.isElectron;
-  const { openSpotifyModal, spotifyModal } = useModalStore();
-  const webviewRef = useRef<HTMLElement & { loadURL: (url: string) => void }>(null);
-  const s = (n: number) => `calc(${n}px * var(--text-scale, 1))`;
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const [presets, setPresets] = useState<SpotifyPreset[]>(() =>
-    loadJSON(`spotify-presets:${block.id}`, [])
-  );
-  const [uiState, setUiState] = useState<SpotifyUiState>(() =>
-    loadJSON(`spotify-ui:${block.id}`, { activeId: null, compact: false })
-  );
-  // Refresh presets when Spotify modal closes
+  // Create WebContentsView on mount, destroy on unmount
   useEffect(() => {
-    if (!spotifyModal.open) {
-      setPresets(loadJSON(`spotify-presets:${block.id}`, []));
-    }
-  }, [spotifyModal.open, block.id]);
+    if (!isElectron) return;
+    const el = containerRef.current;
+    if (!el) return;
 
-  const activeId = uiState.activeId || presets[0]?.id || null;
-  const active = presets.find((p) => p.id === activeId) || presets[0] || null;
+    let rafId: number;
+    let created = false;
+    let last = { x: -1, y: -1, width: -1, height: -1 };
 
-  const switchPreset = (id: string) => {
-    const next = { ...uiState, activeId: id };
-    setUiState(next);
-    saveJSON(`spotify-ui:${block.id}`, next);
-  };
+    const getBounds = () => {
+      const r = el.getBoundingClientRect();
+      return {
+        x: Math.round(r.x),
+        y: Math.round(r.y),
+        width: Math.round(r.width),
+        height: Math.round(r.height),
+      };
+    };
 
-  const handlePresetClick = (preset: SpotifyPreset) => {
-    switchPreset(preset.id);
-    if (isElectron && webviewRef.current) {
-      webviewRef.current.loadURL(toSpotifyOpenUrl(preset.url));
-    } else {
-      // Browser: open Spotify in a new tab
-      window.open(toSpotifyOpenUrl(preset.url), "_blank");
-    }
-  };
+    const tick = () => {
+      if (created) {
+        const b = getBounds();
+        if (b.x !== last.x || b.y !== last.y || b.width !== last.width || b.height !== last.height) {
+          last = b;
+          window.electronAPI?.spotifySetBounds(b);
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
 
-  // Tabs bar (shared)
-  const tabsBar = (
-    <div
-      style={{
-        display: "flex",
-        gap: s(8),
-        alignItems: "center",
-        padding: s(8),
-        backgroundColor: "#f5f5f5",
-        borderRadius: "4px",
-        overflowX: "auto",
-        flexShrink: 0,
-      }}
-    >
-      {presets.map((preset) => (
-        <button
-          key={preset.id}
-          onClick={() => handlePresetClick(preset)}
-          style={{
-            padding: `${s(6)} ${s(12)}`,
-            fontSize: s(12),
-            backgroundColor: preset.id === activeId ? "#1DB954" : "#ddd",
-            color: preset.id === activeId ? "#fff" : "#000",
-            border: "none",
-            borderRadius: "2px",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {preset.label}
-        </button>
-      ))}
-      <button
-        onClick={() => openSpotifyModal(block.id)}
+    window.electronAPI?.spotifyCreate(getBounds()).then(() => {
+      created = true;
+      rafId = requestAnimationFrame(tick);
+    });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.electronAPI?.spotifyDestroy();
+    };
+  }, [isElectron]);
+
+  // Hide WebContentsView when block is collapsed
+  useEffect(() => {
+    if (!isElectron) return;
+    window.electronAPI?.spotifySetVisible(!block.collapsed);
+  }, [block.collapsed, isElectron]);
+
+  if (!isElectron) {
+    return (
+      <div
         style={{
-          padding: `${s(6)} ${s(8)}`,
-          fontSize: s(12),
-          backgroundColor: "#ddd",
-          border: "none",
-          borderRadius: "2px",
-          cursor: "pointer",
+          display: "flex",
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: "16px",
         }}
       >
-        + {pick("新增", "Add")}
-      </button>
-    </div>
-  );
-
-  // Electron mode: full webview with persistent session
-  if (isElectron) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-        {tabsBar}
-        <webview
-          ref={webviewRef}
-          src="https://open.spotify.com"
-          partition="persist:spotify"
-          style={{ flex: 1, border: "none", borderRadius: "4px" }}
-        />
+        <svg width="48" height="48" viewBox="0 0 168 168">
+          <circle cx="84" cy="84" r="84" fill="#1DB954" />
+          <path
+            d="M120 113c-2 3-6 4-9 2-25-15-57-19-94-10-4 1-7-1-8-5s1-7 5-8c41-9 76-5 104 12 3 2 4 6 2 9zm10-26c-2 3-7 5-10 2-29-18-73-23-107-13-4 1-9-1-10-6s1-9 6-10c39-11 87-6 120 15 4 2 5 7 1 12zm1-27c-35-21-93-23-127-13-5 1-10-2-11-7s2-10 7-11c39-11 103-9 143 15 4 3 6 9 3 13-3 5-9 6-15 3z"
+            fill="white"
+          />
+        </svg>
+        <button
+          onClick={() => window.open("https://open.spotify.com", "_blank")}
+          style={{
+            padding: "10px 28px",
+            fontSize: "14px",
+            fontWeight: 600,
+            backgroundColor: "#1DB954",
+            color: "#fff",
+            border: "none",
+            borderRadius: "24px",
+            cursor: "pointer",
+          }}
+        >
+          {pick("開啟 Spotify", "Open Spotify")}
+        </button>
       </div>
     );
   }
 
-  // Browser mode: preset tabs — clicking opens Spotify in a new tab
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: s(8) }}>
-      {tabsBar}
-      {!active ? (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "120px",
-            color: "#999",
-            fontSize: s(14),
-          }}
-        >
-          {pick("點擊「＋新增」貼上 Spotify 連結", "Click '+ Add' to paste a Spotify link")}
-        </div>
-      ) : (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "24px",
-            color: "#666",
-            fontSize: s(13),
-            textAlign: "center",
-          }}
-        >
-          {pick(
-            "點擊上方標籤在新分頁中開啟 Spotify",
-            "Click a tab above to open Spotify in a new tab"
-          )}
-        </div>
-      )}
-    </div>
-  );
+  // Electron: transparent placeholder — actual content is the WebContentsView overlay
+  return <div ref={containerRef} style={{ flex: 1, minHeight: 0, minWidth: 0 }} />;
 }

@@ -48,6 +48,7 @@ export function useBlockField<T>(
       typeof fb === "string"
         ? (loadText(storageKey, fb as string) as T)
         : loadJSON(storageKey, fb);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValue(fresh);
   }, [activeDate, isGlobal, storageKey]);
 

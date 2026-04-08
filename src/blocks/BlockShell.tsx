@@ -97,7 +97,7 @@ function BlockShellInner({ block, children }: BlockShellProps) {
     setColorPickerOpen(false);
   };
 
-  const lang = useLang();
+  useLang();
   const TypeIcon = BLOCK_ICONS[block.type];
   const effectiveColor = migrateColor(block.color);
   const colorClass = effectiveColor ? `block-color-${effectiveColor}` : "";

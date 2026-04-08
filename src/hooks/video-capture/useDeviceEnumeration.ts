@@ -17,6 +17,7 @@ export function useDeviceEnumeration() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     enumerateDevicesNow();
     const handler = () => enumerateDevicesNow();
     navigator.mediaDevices.addEventListener("devicechange", handler);

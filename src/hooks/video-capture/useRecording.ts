@@ -107,7 +107,7 @@ export function useRecording({
       };
       setSavedVideos((prev) => {
         const updated = [video, ...prev];
-        saveJSON(`vc-saved-videos:${blockId}`, updated.map(({ blobUrl: _, ...rest }) => rest));
+        saveJSON(`vc-saved-videos:${blockId}`, updated.map(({ ...rest }) => rest));
         return updated;
       });
     };
@@ -134,7 +134,7 @@ export function useRecording({
     if (toDelete?.blobUrl) URL.revokeObjectURL(toDelete.blobUrl);
     const updated = savedVideos.filter((v) => v.id !== id);
     setSavedVideos(updated);
-    saveJSON(`vc-saved-videos:${blockId}`, updated.map(({ blobUrl: _, ...rest }) => rest));
+    saveJSON(`vc-saved-videos:${blockId}`, updated.map(({ ...rest }) => rest));
   };
 
   return { isRecording, setIsRecording, recSeconds, savedVideos, startRecording, stopRecording, deleteVideo, formatRecTime };

@@ -3,7 +3,7 @@ import { useSessionStore } from "../stores/useSessionStore";
 import { useBlockStore } from "../stores/useBlockStore";
 import { useViewportStore } from "../stores/useViewportStore";
 import { useToast } from "../hooks/useToast";
-import { saveJSON, saveText } from "../utils/storage";
+import { saveText } from "../utils/storage";
 import { pick } from "../utils/i18n";
 import { AlignLeft, AlignCenter, AlignRight, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Bold, Trash2, StickyNote } from "lucide-react";
 import type { SurfaceElement } from "../types";

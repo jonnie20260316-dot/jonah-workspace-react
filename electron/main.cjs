@@ -41,6 +41,47 @@ try {
 
 const isDev = !app.isPackaged;
 
+// ─── Chromium flags — must be set before app.whenReady() ─────────────────────
+// Prevents navigator.webdriver=true so sites like Spotify don't detect Electron
+app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
+// Allow audio autoplay without requiring a user gesture (needed for Spotify player init)
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
+const CHROME_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+// ─── Widevine CDM — load from local Chrome installation ──────────────────────
+// Must be called before app.whenReady(). Enables DRM playback (Spotify, etc.).
+(function tryLoadWidevine() {
+  try {
+    const arch = process.arch === 'arm64' ? 'mac_arm64' : 'mac_x64';
+    const basePatterns = [
+      '/Applications/Google Chrome.app/Contents/Frameworks',
+      '/Applications/Google Chrome Canary.app/Contents/Frameworks',
+      '/Applications/Chromium.app/Contents/Frameworks',
+    ];
+    for (const base of basePatterns) {
+      if (!fs.existsSync(base)) continue;
+      // Find versioned framework dir
+      const entries = fs.readdirSync(base);
+      for (const entry of entries) {
+        const cdmDir = path.join(base, entry, 'Libraries', 'WidevineCdm');
+        const libPath = path.join(cdmDir, '_platform_specific', arch, 'libwidevinecdm.dylib');
+        const manifestPath = path.join(cdmDir, 'manifest.json');
+        if (fs.existsSync(libPath) && fs.existsSync(manifestPath)) {
+          const { version } = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+          app.commandLine.appendSwitch('widevine-cdm-path', libPath);
+          app.commandLine.appendSwitch('widevine-cdm-version', version);
+          console.log(`[Widevine] Loaded ${version} from ${libPath}`);
+          return;
+        }
+      }
+    }
+    console.warn('[Widevine] CDM not found — DRM playback unavailable');
+  } catch (err) {
+    console.warn('[Widevine] Failed to load CDM:', err.message);
+  }
+})();
+
 // ─── Updater: push status to renderer ────────────────────────────────────────
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = false;
@@ -188,6 +229,7 @@ async function createWindow() {
       nodeIntegration: false,
       sandbox: false,
       webviewTag: true,
+      plugins: true, // required for Widevine CDM to be accessible in webview tags
     },
   });
 
@@ -230,11 +272,15 @@ async function createWindow() {
   const aiChatSession = session.fromPartition('persist:aichat');
   stripEmbedBlockingHeaders(aiChatSession);
   // Spoof a standard Chrome UA so claude.ai/chatgpt.com/gemini.google.com don't block Electron
-  const chromeUA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-  aiChatSession.setUserAgent(chromeUA);
+  aiChatSession.setUserAgent(CHROME_UA);
   // Spoof UA for Spotify so open.spotify.com doesn't block Electron
   const spotifySession = session.fromPartition('persist:spotify');
-  spotifySession.setUserAgent(chromeUA);
+  spotifySession.setUserAgent(CHROME_UA);
+  stripEmbedBlockingHeaders(spotifySession);
+  // Grant media permissions for Spotify so audio playback isn't silently denied
+  spotifySession.setPermissionRequestHandler((_webContents, _permission, callback) => {
+    callback(true); // grant all — Spotify needs media, autoplay, notifications, etc.
+  });
 
   // IPC: Screen source picker support
   ipcMain.handle('screen:get-sources', async () => {
@@ -252,6 +298,20 @@ async function createWindow() {
   ipcMain.handle('screen:select-source', (_event, id) => {
     selectedSourceId = id;
   });
+
+  // Auto-open DevTools for any webview in dev mode so we can see internal errors
+  if (isDev) {
+    mainWindow.webContents.on('did-attach-webview', (_event, wc) => {
+      wc.openDevTools();
+      // Also inject navigator.webdriver fix into the page's main world
+      wc.on('dom-ready', () => {
+        wc.executeJavaScript(`
+          try { Object.defineProperty(navigator, 'webdriver', { get: () => false }); } catch(e) {}
+          if (!window.chrome) window.chrome = { runtime: {} };
+        `).catch(() => {});
+      });
+    });
+  }
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
@@ -384,6 +444,42 @@ ipcMain.handle('fs:list-dir', async (_event, dirPath) => {
 });
 
 // ─── IPC: Storage backup (insurance against localStorage loss on quit) ────────
+// ─── Spotify WebContentsView ──────────────────────────────────────────────────
+// WebContentsView runs unsandboxed with plugins:true so Widevine CDM works.
+// The React component positions it over the block via rAF + getBoundingClientRect.
+const { WebContentsView } = require('electron');
+let spotifyView = null;
+
+ipcMain.handle('spotify:create', (_event, bounds) => {
+  if (spotifyView) return; // already exists
+  spotifyView = new WebContentsView({
+    webPreferences: {
+      partition: 'persist:spotify',
+      plugins: true,
+    },
+  });
+  spotifyView.webContents.setUserAgent(CHROME_UA);
+  mainWindow.contentView.addChildView(spotifyView);
+  spotifyView.setBounds(bounds);
+  spotifyView.webContents.loadURL('https://open.spotify.com');
+});
+
+ipcMain.handle('spotify:set-bounds', (_event, bounds) => {
+  if (spotifyView) spotifyView.setBounds(bounds);
+});
+
+ipcMain.handle('spotify:set-visible', (_event, visible) => {
+  if (spotifyView) spotifyView.setVisible(visible);
+});
+
+ipcMain.handle('spotify:destroy', () => {
+  if (spotifyView) {
+    mainWindow.contentView.removeChildView(spotifyView);
+    spotifyView.webContents.close();
+    spotifyView = null;
+  }
+});
+
 const BACKUP_FILENAME = 'jonah-workspace-backup.json';
 
 ipcMain.handle('storage:backup', async (_event, jsonStr) => {

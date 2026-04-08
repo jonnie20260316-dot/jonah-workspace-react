@@ -67,7 +67,7 @@ export function useDrawTool(viewportRef: RefObject<HTMLDivElement | null>) {
     // Clear stale text click ref
     textClickRef.current = null;
 
-    const { activeTool, setActiveTool, setSelectedIds, setEditingTextId } =
+    const { activeTool } =
       useSessionStore.getState();
     if (!viewportRef.current) return;
 

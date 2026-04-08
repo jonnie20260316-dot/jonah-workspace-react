@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useBlockField } from "../hooks/useBlockField";
 import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
@@ -12,6 +12,7 @@ import { useScreenStream } from "../hooks/video-capture/useScreenStream";
 import { useSourceSwitcher } from "../hooks/video-capture/useSourceSwitcher";
 import { useRecording } from "../hooks/video-capture/useRecording";
 import { usePipDrag } from "../hooks/video-capture/usePipDrag";
+import { useStreamStore } from "../stores/useStreamStore";
 
 interface VideoCaptureBlockProps {
   block: Block;
@@ -47,7 +48,7 @@ function PipPreviewVideo({ stream }: { stream: MediaStream | null }) {
  * Uses real device enumeration via enumerateDevices().
  */
 export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
-  const lang = useLang();
+  useLang();
   const [captureMode, setCaptureMode] = useBlockField<"camera" | "screen">(block.id, "capture-mode", "camera");
   const [screenSysAudio, setScreenSysAudio] = useBlockField(block.id, "screen-sys-audio", true);
   const [screenMicOn, setScreenMicOn] = useBlockField(block.id, "screen-mic", false);
@@ -58,6 +59,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
 
   const [editOpen, setEditOpen] = useState(false);
   const [statsAdv, setStatsAdv] = useState(false);
+  const [micMuted, setMicMuted] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [filters, setFilters] = useState({ brightness: 100, contrast: 100, saturation: 100 });
   const { cameras, mics, enumerateDevicesNow } = useDeviceEnumeration();
@@ -70,6 +72,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   const recTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recStartRef = useRef<number>(0);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const micGainRef = useRef<GainNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const captureModeRef = useRef(captureMode);
 
@@ -105,7 +108,6 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   });
 
   const { isStreaming, setIsStreaming, streamStats, setStreamStats, startStream, stopStream } = useCameraStream({
-    block,
     selectedCamId,
     selectedMicId,
     videoRef,
@@ -113,11 +115,12 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     streamRef,
     micStreamRef,
     audioCtxRef,
+    micGainRef,
     recorderRef,
     recTimerRef,
     enumerateDevicesNow,
     stopPipCameraRef,
-    onRecordingStop: () => setIsRecording(false),
+    onRecordingStop: () => { setIsRecording(false); setMicMuted(false); },
   });
 
   const { startCompositeLoop, stopCompositeLoop } = useCompositeCanvas({
@@ -129,7 +132,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     compositeStreamRef,
   });
 
-  const { isPipActive, startPipCamera, stopPipCamera } = usePipCamera({
+  const { isPipActive, stopPipCamera } = usePipCamera({
     selectedCamId,
     pipEnabled,
     isStreaming,
@@ -186,6 +189,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     streamRef,
     micStreamRef,
     audioCtxRef,
+    micGainRef,
     setIsStreaming,
     setStreamStats,
     stopStream,
@@ -214,6 +218,36 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     pipDragRef,
     stageRef,
   });
+
+  // Live mic mute/unmute
+  const toggleMicMute = useCallback(() => {
+    const newMuted = !micMuted;
+    if (captureMode === "screen" && micGainRef.current) {
+      micGainRef.current.gain.value = newMuted ? 0 : 1;
+    } else if (captureMode === "camera" && streamRef.current) {
+      streamRef.current.getAudioTracks().forEach((t) => { t.enabled = !newMuted; });
+    }
+    setMicMuted(newMuted);
+    useStreamStore.getState().setMicMuted(newMuted);
+  }, [micMuted, captureMode, streamRef]);
+
+  // Register streaming state and callbacks in global store for FloatingStreamControls
+  useEffect(() => {
+    const s = useStreamStore.getState();
+    if (isStreaming) {
+      s.setIsStreaming(true);
+      s.setCaptureMode(captureMode);
+      s.setOpenSourcePicker(openSourcePicker);
+      s.setToggleMicMute(toggleMicMute);
+    }
+    return () => {
+      s.setIsStreaming(false);
+      s.setCaptureMode(null);
+      s.setOpenSourcePicker(null);
+      s.setToggleMicMute(null);
+      s.setMicMuted(false);
+    };
+  }, [isStreaming, captureMode, openSourcePicker, toggleMicMute]);
 
   /* ── Helper: device label with fallback ── */
   const deviceLabel = (dev: MediaDeviceInfo, idx: number, kind: "cam" | "mic") => {
@@ -378,7 +412,29 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
             {/* Audio toggles row */}
             <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
               {audioToggleBtn(screenSysAudio, () => setScreenSysAudio(!screenSysAudio), pick("系統音訊", "System Audio"))}
-              {audioToggleBtn(screenMicOn, () => setScreenMicOn(!screenMicOn), pick("麥克風", "Microphone"))}
+              {/* Mic: live mute/unmute when streaming (with mic on), toggle on/off when not streaming */}
+              {isStreaming && screenMicOn ? (
+                <button
+                  onClick={toggleMicMute}
+                  style={{
+                    padding: "6px 12px",
+                    fontSize: "calc(12px * var(--text-scale))",
+                    backgroundColor: micMuted ? "#c62828" : "#333",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "2px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {micMuted ? pick("🔇 靜音中", "🔇 Muted") : pick("🎙 麥克風", "🎙 Mic On")}
+                </button>
+              ) : isStreaming && !screenMicOn ? (
+                <span style={{ fontSize: "calc(10px * var(--text-scale))", color: "#aaa" }}>
+                  {pick("重新串流以加入麥克風", "Restart to add mic")}
+                </span>
+              ) : (
+                audioToggleBtn(screenMicOn, () => setScreenMicOn(!screenMicOn), pick("麥克風", "Microphone"))
+              )}
               {/* PiP toggle */}
               <button
                 onClick={() => { if (!isRecording) setPipEnabled(!pipEnabled); }}
@@ -412,11 +468,6 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
                 >
                   {pick("切換來源", "Switch Source")}
                 </button>
-              )}
-              {isStreaming && (
-                <span style={{ fontSize: "calc(10px * var(--text-scale))", color: "#999", marginLeft: "4px" }}>
-                  {pick("停止串流以更改音訊", "Stop stream to change audio")}
-                </span>
               )}
             </div>
             {/* Mic device select when mic is enabled in screen mode */}
@@ -566,7 +617,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
           }}
         >
           <button
-            onClick={isStreaming ? stopStream : (captureMode === "screen" ? handleScreenStreamClick : startStream)}
+            onClick={isStreaming ? () => { stopStream(); setMicMuted(false); } : (captureMode === "screen" ? handleScreenStreamClick : startStream)}
             style={{
               padding: "6px 12px",
               fontSize: "calc(12px * var(--text-scale))",

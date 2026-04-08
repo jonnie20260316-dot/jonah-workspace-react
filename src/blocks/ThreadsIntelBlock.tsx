@@ -40,6 +40,7 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
   // Refresh records when TI modal closes
   useEffect(() => {
     if (!tiModal.open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRecords(loadJSON("threads-intel-records", []));
     }
   }, [tiModal.open]);

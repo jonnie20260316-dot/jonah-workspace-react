@@ -57,7 +57,7 @@ interface Props {
   onPeekDate?: (date: string) => void;
 }
 
-export function StickyHistoryPanel({ onClose, onPeekDate }: Props) {
+export function StickyHistoryPanel({ onClose }: Props) {
   const lang = useLang();
   const { blocks } = useBlockStore();
   const [expandedDate, setExpandedDate] = useState<string | null>(null);

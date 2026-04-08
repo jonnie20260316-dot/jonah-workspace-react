@@ -2,6 +2,7 @@ import { Canvas } from "./components/Canvas";
 import { FAB } from "./components/FAB";
 import { ModalLayer } from "./components/ModalLayer";
 import { FloatingTopBar } from "./components/FloatingTopBar";
+import { FloatingStreamControls } from "./components/FloatingStreamControls";
 import { Sidebar } from "./components/Sidebar";
 import { GearMenu } from "./components/GearMenu";
 import { RichTextToolbar } from "./components/RichTextToolbar";
@@ -32,6 +33,7 @@ export default function App() {
     <ErrorBoundary>
       <div style={{ width: "100vw", height: "100vh" }}>
         <FloatingTopBar />
+        <FloatingStreamControls />
         <Sidebar />
         <GearMenu />
         <ErrorBoundary>

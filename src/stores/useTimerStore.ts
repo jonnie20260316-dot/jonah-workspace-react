@@ -14,7 +14,7 @@ interface TimerStore {
   updateSession: (id: string, date: string, delta: Partial<Pick<TimerSession, "task" | "duration" | "actual">>) => void;
 }
 
-export const useTimerStore = create<TimerStore>((set, get) => ({
+export const useTimerStore = create<TimerStore>((set) => ({
   timerState: loadJSON<TimerState>("timer-state", {
     duration: 90 * 60,
     remaining: 90 * 60,

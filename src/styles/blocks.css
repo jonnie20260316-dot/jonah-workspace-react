@@ -184,6 +184,14 @@
   flex-direction: column;
 }
 
+/* Spotify block — webview must fill body with no padding, no scroll */
+.type-spotify .block-body {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 /* === Resize Handles (L-bracket style) === */
 .resize-handle {
   position: absolute;

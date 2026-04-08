@@ -30,22 +30,25 @@ export function CardModal() {
     const allCards = [...board.queue, ...board.doing, ...board.archive];
     const card = allCards.find((c) => c.id === cardModal.cardId);
 
-    if (card) {
-      setCardTitle(card.text || "");
-      setCardDesc(card.description || "");
-      setSteps(card.steps || []);
+    const updateFromCard = () => {
+      if (card) {
+        setCardTitle(card.text || "");
+        setCardDesc(card.description || "");
+        setSteps(card.steps || []);
 
-      const checkedSet = new Set<number>();
-      if (card.checks) {
-        card.checks.split(",").forEach((val: string) => {
-          const num = Number(val);
-          if (!isNaN(num)) checkedSet.add(num);
-        });
+        const checkedSet = new Set<number>();
+        if (card.checks) {
+          card.checks.split(",").forEach((val: string) => {
+            const num = Number(val);
+            if (!isNaN(num)) checkedSet.add(num);
+          });
+        }
+        setChecks(checkedSet);
+
+        setTags(new Set<string>(card.tags || []));
       }
-      setChecks(checkedSet);
-
-      setTags(new Set<string>(card.tags || []));
-    }
+    };
+    updateFromCard();
   }, [cardModal.open, cardModal.cardId]);
 
   const handleSave = () => {

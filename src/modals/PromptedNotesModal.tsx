@@ -34,24 +34,27 @@ export function PromptedNotesModal() {
   useEffect(() => {
     if (!pnModal.open || !pnModal.blockId) return;
 
-    const loadedConfig = loadJSON(`prompted-notes-config:${pnModal.blockId}`, []) as PromptField[];
-    setConfig(loadedConfig);
+    const updateState = () => {
+      const loadedConfig = loadJSON(`prompted-notes-config:${pnModal.blockId}`, []) as PromptField[];
+      setConfig(loadedConfig);
 
-    if (pnModal.mode === "entry" && pnModal.entryId) {
-      const entries = loadJSON(`prompted-notes-entries:${pnModal.blockId}`, []) as PromptedEntry[];
-      const foundEntry = entries.find((e) => e.id === pnModal.entryId);
-      if (foundEntry) {
-        setEntry(foundEntry);
-        setFieldValues(foundEntry.fields || {});
-      } else {
+      if (pnModal.mode === "entry" && pnModal.entryId) {
+        const entries = loadJSON(`prompted-notes-entries:${pnModal.blockId}`, []) as PromptedEntry[];
+        const foundEntry = entries.find((e) => e.id === pnModal.entryId);
+        if (foundEntry) {
+          setEntry(foundEntry);
+          setFieldValues(foundEntry.fields || {});
+        } else {
+          setEntry(null);
+          setFieldValues({});
+        }
+      } else if (pnModal.mode === "entry") {
+        // New entry mode
         setEntry(null);
         setFieldValues({});
       }
-    } else if (pnModal.mode === "entry") {
-      // New entry mode
-      setEntry(null);
-      setFieldValues({});
-    }
+    };
+    updateState();
   }, [pnModal.open, pnModal.blockId, pnModal.mode, pnModal.entryId]);
 
   const handleAddField = () => {
@@ -178,7 +181,7 @@ export function PromptedNotesModal() {
         {isConfigMode ? (
           <>
             <div id="pnConfigList" style={{ marginBottom: "16px" }}>
-              {config.map((field, idx) => (
+              {config.map((field) => (
                 <div
                   key={field.id}
                   style={{
