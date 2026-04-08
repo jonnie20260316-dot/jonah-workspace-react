@@ -56,10 +56,10 @@ declare global {
       // GitHub REST API sync
       githubGetFile: (token: string, owner: string, repo: string, filepath: string) => Promise<{ ok: boolean; exists?: boolean; content?: string | null; sha?: string | null; error?: string }>;
       githubPutFile: (token: string, owner: string, repo: string, filepath: string, content: string, sha?: string) => Promise<{ ok: boolean; error?: string }>;
-      spotifyCreate: (bounds: { x: number; y: number; width: number; height: number }) => Promise<void>;
-      spotifySetBounds: (bounds: { x: number; y: number; width: number; height: number }) => Promise<void>;
-      spotifySetVisible: (visible: boolean) => Promise<void>;
-      spotifyDestroy: () => Promise<void>;
+      openDevTools: () => Promise<void>;
+      spotifyOpenPlayer: (url: string) => Promise<void>;
+      spotifyOpenLogin: () => Promise<void>;
+      onSpotifyLoginDone: (cb: () => void) => () => void;
       requestQuit: () => Promise<void>;
       onAboutToQuit: (cb: () => void) => () => void;
       // Storage backup

@@ -37,16 +37,20 @@ export function useSourceSwitcher({
   } }).electronAPI;
 
   const openSourcePicker = useCallback(async () => {
-    if (!isElectron) return;
-    try {
-      const sources = await getElectronAPI().getScreenSources();
-      setScreenSources(sources);
-      setShowSourcePicker(true);
-      // Sync to global store for FloatingStreamControls viewport-level picker
-      useStreamStore.getState().setScreenSources(sources);
+    if (isElectron) {
+      try {
+        const sources = await getElectronAPI().getScreenSources();
+        setScreenSources(sources);
+        setShowSourcePicker(true);
+        // Sync to global store for FloatingStreamControls viewport-level picker
+        useStreamStore.getState().setScreenSources(sources);
+        useStreamStore.getState().setShowSourcePicker(true);
+      } catch (err) {
+        console.error("Failed to get screen sources:", err);
+      }
+    } else {
+      // Browser: show source picker modal with cameras only
       useStreamStore.getState().setShowSourcePicker(true);
-    } catch (err) {
-      console.error("Failed to get screen sources:", err);
     }
   }, [isElectron]);
 

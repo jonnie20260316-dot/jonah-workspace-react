@@ -88,6 +88,7 @@ autoUpdater.autoInstallOnAppQuit = false;
 autoUpdater.forceDevUpdateConfig = true; // allow updater to run in unpackaged/dev context
 
 let mainWindow = null;
+let spotifyPlayerWin = null;
 
 function sendUpdaterStatus(payload) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -299,19 +300,15 @@ async function createWindow() {
     selectedSourceId = id;
   });
 
-  // Auto-open DevTools for any webview in dev mode so we can see internal errors
-  if (isDev) {
-    mainWindow.webContents.on('did-attach-webview', (_event, wc) => {
-      wc.openDevTools();
-      // Also inject navigator.webdriver fix into the page's main world
-      wc.on('dom-ready', () => {
-        wc.executeJavaScript(`
-          try { Object.defineProperty(navigator, 'webdriver', { get: () => false }); } catch(e) {}
-          if (!window.chrome) window.chrome = { runtime: {} };
-        `).catch(() => {});
-      });
+  // Inject navigator.webdriver fix into webview pages so sites don't block Electron
+  mainWindow.webContents.on('did-attach-webview', (_event, wc) => {
+    wc.on('dom-ready', () => {
+      wc.executeJavaScript(`
+        try { Object.defineProperty(navigator, 'webdriver', { get: () => false }); } catch(e) {}
+        if (!window.chrome) window.chrome = { runtime: {} };
+      `).catch(() => {});
     });
-  }
+  });
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
@@ -371,6 +368,59 @@ ipcMain.handle('updater:defer', () => {
 });
 
 ipcMain.handle('app:version', () => app.getVersion());
+
+ipcMain.handle('app:open-devtools', () => {
+  mainWindow.webContents.openDevTools();
+});
+
+// Opens (or focuses) the persistent Spotify player window at the given URL
+ipcMain.handle('spotify:open-player', (_event, url) => {
+  if (spotifyPlayerWin && !spotifyPlayerWin.isDestroyed()) {
+    if (url) spotifyPlayerWin.loadURL(url);
+    spotifyPlayerWin.show();
+    spotifyPlayerWin.focus();
+    return;
+  }
+  spotifyPlayerWin = new BrowserWindow({
+    width: 420,
+    height: 650,
+    title: 'Spotify',
+    webPreferences: {
+      partition: 'persist:spotify',
+      plugins: true,
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+  spotifyPlayerWin.loadURL(url || 'https://open.spotify.com');
+  spotifyPlayerWin.on('closed', () => { spotifyPlayerWin = null; });
+});
+
+ipcMain.handle('spotify:open-login', () => {
+  // Navigate player window to login, or open a login-focused window
+  if (spotifyPlayerWin && !spotifyPlayerWin.isDestroyed()) {
+    spotifyPlayerWin.loadURL('https://accounts.spotify.com/login');
+    spotifyPlayerWin.show();
+    spotifyPlayerWin.focus();
+    return;
+  }
+  const loginWin = new BrowserWindow({
+    width: 500,
+    height: 700,
+    title: 'Spotify Login',
+    parent: mainWindow,
+    webPreferences: {
+      partition: 'persist:spotify',
+      plugins: true,
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+  loginWin.loadURL('https://accounts.spotify.com/login');
+  loginWin.on('closed', () => {
+    mainWindow.webContents.send('spotify:login-done');
+  });
+});
 
 ipcMain.handle('app:screen-permission-status', () => {
   // Returns 'granted', 'denied', 'restricted', or 'not-determined'
@@ -444,41 +494,6 @@ ipcMain.handle('fs:list-dir', async (_event, dirPath) => {
 });
 
 // ─── IPC: Storage backup (insurance against localStorage loss on quit) ────────
-// ─── Spotify WebContentsView ──────────────────────────────────────────────────
-// WebContentsView runs unsandboxed with plugins:true so Widevine CDM works.
-// The React component positions it over the block via rAF + getBoundingClientRect.
-const { WebContentsView } = require('electron');
-let spotifyView = null;
-
-ipcMain.handle('spotify:create', (_event, bounds) => {
-  if (spotifyView) return; // already exists
-  spotifyView = new WebContentsView({
-    webPreferences: {
-      partition: 'persist:spotify',
-      plugins: true,
-    },
-  });
-  spotifyView.webContents.setUserAgent(CHROME_UA);
-  mainWindow.contentView.addChildView(spotifyView);
-  spotifyView.setBounds(bounds);
-  spotifyView.webContents.loadURL('https://open.spotify.com');
-});
-
-ipcMain.handle('spotify:set-bounds', (_event, bounds) => {
-  if (spotifyView) spotifyView.setBounds(bounds);
-});
-
-ipcMain.handle('spotify:set-visible', (_event, visible) => {
-  if (spotifyView) spotifyView.setVisible(visible);
-});
-
-ipcMain.handle('spotify:destroy', () => {
-  if (spotifyView) {
-    mainWindow.contentView.removeChildView(spotifyView);
-    spotifyView.webContents.close();
-    spotifyView = null;
-  }
-});
 
 const BACKUP_FILENAME = 'jonah-workspace-backup.json';
 

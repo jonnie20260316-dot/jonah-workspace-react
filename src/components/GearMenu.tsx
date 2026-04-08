@@ -340,6 +340,13 @@ export function GearMenu() {
         </button>
       )}
 
+      {/* DevTools — Electron only */}
+      {window.electronAPI?.isElectron && (
+        <button onClick={() => window.electronAPI!.openDevTools()} style={actionBtn}>
+          🔧 {pick("開發者工具", "DevTools")}
+        </button>
+      )}
+
       {/* Export / Import */}
       <button onClick={handleExport} style={actionBtn}>
         ↓ {pick("匯出 JSON", "Export JSON")}
