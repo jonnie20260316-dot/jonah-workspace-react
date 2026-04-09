@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useStreamStore } from "../../stores/useStreamStore";
 
 interface UseCameraStreamParams {
@@ -34,6 +34,7 @@ export function useCameraStream({
 }: UseCameraStreamParams) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamStats, setStreamStats] = useState({ fps: "—", res: "—" });
+  const genRef = useRef(0);
 
   const stopStream = useCallback(() => {
     if (recorderRef.current && recorderRef.current.state !== "inactive") {
@@ -69,6 +70,7 @@ export function useCameraStream({
   }, [stopPipCameraRef, streamRef, micStreamRef, audioCtxRef, micGainRef, recorderRef, recTimerRef, videoRef, screenVideoRef, onRecordingStop]);
 
   const startStream = useCallback(async () => {
+    const gen = ++genRef.current;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -87,6 +89,11 @@ export function useCameraStream({
         video: videoConstraints,
         audio: audioConstraints,
       });
+
+      if (gen !== genRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
 
       streamRef.current = stream;
       if (videoRef.current) {

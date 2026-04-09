@@ -44,16 +44,16 @@ export function setActiveDate(date: string) {
   _activeDate = date;
 }
 
-export function storageKey(key: string): string {
+export function storageKey(key: string, date?: string): string {
   if (GLOBAL_KEYS.has(key)) return STORAGE_PREFIX + key;
   if (GLOBAL_KEY_PREFIXES.some((p) => key.startsWith(p)))
     return STORAGE_PREFIX + key;
-  return STORAGE_PREFIX + "session:" + _activeDate + ":" + key;
+  return STORAGE_PREFIX + "session:" + (date ?? _activeDate) + ":" + key;
 }
 
-export function loadJSON<T>(key: string, fallback: T): T {
+export function loadJSON<T>(key: string, fallback: T, date?: string): T {
   try {
-    const raw = localStorage.getItem(storageKey(key));
+    const raw = localStorage.getItem(storageKey(key, date));
     const parsed = raw ? JSON.parse(raw) : fallback;
     return (parsed ?? fallback) as T; // JW-23: catch JSON.parse("null") → null
   } catch {
@@ -61,9 +61,9 @@ export function loadJSON<T>(key: string, fallback: T): T {
   }
 }
 
-export function saveJSON(key: string, value: unknown): boolean {
+export function saveJSON(key: string, value: unknown, date?: string): boolean {
   try {
-    localStorage.setItem(storageKey(key), JSON.stringify(value));
+    localStorage.setItem(storageKey(key, date), JSON.stringify(value));
     return true;
   } catch (e) {
     console.error("[storage] 寫入失敗:", key, e);
@@ -71,12 +71,12 @@ export function saveJSON(key: string, value: unknown): boolean {
   }
 }
 
-export function loadText(key: string, fallback = ""): string {
-  return localStorage.getItem(storageKey(key)) ?? fallback;
+export function loadText(key: string, fallback = "", date?: string): string {
+  return localStorage.getItem(storageKey(key, date)) ?? fallback;
 }
 
-export function saveText(key: string, value: string): void {
-  localStorage.setItem(storageKey(key), value);
+export function saveText(key: string, value: string, date?: string): void {
+  localStorage.setItem(storageKey(key, date), value);
 }
 
 /**

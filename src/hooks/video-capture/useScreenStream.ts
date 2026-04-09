@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useStreamStore } from "../../stores/useStreamStore";
 
 interface UseScreenStreamParams {
@@ -32,7 +32,10 @@ export function useScreenStream({
   stopStream,
   enumerateDevicesNow,
 }: UseScreenStreamParams) {
+  const genRef = useRef(0);
+
   const startScreenStream = useCallback(async () => {
+    const gen = ++genRef.current;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -52,6 +55,11 @@ export function useScreenStream({
         video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: screenSysAudio,
       });
+
+      if (gen !== genRef.current) {
+        displayStream.getTracks().forEach((t) => t.stop());
+        return;
+      }
 
       let finalStream: MediaStream;
 
