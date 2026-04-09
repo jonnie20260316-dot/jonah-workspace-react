@@ -98,17 +98,19 @@ Do not exit silent after architecture, workflow, storage, guardrail, or major UX
 - [ ] Chinese copy remains default and high quality
 - [ ] No regressions in persistence (reload test)
 - [ ] No console errors
+- [ ] **0 ESLint warnings** — `npx eslint src/` clean
 - [ ] **`npm run build` passes** (NOT `tsc --noEmit` — see JW-30)
+- [ ] New storage keys added to `GLOBAL_KEYS` in `constants.ts` first (JW-8)
 - [ ] All meaningful changes committed AND pushed (JW-34)
 
-## Prevention Rules (Active)
+## Prevention Rules (12 Core)
 
-→ See `PREVENTION_RULES.md` for all active prevention rules (JW-8 through STORAGE-MIGRATION-1).
+→ See `PREVENTION_RULES.md` for the 12 core rules. Archive: `history/lessons/prevention-rules-archive.md`.
 
-Most-violated — memorize these:
-- **JW-30**: Always `npm run build`, never `tsc --noEmit` — `tsconfig.json` has `"files": []`, so tsc checks nothing.
-- **JW-34**: `git status` + `git log origin/HEAD..HEAD` before any `rm -rf` or directory swap.
-- **JW-37**: Write a numbered plan for any change touching >3 files or >100 lines before coding.
+Top 3 — memorize:
+- **JW-30**: `npm run build`, not `tsc --noEmit`. tsconfig has `"files": []`.
+- **JW-34**: `git status` before any `rm -rf`. Data loss incident 2026-04-03.
+- **JW-37**: >3 files → numbered plan first.
 
 ## Session Protocol
 
@@ -119,6 +121,8 @@ Most-violated — memorize these:
 ## History
 
 Session recaps and lessons-locked files are in `history/`. Check the latest before starting a new round of work.
+
+Bundle: main chunk 524KB (gzip ~144KB). No action unless >750KB or user reports slowness.
 
 Current state: **v1.0.6 — GitHub REST API sync** — Replaced broken git binary sync with direct GitHub Contents API (PAT auth, 15s timeout, deterministic). GearMenu: repo URL + PAT inputs. Auto-migration from old git-sync-remote key. 2-min auto-backup interval. Build ✓ 1795 modules.
 

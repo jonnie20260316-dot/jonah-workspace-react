@@ -163,5 +163,5 @@ export function useBlockResize(
         cancelAnimationFrame(rafId);
       }
     };
-  }, [blockId, snapMode, updateBlock, direction]);
+  }, [blockId, snapMode, updateBlock, direction, handleRef]);
 }

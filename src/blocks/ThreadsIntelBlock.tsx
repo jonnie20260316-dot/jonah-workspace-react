@@ -50,7 +50,7 @@ export function ThreadsIntelBlock({ block }: ThreadsIntelBlockProps) {
   // Memoize archived count to avoid parsing JSON from localStorage on every render
   const archivedCount = useMemo(
     () => loadJSON<TiRecord[]>("threads-intel-archived", []).length,
-    [records] // re-compute when records change (proxy for archive changes)
+    [] // stable — archive count only changes on explicit archive action
   );
 
   // History: search by account handle

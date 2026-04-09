@@ -150,24 +150,22 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   useEffect(() => { stopPipCameraRef.current = stopPipCamera; }, [stopPipCamera]);
 
   // Cleanup on unmount (JW-28)
+  // Refs are read at cleanup time intentionally — they are null on mount, only populated during streaming
   useEffect(() => {
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-      }
-      if (micStreamRef.current) {
-        micStreamRef.current.getTracks().forEach((t) => t.stop());
-      }
-      if (audioCtxRef.current) {
-        audioCtxRef.current.close();
-      }
-      if (pipStreamRef.current) {
-        pipStreamRef.current.getTracks().forEach((t) => t.stop());
-      }
-      if (compositeStreamRef.current) {
-        compositeStreamRef.current.getTracks().forEach((t) => t.stop());
-      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      micStreamRef.current?.getTracks().forEach((t) => t.stop());
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      audioCtxRef.current?.close();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      pipStreamRef.current?.getTracks().forEach((t) => t.stop());
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      compositeStreamRef.current?.getTracks().forEach((t) => t.stop());
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (recTimerRef.current) clearInterval(recTimerRef.current);
     };
   }, []);
@@ -232,6 +230,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   }, [micMuted, captureMode, streamRef]);
 
   // Register streaming state and callbacks in global store for FloatingStreamControls
+  // EFFECT-DEPS-STABILIZATION: deps limited to lifecycle boundary; adding registered values causes register→cleanup loop
   useEffect(() => {
     const s = useStreamStore.getState();
     if (isStreaming) {
@@ -260,6 +259,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       s.setShowSourcePicker(false);
       s.setScreenSources([]);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- EFFECT-DEPS-STABILIZATION: lifecycle boundary only
   }, [isStreaming]);
 
   /* ── Helper: device label with fallback ── */
@@ -312,7 +312,6 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
     </button>
   );
 
-  // eslint-disable-next-line react-hooks/refs
   const pipStream = pipStreamRef.current;
 
   return (

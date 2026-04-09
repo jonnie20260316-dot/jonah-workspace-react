@@ -5,6 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 import noSrcObjectWithoutPlay from './eslint-rules/no-srcobject-without-play.js'
+import noPickModuleScope from './eslint-rules/no-pick-module-scope.js'
 
 export default defineConfig([
   globalIgnores(['dist']),
@@ -17,7 +18,15 @@ export default defineConfig([
       reactRefresh.configs.vite,
     ],
     plugins: {
-      local: { rules: { 'no-srcobject-without-play': noSrcObjectWithoutPlay } },
+      local: {
+        rules: {
+          'no-srcobject-without-play': noSrcObjectWithoutPlay,
+          'no-pick-module-scope': noPickModuleScope,
+        },
+      },
+    },
+    linterOptions: {
+      reportUnusedDisableDirectives: 'error',
     },
     languageOptions: {
       ecmaVersion: 2020,
@@ -25,6 +34,7 @@ export default defineConfig([
     },
     rules: {
       'local/no-srcobject-without-play': 'warn',
+      'local/no-pick-module-scope': 'error',
     },
   },
 ])

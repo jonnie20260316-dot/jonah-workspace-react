@@ -46,9 +46,8 @@ export function PromptedNotesBlock({ block }: PromptedNotesBlockProps) {
   // Refresh when PN modal closes
   useEffect(() => {
     if (!pnModal.open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync read from localStorage, not async
       setConfig(loadJSON(`prompted-notes-config:${block.id}`, []));
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEntries(loadJSON(`prompted-notes-entries:${block.id}`, []));
     }
   }, [pnModal.open, block.id]);

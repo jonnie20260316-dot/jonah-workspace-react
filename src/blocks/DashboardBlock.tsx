@@ -175,7 +175,7 @@ function StandupsTab() {
     window.electronAPI?.listDir?.(dir)
       .then((e: DirEntry[]) => setFiles(e.filter(f => f.name.endsWith(".md") && f.name.includes("queue-run"))))
       .catch(() => setFiles([]));
-  }, []);
+  }, [dir]);
 
   if (files === null) return <EmptyState msg="Loading…" />;
   if (!selected) {

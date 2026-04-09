@@ -50,7 +50,7 @@ function BriefsTab() {
     window.electronAPI?.listDir?.(dir)
       .then((e: DirEntry[]) => setFiles(e.filter(f => f.name.endsWith(".md"))))
       .catch(() => setFiles([]));
-  }, []);
+  }, [dir]);
 
   if (files === null) return <EmptyState msg="Loading…" />;
 
@@ -110,7 +110,7 @@ function MemoryTab() {
     window.electronAPI?.listDir?.(dir)
       .then((e: DirEntry[]) => setFiles(e.filter(f => f.name.endsWith(".md") || f.name.endsWith(".json"))))
       .catch(() => setFiles([]));
-  }, []);
+  }, [dir]);
 
   if (files === null) return <EmptyState msg="Loading…" />;
 

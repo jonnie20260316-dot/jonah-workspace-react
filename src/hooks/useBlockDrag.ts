@@ -151,5 +151,5 @@ export function useBlockDrag(
         cancelAnimationFrame(rafId);
       }
     };
-  }, [blockId, snapMode, updateBlock]);
+  }, [blockId, snapMode, updateBlock, headerRef]);
 }
