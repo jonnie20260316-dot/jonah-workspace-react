@@ -15,14 +15,27 @@ interface TimerStore {
 }
 
 export const useTimerStore = create<TimerStore>((set) => ({
-  timerState: loadJSON<TimerState>("timer-state", {
-    duration: 90 * 60,
-    remaining: 90 * 60,
-    running: false,
-    overtime: 0,
-    wallStartedAt: null,
-    mode: "work",
-  }),
+  timerState: (() => {
+    const ts = loadJSON<TimerState>("timer-state", {
+      duration: 90 * 60,
+      remaining: 90 * 60,
+      running: false,
+      overtime: 0,
+      wallStartedAt: null,
+      mode: "work",
+    });
+    // Crash recovery: if timer was running, account for elapsed time since last save
+    if (ts.running && ts.wallStartedAt) {
+      const elapsed = Math.floor((Date.now() - ts.wallStartedAt) / 1000);
+      const alreadyElapsed = ts.duration - ts.remaining;
+      const totalElapsed = Math.max(alreadyElapsed, elapsed);
+      ts.remaining = Math.max(0, ts.duration - totalElapsed);
+      if (ts.remaining <= 0) {
+        ts.overtime = totalElapsed - ts.duration;
+      }
+    }
+    return ts;
+  })(),
 
   timerSettings: loadJSON<TimerSettings>("timer-settings", {
     dailyTarget: 240,

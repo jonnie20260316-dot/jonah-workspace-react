@@ -137,5 +137,11 @@ export function useRecording({
     saveJSON(`vc-saved-videos:${blockId}`, updated.map(({ ...rest }) => rest));
   };
 
-  return { isRecording, setIsRecording, recSeconds, savedVideos, startRecording, stopRecording, deleteVideo, formatRecTime };
+  const revokeAllBlobUrls = useCallback(() => {
+    savedVideos.forEach((v) => {
+      if (v.blobUrl) URL.revokeObjectURL(v.blobUrl);
+    });
+  }, [savedVideos]);
+
+  return { isRecording, setIsRecording, recSeconds, savedVideos, startRecording, stopRecording, deleteVideo, formatRecTime, revokeAllBlobUrls };
 }

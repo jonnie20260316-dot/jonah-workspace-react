@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { loadJSON, loadText, saveJSON, saveText } from "../utils/storage";
 import { useSessionStore } from "../stores/useSessionStore";
+import { useToast } from "./useToast";
+import { pick } from "../utils/i18n";
 
 /**
  * Hook for managing a single block field with localStorage persistence.
@@ -54,10 +56,14 @@ export function useBlockField<T>(
 
   const update = useCallback(
     (newValue: T) => {
-      if (typeof newValue === "string") {
-        saveText(storageKey, newValue);
-      } else {
-        saveJSON(storageKey, newValue);
+      const ok = typeof newValue === "string"
+        ? saveText(storageKey, newValue)
+        : saveJSON(storageKey, newValue);
+      if (!ok) {
+        useToast.getState().show(
+          pick("儲存失敗，空間不足", "Save failed — storage full"),
+          "error"
+        );
       }
       setValue(newValue);
     },

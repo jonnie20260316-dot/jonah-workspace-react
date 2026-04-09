@@ -12,6 +12,7 @@ import { SurfaceBackground } from "./SurfaceBackground";
 import { SurfaceForeground } from "./SurfaceForeground";
 import { FrameSwitcher } from "./FrameSwitcher";
 import { ContextMenu } from "./ContextMenu";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { useLang } from "../hooks/useLang";
 import { pick } from "../utils/i18n";
 import { useDrawTool } from "../hooks/useDrawTool";
@@ -380,7 +381,9 @@ export function Canvas() {
 
             return (
               <BlockShell key={block.id} block={block}>
-                <BlockComponent block={block} />
+                <ErrorBoundary>
+                  <BlockComponent block={block} />
+                </ErrorBoundary>
               </BlockShell>
             );
           })}

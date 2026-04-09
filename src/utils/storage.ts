@@ -75,8 +75,14 @@ export function loadText(key: string, fallback = "", date?: string): string {
   return localStorage.getItem(storageKey(key, date)) ?? fallback;
 }
 
-export function saveText(key: string, value: string, date?: string): void {
-  localStorage.setItem(storageKey(key, date), value);
+export function saveText(key: string, value: string, date?: string): boolean {
+  try {
+    localStorage.setItem(storageKey(key, date), value);
+    return true;
+  } catch (e) {
+    console.error("[storage] 寫入失敗:", key, e);
+    return false;
+  }
 }
 
 /**

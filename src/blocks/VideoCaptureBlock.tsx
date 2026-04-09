@@ -94,7 +94,7 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
   // Keep pipPositionRef in sync so RAF loop reads fresh position (BUG 1 fix)
   useEffect(() => { pipPositionRef.current = pipPosition; }, [pipPosition]);
 
-  const { isRecording, setIsRecording, recSeconds, savedVideos, startRecording, stopRecording, deleteVideo, formatRecTime } = useRecording({
+  const { isRecording, setIsRecording, recSeconds, savedVideos, startRecording, stopRecording, deleteVideo, formatRecTime, revokeAllBlobUrls } = useRecording({
     blockId: block.id,
     captureMode,
     pipEnabled,
@@ -168,6 +168,14 @@ export function VideoCaptureBlock({ block }: VideoCaptureBlockProps) {
       // eslint-disable-next-line react-hooks/exhaustive-deps
       if (recTimerRef.current) clearInterval(recTimerRef.current);
     };
+  }, []);
+
+  // Revoke blob URLs on unmount to prevent memory leaks (JW-28)
+  useEffect(() => {
+    return () => {
+      revokeAllBlobUrls();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Apply CSS filters to video element
