@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Block } from "../types";
 import { pick } from "../utils/i18n";
 import { useLang } from "../hooks/useLang";
@@ -44,49 +44,92 @@ function toDirectUrl(raw: string): string {
   }
 }
 
+const FOOTER_H = 30;
+
 export function SpotifyBlock({ block }: SpotifyBlockProps) {
   useLang();
   const isElectron = !!window.electronAPI?.isElectron;
   const [url, setUrl] = useBlockField(block.id, "embed-url", "", { global: true });
   const [input, setInput] = useState("");
-  const [reloadKey, setReloadKey] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const lastBoundsKey = useRef("");
 
+  // Track block position and keep WebContentsView aligned
+  useEffect(() => {
+    if (!isElectron || !url) return;
+    const directUrl = toDirectUrl(url);
+    if (!directUrl) return;
+
+    let frameId: number;
+    const sync = () => {
+      const el = containerRef.current;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        const bounds = {
+          x: Math.round(r.x),
+          y: Math.round(r.y),
+          width: Math.round(r.width),
+          height: Math.max(0, Math.round(r.height - FOOTER_H)),
+        };
+        const key = `${bounds.x},${bounds.y},${bounds.width},${bounds.height}`;
+        if (key !== lastBoundsKey.current) {
+          lastBoundsKey.current = key;
+          window.electronAPI!.spotifyAttach(directUrl, bounds);
+        }
+      }
+      frameId = requestAnimationFrame(sync);
+    };
+    frameId = requestAnimationFrame(sync);
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.electronAPI!.spotifyDetach();
+    };
+  }, [isElectron, url]);
+
+  // After login popup closes, reload WebContentsView to playlist URL
   useEffect(() => {
     if (!isElectron || !window.electronAPI?.onSpotifyLoginDone) return;
-    return window.electronAPI.onSpotifyLoginDone(() => setReloadKey(k => k + 1));
-  }, [isElectron]);
+    return window.electronAPI.onSpotifyLoginDone(() => {
+      if (url) window.electronAPI!.spotifyReload(toDirectUrl(url));
+    });
+  }, [isElectron, url]);
 
   const embedUrl = toEmbedUrl(url);
 
   if (embedUrl) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-        {isElectron ? (
-          <webview
-            key={reloadKey}
-            src={toDirectUrl(url)}
-            partition="persist:spotify"
-            allowpopups={true}
-            webpreferences="plugins=on,autoplay-policy=no-user-gesture-required"
-            style={{ flex: 1, width: "100%", border: "none" }}
-          />
-        ) : (
-          <iframe
-            src={embedUrl}
-            style={{ flex: 1, width: "100%", border: "none" }}
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy"
-          />
-        )}
-        <div style={{ padding: "4px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          {isElectron ? (
+    if (isElectron) {
+      return (
+        <div ref={containerRef} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+          {/* Spacer — WebContentsView renders over this area */}
+          <div style={{ flex: 1 }} />
+          {/* Footer — sits below WebContentsView bounds */}
+          <div style={{ height: FOOTER_H, padding: "0 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <button
               onClick={() => window.electronAPI!.spotifyOpenLogin()}
               style={{ fontSize: "11px", color: "#1DB954", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
             >
               {pick("登入 Spotify", "Log in")}
             </button>
-          ) : <span />}
+            <button
+              onClick={() => setUrl("")}
+              style={{ fontSize: "11px", color: "#aaa", background: "none", border: "none", cursor: "pointer" }}
+            >
+              {pick("更換", "Change")}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+        <iframe
+          src={embedUrl}
+          style={{ flex: 1, width: "100%", border: "none" }}
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy"
+        />
+        <div style={{ padding: "4px 8px", display: "flex", justifyContent: "flex-end" }}>
           <button
             onClick={() => setUrl("")}
             style={{ fontSize: "11px", color: "#aaa", background: "none", border: "none", cursor: "pointer" }}
